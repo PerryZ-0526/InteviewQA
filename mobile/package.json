@@ -1,0 +1,19 @@
+{
+  "name": "interview-qa-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "build": "node scripts/build.mjs",
+    "sync": "node scripts/git-sync.mjs",
+    "cap:sync": "npx cap sync",
+    "cap:android": "npx cap add android",
+    "cap:ios": "npx cap add ios"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}

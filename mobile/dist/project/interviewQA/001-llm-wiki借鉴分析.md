@@ -1,0 +1,101 @@
+---
+title: llm-wiki 借鉴分析
+created: 2026-08-05
+status: proposed
+---
+
+# llm-wiki 借鉴分析
+
+## 背景
+
+llm-wiki 是 Andrej Karpathy 博客中提出的「LLM 维护的知识库」概念，GitHub 上有多个开源实现（kenhuangus/llm-wiki、geronimo-iia/llm-wiki、ddsyasas/llm-wiki 等）。其核心理念是将 LLM 用于知识的结构化、交叉引用和持续维护，而不只是在查询时做检索增强（RAG）。
+
+本项目（InteviewQA）是一个面试真题知识库，以结构化 Markdown 文件组织面试题和答案解析。当前题库已有 24 个分类、200+ 道题目，在检索、导航、质量保障等方面存在明显短板。本文分析 llm-wiki 项目中可借鉴的特性，并按优先级排序。
+
+## 当前项目 vs llm-wiki 差距分析
+
+| 维度 | 当前 InteviewQA | llm-wiki |
+|---|---|---|
+| 存储 | Markdown（HTML 注释存元数据） | Markdown（YAML frontmatter） |
+| 导航 | 仅分类内 prev/next 线性 | 知识图谱 + 双向链接 |
+| 检索 | 无 | BM25 全文检索 + 向量搜索 |
+| 质量保障 | 无 | lint 检查 + 健康报告 |
+| 版本 | git 但无 UI | diff 视图 |
+| 入库 | 单题 AI 生成 | 批量 ingest pipeline |
+| 多库 | 无 | 多 wiki 切换 |
+| 标签 | 手动维护 | 自动建议 + 图谱化 |
+
+## 建议借鉴的 6 个方向
+
+### 1. 全文检索（P0）
+
+当前只能按分类/标签浏览。题库超过 50 题后浏览体验急剧下降。llm-wiki 的 Tantivy BM25 方案太重，这里更适合轻量方案。
+
+方案：构建时生成 `search-index.json`（所有题目的标题+题目+答案+标签），前端加载用 minisearch 或 fuse.js 做客户端搜索。代价 < 200 行代码，零运行时依赖。
+
+### 2. YAML frontmatter 替换 HTML 注释（P0）
+
+当前用 `<!-- created: -->` 存时间元数据，脆弱且不规范。改为 YAML frontmatter：
+
+```yaml
+---
+title: 如何降低 Agent 的运营成本？
+tags: [Agent, 成本优化]
+created: 2026-08-05 12:53:58
+updated: 2026-08-05 14:20:00
+difficulty: 中
+source: 腾讯AI实验室面试
+---
+```
+
+解析用 `gray-matter` 库，一行代码，且 Obsidian 兼容。后续所有特性（lint、图谱、diff）都依赖结构化的元数据。
+
+### 3. 知识图谱 / 关联题目（P2）
+
+当前只有线性 prev/next，但面试题之间存在大量横向关联（前置知识、相关方向、对比概念）。借鉴 llm-wiki 的 `fed-by` / `depends-on` 边类型，在文件中增加「关联题目」section，包含前置知识、对比概念等链接。可以让 LLM 在生成时自动建议关联。
+
+### 4. Wiki 链接 `[[双向引用]]`（P1）
+
+借鉴 Obsidian 的 `[[wikilink]]` 语法。当前标签系统只单向关联。引入 wiki 链接后：
+
+- 正文中写 `[[JVM内存模型]]` → 自动渲染为链接
+- 页面底部自动显示「哪些题目引用了本题」（反向链接）
+- 生成「孤岛页面」报告（没有被任何其他题目引用的题）
+
+TipTap 已有 `@tiptap/extension-link`，可以扩展。
+
+### 5. Lint / 健康检查（P1）
+
+题库规模增长后，手动检查一致性不现实。借鉴 llm-wiki 的 lint 功能，作为 API 端点或构建步骤：
+
+| 检查项 | 说明 |
+|---|---|
+| 标签对应文件存在 | `tags/` 下每个标签是否有对应 `.md` |
+| 导航链完整性 | prev/next 双向一致性 |
+| 时间元数据完整 | 是否所有文件都有 `created`/`updated` |
+| 死链检测 | 正文中的链接是否指向存在的文件 |
+| 序号连续性 | 分类目录下编号是否跳号 |
+| 格式合规 | 是否包含全部必需章节 |
+
+### 6. 变更 Diff 视图（P2）
+
+答案会不断打磨，但当前看不到历史版本。用 `git log` 实现轻量 diff：
+
+- 文件编辑页增加「查看历史」按钮
+- API 端点 `git log -p -- filename`
+- 渲染为并排 diff
+
+## 优先级建议
+
+| 优先级 | 特性 | 理由 |
+|---|---|---|
+| P0 | 全文检索 | 题库超过 50 题后浏览体验急剧下降 |
+| P0 | YAML frontmatter | 后续所有特性（lint、图谱、diff）都依赖结构化的元数据 |
+| P1 | Lint 检查 | 数据质量兜底，投入低成本高 |
+| P1 | Wiki 链接 + 反向链接 | 改变「孤岛式」浏览体验，核心结构升级 |
+| P2 | 知识图谱/关联题目 | 依赖 wiki 链接，在其之上做 |
+| P2 | Diff 视图 | 锦上添花 |
+
+## 决策
+
+采纳上述 6 个方向，按 P0 → P1 → P2 的顺序逐步实施。YAML frontmatter 迁移作为第一步，为后续所有特性提供结构化元数据基础。
