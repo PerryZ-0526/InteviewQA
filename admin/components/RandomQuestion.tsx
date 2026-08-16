@@ -11,11 +11,15 @@ interface Props {
   markdown: string;
   filename: string;
   category: string;
-  onSave: (markdown: string) => void;
+  /** 分类 slug（category 为显示名，保存时需要 slug 定位文件） */
+  categorySlug?: string;
+  onSave: (markdown: string, target: { category: string; filename: string }) => void;
   onBack: () => void;
+  imageBase?: string;
+  uploadDir?: string;
 }
 
-export default function RandomQuestion({ markdown, filename, category, onSave, onBack }: Props) {
+export default function RandomQuestion({ markdown, filename, category, categorySlug, onSave, onBack, imageBase = '', uploadDir = '' }: Props) {
   const [parsed, setParsed] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -31,6 +35,7 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doSaveRef = useRef<() => void>(() => {});
   const lastSavedMdRef = useRef('');
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     if (markdown === lastSavedMdRef.current) return;
@@ -61,7 +66,7 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
   }, []);
 
   const doSave = useCallback(() => {
-    if (!parsed) return;
+    if (!parsed || !mountedRef.current) return;
     setSaveStatus('saving');
     const updated: Question = {
       ...parsed,
@@ -74,9 +79,10 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
     updatedAtRef.current = updated.updatedAt;
     const newMd = generateMarkdown(updated);
     lastSavedMdRef.current = newMd;
-    onSave(newMd);
+    // 传入本组件捕获的文档定位，避免切换文档后延迟保存写入错误文件
+    onSave(newMd, { category: categorySlug || category, filename });
     setSaveStatus('saved');
-  }, [parsed, onSave, userNotes]);
+  }, [parsed, onSave, userNotes, categorySlug, category, filename]);
   doSaveRef.current = doSave;
 
   const handleAnswerChange = useCallback((md: string) => {
@@ -99,7 +105,11 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
   // Auto-save is primary save mechanism (2s debounce). Ctrl+S now toggles strikethrough.
 
   useEffect(() => {
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
   }, []);
 
   if (!parsed) return <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>加载中...</div>;
@@ -167,6 +177,8 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
             initialMarkdown={answerRef.current}
             onChange={handleAnswerChange}
             placeholder="面试可直接作答的版本..."
+            imageBase={imageBase}
+            uploadDir={uploadDir}
           />
         </div>
       )}
@@ -179,6 +191,8 @@ export default function RandomQuestion({ markdown, filename, category, onSave, o
             initialMarkdown={analysisRef.current}
             onChange={handleAnalysisChange}
             placeholder="详细解析内容..."
+            imageBase={imageBase}
+            uploadDir={uploadDir}
           />
         </div>
       )}

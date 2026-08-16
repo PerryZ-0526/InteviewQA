@@ -7,17 +7,34 @@ export default function LogViewer({ onClose }: { onClose: () => void }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadLogs = async () => {
-    setLoading(true);
+  const loadLogs = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/logs?limit=100');
       const json = await res.json();
       if (json.success) setLogs(json.data);
     } catch {}
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   useEffect(() => { loadLogs(); }, []);
+
+  // 有 running 行时每 5s 静默轮询：服务端对账会收敛状态，收敛后自动停止
+  const hasRunning = logs.some((l) => l.status === 'running');
+  useEffect(() => {
+    if (!hasRunning) return;
+    const t = setInterval(() => loadLogs(true), 5000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRunning]);
+
+  const abandon = async (taskId: string) => {
+    if (!confirm('确认放弃生成？已消耗的额度不会退还。')) return;
+    try {
+      await fetch(`/api/tasks/${taskId}`, { method: 'POST' });
+    } catch {}
+    loadLogs(true);
+  };
 
   const actionLabel = (action: string) => {
     switch (action) {
@@ -30,6 +47,13 @@ export default function LogViewer({ onClose }: { onClose: () => void }) {
       case 'annotation_edit': return '编辑批注';
       case 'annotation_delete': return '删除批注';
       case 'annotation_update': return '更新批注';
+      case 'create_project_subdir': return '新建project子目录';
+      case 'create_project_doc': return '新建project文档';
+      case 'project_doc_update': return '更新project文档';
+      case 'external_add': return '添加外部文档';
+      case 'external_update': return '更新外部文档';
+      case 'external_remove': return '移除外部文档索引';
+      case 'external_rename': return '重命名外部文档';
       default: return action;
     }
   };
@@ -53,7 +77,7 @@ export default function LogViewer({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <div className="log-viewer-actions">
-            <button type="button" className="log-refresh" onClick={loadLogs} disabled={loading}>{loading ? '刷新中…' : '刷新'}</button>
+            <button type="button" className="log-refresh" onClick={() => loadLogs()} disabled={loading}>{loading ? '刷新中…' : '刷新'}</button>
             <button type="button" className="log-clear" onClick={async () => { if (confirm('确认清空所有日志？')) { await fetch('/api/logs', { method: 'DELETE' }); loadLogs(); } }}>清空</button>
             <button type="button" className="log-close" aria-label="关闭操作日志" onClick={onClose}>×</button>
           </div>
@@ -84,7 +108,10 @@ export default function LogViewer({ onClose }: { onClose: () => void }) {
                 {logs.map((log, i) => (
                   <tr key={i}>
                     <td className="log-time">{log.timestamp}</td>
-                    <td><span className="log-action">{actionLabel(log.action)}</span></td>
+                    <td>
+                      <span className="log-action">{actionLabel(log.action)}</span>
+                      {(log as any).count > 1 && <span style={{ fontSize: 10, color: '#999', marginLeft: 4 }}>×{(log as any).count}</span>}
+                    </td>
                     <td><span className={`log-status ${log.status}`}>{statusLabel(log.status)}</span></td>
                     <td><span className="log-category">{log.category || '未分类'}</span></td>
                     <td>
@@ -93,6 +120,16 @@ export default function LogViewer({ onClose }: { onClose: () => void }) {
                         {log.question && <span className="log-question">{log.question}</span>}
                         {log.error && <span className="log-error">{log.error}</span>}
                         {log.detail && <span className="log-question">{log.detail}</span>}
+                        {log.status === 'running' && log.taskId && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-small"
+                            style={{ marginTop: 6 }}
+                            onClick={() => abandon(log.taskId!)}
+                          >
+                            放弃
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

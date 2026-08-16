@@ -10,6 +10,17 @@
 - [006-agent长时间循环的注意事项](../categories/agent/006-agent长时间循环的注意事项.md)
 - [002-多agent讨论如何终止](../categories/mutil-agent/002-多agent讨论如何终止.md)
 
+### Workflow
+
+- [001-agentic-workflow的理解](../categories/workflow/001-agentic-workflow的理解.md)
+- [002-为什么agentic workflow收敛成了agent loop](../categories/workflow/002-为什么agentic%20workflow收敛成了agent%20loop.md)
+- [004-Anthropic五种workflow模式的工程化与演进](../categories/workflow/004-Anthropic五种workflow模式的工程化与演进.md)
+- [005-evaluator-optimizer模式的工程实现](../categories/workflow/005-evaluator-optimizer模式的工程实现.md)
+
+### LangGraph
+
+- [001-LangGraph从workflow编排器到agent runtime的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent%20runtime的转型.md)
+
 
 ### Multi-Agent
 
@@ -21,4 +32,7 @@
 
 ### Hermes
 
-- [001-Hermes自进化机制](../categories/hermes/001-Hermes自进化机制.md)
+
+### 开发性问题（个人素养）
+
+- [001-谈谈对AI大模型的理解](../categories/behavioral/001-谈谈对AI大模型的理解.md)

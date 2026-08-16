@@ -23,6 +23,7 @@ InteviewQA/
 │   └── ...
 ├── tags/                ← 标签文件，跨分类索引
 ├── project/             ← 项目设计文档（子目录 → .md）
+├── groups/              ← 分组文档（「新建分组」创建的独立区块）
 ├── admin/               ← Next.js 管理后台（浏览/编辑/生成/批注）
 ├── mobile/              ← Capacitor 移动端 App
 ├── .claude/
@@ -72,6 +73,95 @@ InteviewQA/
 - `## 我的作答` — 个人作答记录（仅在有内容时出现）
 
 更多细节见 [CLAUDE.md](CLAUDE.md) 和 [.claude/skills/interview-qa/SKILL.md](.claude/skills/interview-qa/SKILL.md)。
+
+## 分类
+
+### 新增
+
+- [${category}](categories/${category}/00-index.md)
+
+
+### AI Agent / LLM 应用框架
+
+- [Agent](categories/agent/00-index.md)
+- [Claude Code](categories/claude-code/00-index.md)
+- [DeepSeek Harness](categories/dsh/00-index.md)
+- [Harness](categories/harness/00-index.md)
+- [Hermes](categories/hermes/00-index.md)
+- [MCP](categories/mcp/00-index.md)
+- [Multi-Agent](categories/mutil-agent/00-index.md)
+- [OpenClaw](categories/openclaw/00-index.md)
+- [pi-agent](categories/pi-agent/00-index.md)
+- [Skill](categories/skill/00-index.md)
+- [Vibe Coding](categories/vibe-coding/00-index.md)
+- [Workflow](categories/workflow/00-index.md)
+
+### LLM 应用 / RAG
+
+- [GraphRAG](categories/graphrag/00-index.md)
+- [LangChain](categories/langchain/00-index.md)
+- [LangGraph](categories/langgraph/00-index.md)
+- [LLM Wiki](categories/llm-wiki/00-index.md)
+- [RAG](categories/rag/00-index.md)
+
+### 数据存储 / 中间件
+
+- [Kafka](categories/kafka/00-index.md)
+- [Milvus](categories/milvus/00-index.md)
+- [MySQL](categories/mysql/00-index.md)
+- [Redis](categories/redis/00-index.md)
+
+### 编程语言 / 计算机基础
+
+- [Python](categories/python/00-index.md)
+- [操作系统](categories/os/00-index.md)
+- [计算机网络](categories/compute-network/00-index.md)
+- [进程/线程/协程](categories/process-thread-coroutine/00-index.md)
+
+### 软件工程 / 面试通用
+
+- [开发性问题（个人素养）](categories/behavioral/00-index.md)
+- [设计范式](categories/design-patterns/00-index.md)
+- [工程实践](categories/engineering-practice/00-index.md)
+
+## 标签
+
+- [AI辅助开发](tags/AI辅助开发.md)
+- [Agent](tags/Agent.md)
+- [C++](tags/C++.md)
+- [Claude Code](tags/Claude Code.md)
+- [DeepSeek Harness](tags/DeepSeek Harness.md)
+- [Harness](tags/Harness.md)
+- [Hermes](tags/Hermes.md)
+- [HTTP](tags/HTTP.md)
+- [Kafka](tags/Kafka.md)
+- [LangGraph](tags/LangGraph.md)
+- [LLM](tags/LLM.md)
+- [MCP](tags/MCP.md)
+- [Multi-Agent](tags/Multi-Agent.md)
+- [MySQL](tags/MySQL.md)
+- [OS](tags/OS.md)
+- [pi-agent](tags/pi-agent.md)
+- [Python](tags/Python.md)
+- [Redis](tags/Redis.md)
+- [Vibe Coding](tags/Vibe Coding.md)
+- [Workflow](tags/Workflow.md)
+- [上下文压缩](tags/上下文压缩.md)
+- [代码实现](tags/代码实现.md)
+- [代码审查](tags/代码审查.md)
+- [代码质量](tags/代码质量.md)
+- [内存管理](tags/内存管理.md)
+- [工程实践](tags/工程实践.md)
+- [成本优化](tags/成本优化.md)
+- [效果评估](tags/效果评估.md)
+- [数据结构](tags/数据结构.md)
+- [消息队列](tags/消息队列.md)
+- [并发](tags/并发.md)
+- [知识管理](tags/知识管理.md)
+- [缓存](tags/缓存.md)
+- [记忆管理](tags/记忆管理.md)
+- [设计模式](tags/设计模式.md)
+- [面试考点](tags/面试考点.md)
 
 ## 项目文档
 

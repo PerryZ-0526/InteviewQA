@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getActiveEditor, getActiveSection } from '@/lib/activeEditor';
+import { isVisibleInLayout } from '@/lib/domScroll';
 
 interface Annotation {
   id: string;
@@ -35,6 +36,7 @@ function findQuoteRange(ann: Annotation): Range | null {
   const key = ann.fingerPrint || ann.quote;
   const editors = document.querySelectorAll<HTMLElement>('.tiptap-editor');
   for (const editor of Array.from(editors)) {
+    if (!isVisibleInLayout(editor)) continue;
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
     const nodes: Array<{ node: Text; start: number; end: number }> = [];
     let text = '';
@@ -337,6 +339,7 @@ export default function AnnotationPanel({ category, filename, context = 'categor
       )}
 
       <button className="ann-toggle" onClick={() => {
+        if (open) { setOpen(false); return; }
         const editor = getActiveEditor();
         if (editor) {
           const { from, to } = editor.state.selection;
@@ -352,7 +355,7 @@ export default function AnnotationPanel({ category, filename, context = 'categor
             }
           }
         }
-        setOpen(!open);
+        setOpen(true);
       }} title={open ? '收起批注面板' : '展开批注面板'} aria-label={open ? '收起批注面板' : '展开批注面板'}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 15a3 3 0 01-3 3H8l-5 3V7a3 3 0 013-3h11a3 3 0 013 3z"/>

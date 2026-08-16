@@ -1,0 +1,77 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、三层结构"
+    },
+    {
+      "level": 3,
+      "text": "二、核心操作"
+    },
+    {
+      "level": 3,
+      "text": "三、与 RAG 的区别"
+    },
+    {
+      "level": 3,
+      "text": "四、实现不是唯一"
+    },
+    {
+      "level": 3,
+      "text": "五、质量与冲突"
+    },
+    {
+      "level": 3,
+      "text": "六、参考"
+    },
+    {
+      "level": 3,
+      "text": "七、建议的数据模型"
+    },
+    {
+      "level": 3,
+      "text": "八、Ingest 的完整流程"
+    },
+    {
+      "level": 3,
+      "text": "九、Query 的两阶段路径"
+    },
+    {
+      "level": 3,
+      "text": "十、Lint 不只是 Markdown 格式检查"
+    },
+    {
+      "level": 3,
+      "text": "十一、增量更新与可重建"
+    },
+    {
+      "level": 3,
+      "text": "十二、与知识图谱和 RAG 的组合"
+    },
+    {
+      "level": 2,
+      "text": "我的作答"
+    }
+  ],
+  "renames": {}
+}

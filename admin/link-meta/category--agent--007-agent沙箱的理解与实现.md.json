@@ -1,0 +1,120 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 3,
+      "text": "首先要理解为什么 Agent 必须沙箱化"
+    },
+    {
+      "level": 3,
+      "text": "理解 sandbox 的关键是看清「隔离边界在哪里」"
+    },
+    {
+      "level": 3,
+      "text": "怎么做一个 agent sandbox，我按六层设计"
+    },
+    {
+      "level": 3,
+      "text": "工程上要回答三个权衡"
+    },
+    {
+      "level": 3,
+      "text": "最后要强调边界"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、威胁模型：为什么 Agent 必须沙箱化"
+    },
+    {
+      "level": 3,
+      "text": "二、隔离技术谱系对比"
+    },
+    {
+      "level": 3,
+      "text": "三、Claude Code 的 OS 级沙箱实现（查证细节）"
+    },
+    {
+      "level": 3,
+      "text": "四、云端沙箱：Firecracker 微虚拟机与 gVisor"
+    },
+    {
+      "level": 3,
+      "text": "五、自建最小沙箱的落地步骤"
+    },
+    {
+      "level": 3,
+      "text": "六、面试追问"
+    },
+    {
+      "level": 4,
+      "text": "追问 1：Seatbelt/bubblewrap 和 Docker 都是沙箱，Claude Code 为什么不用容器"
+    },
+    {
+      "level": 4,
+      "text": "追问 2：域名白名单模式下，攻击者用 DNS 隧道或 CDN 域前置绕过怎么办"
+    },
+    {
+      "level": 4,
+      "text": "追问 3：业务必须让 Agent 执行 docker build 这类特权操作，沙箱怎么设计"
+    },
+    {
+      "level": 4,
+      "text": "追问 4：既然微虚拟机最强，为什么还要进程级沙箱？怎么选"
+    },
+    {
+      "level": 4,
+      "text": "追问 5：Agent 自己申请关闭沙箱（逃生舱）怎么办？怎么防 prompt injection 诱导越权"
+    },
+    {
+      "level": 3,
+      "text": "参考连接"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "首先要理解为什么 Agent 必须沙箱化": "首先要理解为什么 Agent 必须沙箱化",
+    "理解 sandbox 的关键是看清「隔离边界在哪里」": "理解 sandbox 的关键是看清「隔离边界在哪里」",
+    "怎么做一个 agent sandbox，我按六层设计": "怎么做一个 agent sandbox，我按六层设计",
+    "工程上要回答三个权衡": "工程上要回答三个权衡",
+    "详细解析": "详细解析",
+    "一、威胁模型：为什么 Agent 必须沙箱化": "一、威胁模型：为什么 Agent 必须沙箱化",
+    "二、隔离技术谱系对比": "二、隔离技术谱系对比",
+    "三、Claude Code 的 OS 级沙箱实现（查证细节）": "三、Claude Code 的 OS 级沙箱实现（查证细节）",
+    "四、云端沙箱：Firecracker 微虚拟机与 gVisor": "四、云端沙箱：Firecracker 微虚拟机与 gVisor",
+    "五、自建最小沙箱的落地步骤": "五、自建最小沙箱的落地步骤",
+    "六、面试追问": "六、面试追问",
+    "最后要强调边界": "最后要强调边界",
+    "参考连接": "参考连接",
+    "**追问 1：Seatbelt/bubblewrap 和 Docker 都是沙箱，Claude Code 为什么不用容器**": "追问 1：Seatbelt/bubblewrap 和 Docker 都是沙箱，Claude Code 为什么不用容器",
+    "**追问 2：域名白名单模式下，攻击者用 DNS 隧道或 CDN 域前置绕过怎么办**": "追问 2：域名白名单模式下，攻击者用 DNS 隧道或 CDN 域前置绕过怎么办",
+    "**追问 3：业务必须让 Agent 执行 docker build 这类特权操作，沙箱怎么设计**": "追问 3：业务必须让 Agent 执行 docker build 这类特权操作，沙箱怎么设计",
+    "追问 3：业务必须让 Agent 执行 docker build 这类特权操作，沙箱怎么设计": "追问 3：业务必须让 Agent 执行 docker build 这类特权操作，沙箱怎么设计",
+    "追问 2：域名白名单模式下，攻击者用 DNS 隧道或 CDN 域前置绕过怎么办": "追问 2：域名白名单模式下，攻击者用 DNS 隧道或 CDN 域前置绕过怎么办",
+    "追问 1：Seatbelt/bubblewrap 和 Docker 都是沙箱，Claude Code 为什么不用容器": "追问 1：Seatbelt/bubblewrap 和 Docker 都是沙箱，Claude Code 为什么不用容器",
+    "追问 4：既然微虚拟机最强，为什么还要进程级沙箱？怎么选": "追问 4：既然微虚拟机最强，为什么还要进程级沙箱？怎么选",
+    "**追问 5：Agent 自己申请关闭沙箱（逃生舱）怎么办？怎么防 prompt injection 诱导越权**": "追问 5：Agent 自己申请关闭沙箱（逃生舱）怎么办？怎么防 prompt injection 诱导越权",
+    "追问 5：Agent 自己申请关闭沙箱（逃生舱）怎么办？怎么防 prompt injection 诱导越权": "追问 5：Agent 自己申请关闭沙箱（逃生舱）怎么办？怎么防 prompt injection 诱导越权"
+  }
+}

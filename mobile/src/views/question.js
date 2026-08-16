@@ -11,7 +11,14 @@ register('question', (container, { category, filename }) => {
     return;
   }
 
-  const renderMd = (md) => marked.parse(md || '');
+  // 渲染 markdown 并将文档内相对图片路径 images/xxx.png 解析为 /categories/<category>/images/xxx.png
+  const renderMd = (md) => {
+    const html = marked.parse(md || '');
+    return html.replace(/<img\b[^>]*?\bsrc=("|')([^"']+)\1/gi, (m, quote, src) => {
+      if (/^(https?:|data:|blob:|\/)/i.test(src)) return m;
+      return m.replace(`src=${quote}${src}${quote}`, `src=${quote}/categories/${category}/${src.replace(/^\.\//, '')}${quote}`);
+    });
+  };
 
   container.innerHTML = `
     <div class="page">
@@ -41,7 +48,7 @@ register('question', (container, { category, filename }) => {
       ${q.notes && q.notes !== '(暂无作答记录)' ? `
       <div class="card">
         <div class="card-title">我的作答</div>
-        <div class="card-body">${q.notes}</div>
+        <div class="card-body md">${renderMd(q.notes)}</div>
       </div>` : ''}
     </div>
   `;

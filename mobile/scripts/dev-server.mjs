@@ -15,6 +15,10 @@ const MIME = {
   '.json': 'application/json',
   '.md': 'text/plain',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
 };
 
@@ -23,7 +27,7 @@ http.createServer((req, res) => {
   if (url === '/') url = '/index.html';
 
   // Content from project root
-  if (url.startsWith('/categories/') || url.startsWith('/tags/') || url.startsWith('/project/')) {
+  if (url.startsWith('/categories/') || url.startsWith('/tags/') || url.startsWith('/project/') || url.startsWith('/groups/')) {
     const fpath = path.join(projectRoot, url);
     tryServe(fpath, res);
     return;

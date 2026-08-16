@@ -7,44 +7,74 @@ import rehypeRaw from 'rehype-raw';
 
 interface Props {
   initialContent: string;
-  onSave: (content: string) => void;
+  onSave: (content: string) => void | Promise<void>;
   filename?: string; // for display
+  autoSaveDelay?: number; // 毫秒，设置后内容变化自动保存
+  onSaveStatusChange?: (status: 'saved' | 'saving' | 'waiting') => void;
 }
 
-export default function SplitEditor({ initialContent, onSave, filename }: Props) {
+export default function SplitEditor({ initialContent, onSave, filename, autoSaveDelay, onSaveStatusChange }: Props) {
   const [content, setContent] = useState(initialContent);
   const [readOnly, setReadOnly] = useState(false);
-  const [saved, setSaved] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
 
   // Sync scroll: when textarea scrolls, preview follows
   const [editorScrollRatio, setEditorScrollRatio] = useState(0);
 
   useEffect(() => {
     setContent(initialContent);
-    setSaved(true);
+    setSaveStatus('saved');
     setReadOnly(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
   }, [initialContent]);
 
-  // Auto-save on Ctrl+S
+  const performSave = useCallback(async (value: string) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaveStatus('saving');
+    try {
+      await onSave(value);
+      setSaveStatus('saved');
+    } catch {
+      setSaveStatus('waiting');
+    } finally {
+      savingRef.current = false;
+    }
+  }, [onSave]);
+
+  useEffect(() => {
+    onSaveStatusChange?.(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
+
+  // Ctrl+S 立即保存；设置了 autoSaveDelay 时变化后自动保存
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        onSave(content);
-        setSaved(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        performSave(content);
       }
     };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [content, onSave]);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [content, performSave]);
 
-  // Mark as unsaved on change
+  // Mark as unsaved on change（可选自动保存）
   const handleChange = useCallback((value: string) => {
     setContent(value);
-    setSaved(false);
-  }, []);
+    setSaveStatus('waiting');
+    if (autoSaveDelay != null) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => performSave(value), autoSaveDelay);
+    }
+  }, [autoSaveDelay, performSave]);
 
   // Insert mark at cursor
   const insertMark = (before: string, after: string = '') => {
@@ -54,8 +84,7 @@ export default function SplitEditor({ initialContent, onSave, filename }: Props)
     const end = ta.selectionEnd;
     const selected = content.substring(start, end);
     const newText = content.substring(0, start) + before + selected + after + content.substring(end);
-    setContent(newText);
-    setSaved(false);
+    handleChange(newText);
     setTimeout(() => {
       ta.focus();
       ta.setSelectionRange(start + before.length, start + before.length + selected.length);
@@ -95,7 +124,7 @@ export default function SplitEditor({ initialContent, onSave, filename }: Props)
             阅读模式
           </span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!saved && <span style={{ fontSize: 11, color: '#f08c00' }}>未保存</span>}
+            {saveStatus !== 'saved' && <span style={{ fontSize: 11, color: '#f08c00' }}>未保存</span>}
             <button className="btn btn-small btn-primary" onClick={() => setReadOnly(false)}>
               编辑
             </button>
@@ -212,23 +241,21 @@ export default function SplitEditor({ initialContent, onSave, filename }: Props)
 
         {/* Right side controls */}
         <div style={{ flex: 1 }} />
-        {!saved && <span style={{ fontSize: 11, color: '#f08c00', marginRight: 8 }}>未保存</span>}
+        {saveStatus === 'waiting' && <span style={{ fontSize: 11, color: '#f08c00', marginRight: 8 }}>未保存</span>}
         <button
-          onClick={() => {
-            onSave(content);
-            setSaved(true);
-          }}
+          onClick={() => performSave(content)}
+          disabled={saveStatus === 'saving'}
           style={{
             ...toolbarBtnStyle,
-            background: saved ? 'transparent' : '#4c6ef5',
-            color: saved ? 'inherit' : '#fff',
+            background: saveStatus === 'saved' ? 'transparent' : '#4c6ef5',
+            color: saveStatus === 'saved' ? 'inherit' : '#fff',
             width: 'auto',
             padding: '0 8px',
             fontSize: 11,
           }}
           title="保存 (Ctrl+S)"
         >
-          {saved ? '已保存' : '保存'}
+          {saveStatus === 'saving' ? '保存中...' : saveStatus === 'saved' ? '已保存' : '保存'}
         </button>
         <button
           onClick={() => setReadOnly(true)}
@@ -319,7 +346,7 @@ export default function SplitEditor({ initialContent, onSave, filename }: Props)
         borderRadius: '0 0 var(--radius) var(--radius)',
       }}>
         <span>编辑模式</span>
-        <span>Ctrl+S 保存</span>
+        <span>{autoSaveDelay != null ? '自动保存' : 'Ctrl+S 保存'}</span>
         <span>{content.length} 字符</span>
         {filename && <span>{filename}</span>}
       </div>

@@ -1,0 +1,231 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "简历描述"
+    },
+    {
+      "level": 2,
+      "text": "一、整体定位"
+    },
+    {
+      "level": 2,
+      "text": "二、用户画像与长短期记忆的边界"
+    },
+    {
+      "level": 3,
+      "text": "1. 短期记忆"
+    },
+    {
+      "level": 4,
+      "text": "结构化摘要"
+    },
+    {
+      "level": 4,
+      "text": "结构化摘要-示例"
+    },
+    {
+      "level": 4,
+      "text": "预算控制策略"
+    },
+    {
+      "level": 3,
+      "text": "2. 长期记忆"
+    },
+    {
+      "level": 3,
+      "text": "3. 用户画像"
+    },
+    {
+      "level": 3,
+      "text": "**4. 用户画像与长期记忆的抽象层级**"
+    },
+    {
+      "level": 2,
+      "text": "三、画像信息模型"
+    },
+    {
+      "level": 2,
+      "text": "四、总体数据分层"
+    },
+    {
+      "level": 2,
+      "text": "五、核心数据模型"
+    },
+    {
+      "level": 3,
+      "text": "1. `profile_dimension`：画像维度定义"
+    },
+    {
+      "level": 3,
+      "text": "2. `student_fact`：结构化事实"
+    },
+    {
+      "level": 3,
+      "text": "3. `profile_evidence`：统一证据"
+    },
+    {
+      "level": 3,
+      "text": "4. `memory_item`：长期记忆"
+    },
+    {
+      "level": 3,
+      "text": "5. `profile_claim`：画像结论"
+    },
+    {
+      "level": 3,
+      "text": "6. `claim_evidence`：画像与证据关系"
+    },
+    {
+      "level": 3,
+      "text": "7. `feedback_event`：推送反馈"
+    },
+    {
+      "level": 2,
+      "text": "六、画像生成与更新机制"
+    },
+    {
+      "level": 3,
+      "text": "1. LLM 不直接写 Active Profile"
+    },
+    {
+      "level": 3,
+      "text": "2. Candidate Extractor"
+    },
+    {
+      "level": 3,
+      "text": "3. Profile Resolver"
+    },
+    {
+      "level": 2,
+      "text": "七、置信度、时间与冲突"
+    },
+    {
+      "level": 3,
+      "text": "1. 置信度"
+    },
+    {
+      "level": 3,
+      "text": "2. 稳定性与时间"
+    },
+    {
+      "level": 3,
+      "text": "3. 冲突处理"
+    },
+    {
+      "level": 2,
+      "text": "八、从对话记忆沉淀画像"
+    },
+    {
+      "level": 2,
+      "text": "九、多视图消费与分层注入"
+    },
+    {
+      "level": 3,
+      "text": "1. 常驻上下文摘要"
+    },
+    {
+      "level": 3,
+      "text": "2. Tool 按需深读"
+    },
+    {
+      "level": 3,
+      "text": "3. 推荐圈选视图"
+    },
+    {
+      "level": 2,
+      "text": "十、服务端存储与 LLM 可读视图"
+    },
+    {
+      "level": 3,
+      "text": "1. MySQL：画像权威状态"
+    },
+    {
+      "level": 3,
+      "text": "2. LLM 可读视图：动态生成，不落地为 Markdown 文件"
+    },
+    {
+      "level": 3,
+      "text": "3. 三类逻辑视图"
+    },
+    {
+      "level": 4,
+      "text": "Summary View"
+    },
+    {
+      "level": 4,
+      "text": "Section View"
+    },
+    {
+      "level": 4,
+      "text": "Feature View"
+    },
+    {
+      "level": 3,
+      "text": "4. Redis：视图与热点数据缓存"
+    },
+    {
+      "level": 3,
+      "text": "5. Milvus：长期记忆语义索引"
+    },
+    {
+      "level": 3,
+      "text": "6. 部署层面的结论"
+    },
+    {
+      "level": 2,
+      "text": "十一、完整更新链路"
+    },
+    {
+      "level": 2,
+      "text": "十二、面试概述"
+    }
+  ],
+  "renames": {
+    "简历描述": "简历描述",
+    "一、整体定位": "一、整体定位",
+    "二、用户画像与长短期记忆的边界": "二、用户画像与长短期记忆的边界",
+    "1. 短期记忆": "1. 短期记忆",
+    "结构化摘要": "结构化摘要",
+    "结构化摘要-示例": "结构化摘要-示例",
+    "预算控制策略": "预算控制策略",
+    "2. 长期记忆": "2. 长期记忆",
+    "3. 用户画像": "3. 用户画像",
+    "**4. 用户画像与长期记忆的抽象层级**": "**4. 用户画像与长期记忆的抽象层级**",
+    "三、画像信息模型": "三、画像信息模型",
+    "四、总体数据分层": "四、总体数据分层",
+    "五、核心数据模型": "五、核心数据模型",
+    "1. `profile_dimension`：画像维度定义": "1. `profile_dimension`：画像维度定义",
+    "2. `student_fact`：结构化事实": "2. `student_fact`：结构化事实",
+    "3. `profile_evidence`：统一证据": "3. `profile_evidence`：统一证据",
+    "4. `memory_item`：长期记忆": "4. `memory_item`：长期记忆",
+    "5. `profile_claim`：画像结论": "5. `profile_claim`：画像结论",
+    "6. `claim_evidence`：画像与证据关系": "6. `claim_evidence`：画像与证据关系",
+    "7. `feedback_event`：推送反馈": "7. `feedback_event`：推送反馈",
+    "六、画像生成与更新机制": "六、画像生成与更新机制",
+    "1. LLM 不直接写 Active Profile": "1. LLM 不直接写 Active Profile",
+    "2. Candidate Extractor": "2. Candidate Extractor",
+    "3. Profile Resolver": "3. Profile Resolver",
+    "七、置信度、时间与冲突": "七、置信度、时间与冲突",
+    "1. 置信度": "1. 置信度",
+    "2. 稳定性与时间": "2. 稳定性与时间",
+    "3. 冲突处理": "3. 冲突处理",
+    "八、从对话记忆沉淀画像": "八、从对话记忆沉淀画像",
+    "九、多视图消费与分层注入": "九、多视图消费与分层注入",
+    "1. 常驻上下文摘要": "1. 常驻上下文摘要",
+    "2. Tool 按需深读": "2. Tool 按需深读",
+    "3. 推荐圈选视图": "3. 推荐圈选视图",
+    "十、服务端存储与 LLM 可读视图": "十、服务端存储与 LLM 可读视图",
+    "1. MySQL：画像权威状态": "1. MySQL：画像权威状态",
+    "2. LLM 可读视图：动态生成，不落地为 Markdown 文件": "2. LLM 可读视图：动态生成，不落地为 Markdown 文件",
+    "3. 三类逻辑视图": "3. 三类逻辑视图",
+    "Summary View": "Summary View",
+    "Section View": "Section View",
+    "Feature View": "Feature View",
+    "4. Redis：视图与热点数据缓存": "4. Redis：视图与热点数据缓存",
+    "5. Milvus：长期记忆语义索引": "5. Milvus：长期记忆语义索引",
+    "6. 部署层面的结论": "6. 部署层面的结论",
+    "十一、完整更新链路": "十一、完整更新链路",
+    "十二、面试概述": "十二、面试概述"
+  }
+}

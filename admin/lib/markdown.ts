@@ -8,10 +8,25 @@ const PROJECT_ROOT = process.cwd() + '/..';
  * 处理高亮语法 ==text==，修复表格/代码块与后续标题间的空行，
  * 修正 marked.js 在代码块末尾保留的换行。
  */
+/** 剥离标题/锚点文本中的 markdown 格式，得到与 DOM textContent 一致的纯文本 */
+export function stripMdText(s: string): string {
+  return s
+    .replace(/\[\[([^\]]+)\]\]/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/==([^=]+)==/g, '$1')
+    .replace(/[*_~]/g, '')
+    .trim();
+}
+
 export function mdToHtml(md: string): string {
   const preprocessed = md
     .replace(/<\/(table|pre)>[ \t]*(?:\r?\n[ \t]*)?(?=#{1,6}[ \t]+)/gi, '</$1>\n\n')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>');
+    .replace(/==(.+?)==/g, '<mark>$1</mark>')
+    .replace(/\[\[([^\]]+)\]\]/g, (_m, wiki: string) => {
+      const safe = wiki.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      return `<a class="wiki-link" data-wiki="${safe}">[[${safe}]]</a>`;
+    });
   let html = marked.parse(preprocessed, { breaks: true }) as string;
   html = html.replace(/\n(<\/code><\/pre>)/g, '$1');
   return html;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectMaxSequence, createProjectDocFile } from '@/lib/fileUtils';
+import { logCreateProjectDoc } from '@/lib/logger';
 
 function slugify(title: string): string {
   return title.replace(/[\/\\:*?"<>|]/g, '').replace(/\s+/g, '-').trim();
@@ -21,6 +22,7 @@ export async function POST(
     const filename = `${pad(seq + 1)}-${slugify(title.trim())}.md`;
 
     await createProjectDocFile(subdir, filename, title.trim());
+    logCreateProjectDoc(subdir, filename, title.trim());
     return NextResponse.json({ success: true, subdir, filename, title: title.trim() });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

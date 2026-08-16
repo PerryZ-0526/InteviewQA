@@ -68,6 +68,7 @@ a { color: var(--primary); text-decoration: none; }
 .card-body.md blockquote { border-left: 3px solid var(--primary); padding: 4px 12px; margin: 10px 0; background: rgba(0,0,0,0.02); color: var(--muted); }
 .card-body.md mark { background: #fff3cd; padding: 1px 3px; border-radius: 2px; }
 .card-body.md hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.card-body.md img { max-width: 100%; height: auto; border-radius: 4px; margin: 4px 0; }
 
 /* Misc */
 .muted { font-size: 0.8rem; color: var(--muted); }

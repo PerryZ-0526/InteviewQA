@@ -2,4 +2,7 @@
 
 ## 相关题目
 
-暂无相关题目。
+### Redis
+
+- [001-Redis分布式锁](../categories/redis/001-Redis分布式锁.md)
+- [002-谈谈你对Redis集群的理解](../categories/redis/002-谈谈你对Redis集群的理解.md)

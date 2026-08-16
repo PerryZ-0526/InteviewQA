@@ -1,0 +1,9 @@
+[
+  {
+    "id": "msuhgyo8",
+    "quote": "custom slash command",
+    "text": "例如，创建一个项目级的代码优化命令：\n1、创建文件 .claude/commands/optimize.md。\n2、在文件中写入提示词内容，比如 \"Analyze this code for performance issues and suggest optimizations:\"。\n3、之后，你就可以在任何会话中直接输入 /optimize 来调用它。",
+    "createdAt": "2026-08-15 22:40",
+    "fingerPrint": "智能体与 custom slash command自定"
+  }
+]

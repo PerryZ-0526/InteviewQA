@@ -16,7 +16,7 @@ fs.cpSync(path.join(root, 'src'), path.join(dist, 'src'), { recursive: true });
 fs.cpSync(path.join(root, 'index.html'), path.join(dist, 'index.html'));
 
 // Copy content directories from project root
-const dirs = ['categories', 'tags', 'project'];
+const dirs = ['categories', 'tags', 'project', 'groups'];
 for (const dir of dirs) {
   const src = path.join(projectRoot, dir);
   const dest = path.join(dist, dir);

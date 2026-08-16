@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listProjectDocs, createProjectSubdir } from '@/lib/fileUtils';
+import { logCreateProjectSubdir } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: '目录名和显示名不能为空' }, { status: 400 });
     }
     await createProjectSubdir(slug.trim(), displayName.trim());
+    logCreateProjectSubdir(slug.trim());
     return NextResponse.json({ success: true, slug, displayName });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

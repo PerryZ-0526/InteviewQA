@@ -1,16 +1,21 @@
 'use client';
 
+import { isVisibleInLayout, scrollDocToTop } from '@/lib/domScroll';
+
 export default function BackToTop() {
   return (
     <button
       className="back-to-top"
       onClick={() => {
-        const header = document.querySelector('.doc-header') || document.querySelector('.tag-viewer-header');
-        if (header) {
-          header.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+        // 多标签下隐藏面板仍在 DOM 中，需跳过不可见的 header
+        const headers = document.querySelectorAll<HTMLElement>('.doc-header, .tag-viewer-header');
+        for (const header of Array.from(headers)) {
+          if (isVisibleInLayout(header)) {
+            header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+          }
         }
+        scrollDocToTop();
       }}
       title="回到顶部"
       aria-label="回到顶部"

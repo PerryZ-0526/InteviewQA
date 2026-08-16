@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { isVisibleInLayout } from '@/lib/domScroll';
 
 export default function TocFloat() {
   const [open, setOpen] = useState(false);
@@ -16,9 +17,16 @@ export default function TocFloat() {
     if (sections.length > 0) {
       // Structured interview question editor: doc-section + doc-section-label
       for (const sec of Array.from(sections)) {
+        if (!isVisibleInLayout(sec)) continue;
         const label = sec.querySelector<HTMLElement>('.doc-section-label');
+        const customTitle = sec.querySelector<HTMLInputElement>('.doc-custom-title');
         const secId = sec.id || label?.id || '';
-        if (label && secId) toc.push({ id: secId, label: label.textContent || '', level: 1 });
+        if (label && secId) {
+          toc.push({ id: secId, label: label.textContent || '', level: 1 });
+        } else if (customTitle && secId) {
+          // 自定义章节标题是 input，取 value 作为章节名
+          toc.push({ id: secId, label: customTitle.value || '未命名', level: 1 });
+        }
         const subs = sec.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3');
         for (const el of Array.from(subs)) {
           if (el.textContent) toc.push({ id: '', label: el.textContent.trim(), level: 2 });
@@ -28,6 +36,7 @@ export default function TocFloat() {
       // Flat editor (project docs): scan headings directly
       const editors = document.querySelectorAll<HTMLElement>('.tiptap-editor');
       for (const editor of Array.from(editors)) {
+        if (!isVisibleInLayout(editor)) continue;
         const headings = editor.querySelectorAll<HTMLElement>('h1, h2, h3');
         for (const el of Array.from(headings)) {
           if (el.textContent) {
@@ -44,10 +53,14 @@ export default function TocFloat() {
     setOpen(false);
     setSticky(false);
     if (id) {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = document.getElementById(id);
+      if (isVisibleInLayout(target)) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } else {
       const h3s = document.querySelectorAll('.tiptap-editor h3');
       for (const el of h3s) {
+        if (!isVisibleInLayout(el)) continue;
         if (el.textContent?.trim() === label) {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           break;

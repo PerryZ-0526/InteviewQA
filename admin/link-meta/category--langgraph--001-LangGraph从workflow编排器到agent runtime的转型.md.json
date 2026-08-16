@@ -1,0 +1,49 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、转型时间线"
+    },
+    {
+      "level": 3,
+      "text": "二、1.0 的关键 API 迁移"
+    },
+    {
+      "level": 3,
+      "text": "三、留存的三个抽象及对应职责"
+    },
+    {
+      "level": 3,
+      "text": "四、最小示例：带 interrupt 的 agent 图"
+    },
+    {
+      "level": 3,
+      "text": "五、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "六、参考"
+    }
+  ],
+  "renames": {}
+}

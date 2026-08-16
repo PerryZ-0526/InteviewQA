@@ -1,0 +1,45 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、存活位置总览"
+    },
+    {
+      "level": 3,
+      "text": "二、结构对比：任务层与基础设施层"
+    },
+    {
+      "level": 3,
+      "text": "三、LangGraph interrupt 的审批链示例（1.0 语义）"
+    },
+    {
+      "level": 3,
+      "text": "四、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "五、参考"
+    }
+  ],
+  "renames": {}
+}

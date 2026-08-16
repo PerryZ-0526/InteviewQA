@@ -3,9 +3,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { readLogs, appendLog } from '@/lib/logger';
 import { PROJECT_ROOT } from '@/lib/fileUtils';
+import { reconcileAllRunning } from '@/lib/taskManager';
 
 export async function GET(req: NextRequest) {
   try {
+    // 读日志前先对账：卡死任务翻终态，running 行收敛
+    await reconcileAllRunning();
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');

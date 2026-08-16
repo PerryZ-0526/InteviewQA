@@ -1,0 +1,115 @@
+{
+  "headings": [
+    {
+      "level": 3,
+      "text": "简历描述"
+    },
+    {
+      "level": 2,
+      "text": "一、一句话定位"
+    },
+    {
+      "level": 2,
+      "text": "二、为什么是 LangGraph（范式选择）"
+    },
+    {
+      "level": 3,
+      "text": "2.1 候选方案对比"
+    },
+    {
+      "level": 3,
+      "text": "2.2 关键决策：Plan-Validate-Execute 而不是纯 ReAct"
+    },
+    {
+      "level": 3,
+      "text": "2.3 为什么两张图而不是一张"
+    },
+    {
+      "level": 2,
+      "text": "三、实时对话图详解"
+    },
+    {
+      "level": 3,
+      "text": "3.1 图拓扑"
+    },
+    {
+      "level": 3,
+      "text": "3.2 状态设计：TypedDict + 部分合并"
+    },
+    {
+      "level": 3,
+      "text": "3.3 节点职责（按执行顺序）"
+    },
+    {
+      "level": 3,
+      "text": "3.4 工具治理：ToolRegistry（自建，不用 LangChain Tool）"
+    },
+    {
+      "level": 3,
+      "text": "3.5 Local ReAct：executor 内的受限补救循环"
+    },
+    {
+      "level": 3,
+      "text": "3.6 流式路径"
+    },
+    {
+      "level": 2,
+      "text": "四、在线资源检索：\"ReAct 子图\"的完整技术链路"
+    },
+    {
+      "level": 3,
+      "text": "4.1 多轮循环：Local ReAct（executor 内嵌，见 3.5）"
+    },
+    {
+      "level": 3,
+      "text": "4.2 查询改写：KnowledgeGraphTool 内"
+    },
+    {
+      "level": 3,
+      "text": "4.3 补充检索：多 Provider 扇出与降级链"
+    },
+    {
+      "level": 3,
+      "text": "4.4 结果聚合：打分、过滤、去重、置信度"
+    },
+    {
+      "level": 3,
+      "text": "4.5 架构表述与实现落点（设计演进视角）"
+    },
+    {
+      "level": 2,
+      "text": "五、后台异步图详解"
+    },
+    {
+      "level": 3,
+      "text": "5.1 事件驱动链路"
+    },
+    {
+      "level": 3,
+      "text": "5.2 图拓扑（纯 DAG，无循环）"
+    },
+    {
+      "level": 3,
+      "text": "5.3 节点职责与治理要点"
+    },
+    {
+      "level": 3,
+      "text": "5.4 事件状态机与可观测性"
+    },
+    {
+      "level": 2,
+      "text": "六、降级设计（面试高频追问点）"
+    },
+    {
+      "level": 2,
+      "text": "七、高频面试问答"
+    },
+    {
+      "level": 2,
+      "text": "八、相关代码索引"
+    }
+  ],
+  "renames": {
+    "简历描述": "简历描述"
+  }
+}

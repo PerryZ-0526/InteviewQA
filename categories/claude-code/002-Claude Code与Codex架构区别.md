@@ -10,7 +10,7 @@ Claude Code 和 Codex 在 Agent 架构、执行环境与使用方式上有什么
 
 ## 题目导航
 
-← [001-Claude Code子智能体类型与vibe-coding场景](001-Claude Code子智能体类型与vibe-coding场景.md) | 无 →
+← [001-Claude Code子智能体类型与vibe-coding场景](001-Claude Code子智能体类型与vibe-coding场景.md) | [003-Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制.md) →
 
 ## 面试直接答
 

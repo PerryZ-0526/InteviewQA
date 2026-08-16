@@ -14,7 +14,7 @@ register('project', (container) => {
       <div class="list">
         ${projectDocs.length === 0 ? '<div class="empty"><p>暂无项目文档</p></div>' : ''}
         ${projectDocs.map(d => `
-          <a class="list-item" data-action="open-doc" data-subdir="${d.subdir}" data-filename="${d.filename}">
+          <a class="list-item" data-action="open-doc" data-base="${d.base || 'project'}" data-subdir="${d.subdir}" data-filename="${d.filename}">
             <span class="q-prefix">${d.filename.slice(0, 3)}</span>
             <div>
               <span>${d.title}</span>
@@ -37,19 +37,24 @@ register('project', (container) => {
 
   container.querySelectorAll('[data-action="open-doc"]').forEach(el => {
     el.addEventListener('click', async () => {
+      const base = el.dataset.base || 'project';
       const subdir = el.dataset.subdir;
       const fn = el.dataset.filename;
       try {
-        const res = await fetch(`/project/${subdir}/${fn}`);
+        const res = await fetch(`/${base}/${subdir}/${fn}`);
         const md = await res.text();
         let content = md;
         if (md.startsWith('---')) {
           const end = md.indexOf('---', 3);
           if (end > 0) content = md.slice(end + 3).trim();
         }
+        const html = marked.parse(content).replace(/<img\b[^>]*?\bsrc=("|')([^"']+)\1/gi, (m, quote, src) => {
+          if (/^(https?:|data:|blob:|\/)/i.test(src)) return m;
+          return m.replace(`src=${quote}${src}${quote}`, `src=${quote}/${base}/${subdir}/${src.replace(/^\.\//, '')}${quote}`);
+        });
         container.querySelector('.list').outerHTML = `
           <div class="card">
-            <div class="card-body md">${marked.parse(content)}</div>
+            <div class="card-body md">${html}</div>
           </div>
         `;
       } catch {

@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import WysiwygEditor from './WysiwygEditor';
+import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
+import BacklinksPanel, { Backlink } from './BacklinksPanel';
+import { stripMdText } from '@/lib/markdown';
+import { isVisibleInLayout, scrollDocToTop } from '@/lib/domScroll';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -12,7 +15,9 @@ function parseHeadings(md: string): TocHeading[] {
   const headings: TocHeading[] = [];
   for (const line of md.split('\n')) {
     const m = line.match(/^(#{1,4})\s+(.+)/);
-    if (m) headings.push({ level: m[1].length, label: m[2].trim() });
+    if (m) {
+      headings.push({ level: m[1].length, label: stripMdText(m[2]) });
+    }
   }
   return headings;
 }
@@ -22,30 +27,64 @@ function fmtTime(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+/** 按锚点路径滚动，逐级回退（最深一级 → 文档顶部） */
+export function scrollToAnchorPath(anchors: string[]): boolean {
+  const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
+  if (anchors.length === 0) {
+    scrollDocToTop();
+    return true;
+  }
+  for (let i = anchors.length - 1; i >= 0; i--) {
+    const text = stripMdText(anchors[i]);
+    for (const h of Array.from(headings)) {
+      if (!isVisibleInLayout(h)) continue;
+      if (stripMdText(h.textContent || '') === text) {
+        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return true;
+      }
+    }
+  }
+  scrollDocToTop();
+  return true;
+}
+
 interface Props {
   subdir: string;
   filename: string;
   onBack: () => void;
   onSaved?: () => void;
+  onSaveStatusChange?: (status: string) => void;
+  pendingAnchor?: string[] | null;
+  onAnchorDone?: () => void;
 }
 
-export default function ProjectDocumentView({ subdir, filename, onBack, onSaved }: Props) {
+export default function ProjectDocumentView({ subdir, filename, onBack, onSaved, onSaveStatusChange, pendingAnchor, onAnchorDone }: Props) {
+  const [docBase, setDocBase] = useState('project');
+  const uploadDir = `${docBase}/${subdir}`;
+  const imageBase = `/api/raw/${docBase}/${encodeURIComponent(subdir)}`;
   const [content, setContent] = useState('');
   const [frontmatter, setFrontmatter] = useState<Record<string, string>>({});
   const [displayTitle, setDisplayTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
+
+  useEffect(() => {
+    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存' };
+    onSaveStatusChange?.(labels[saveStatus] || '');
+  }, [saveStatus, onSaveStatusChange]);
   const [showToc, setShowToc] = useState(true);
   const [createdAt, setCreatedAt] = useState('');
   const [updatedAt, setUpdatedAt] = useState('');
+  const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const contentRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef('');
   const doSaveRef = useRef<(md: string) => void>(() => {});
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
+  const mountedRef = useRef(true);
 
-  const headings = useMemo(() => parseHeadings(contentRef.current), [content]);
+  const headings = parseHeadings(contentRef.current);
 
   useEffect(() => {
     setDisplayTitle('');
@@ -59,6 +98,7 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved 
         if (json.success) {
           const raw = json.data as string;
           const mtimeMs = json.mtimeMs as number | null;
+          if (typeof json.base === 'string') setDocBase(json.base);
           let fm: Record<string, string> = {};
           let body = raw;
           let created = '';
@@ -130,6 +170,7 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved 
   }, []);
 
   const doSave = useCallback(async (md: string) => {
+    if (!mountedRef.current) return;
     setSaveStatus('saving');
     const now = fmtTime(new Date());
     updatedAtRef.current = now;
@@ -166,8 +207,57 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved 
   }, []);
 
   useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [subdir, filename]);
+
+  // wiki 链接跳转：编辑器加载完成后滚动到锚点
+  useEffect(() => {
+    if (!pendingAnchor || loading) return;
+    let attempts = 0;
+    const tryScroll = () => {
+      const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
+      if (headings.length === 0 && attempts < 10) {
+        attempts += 1;
+        setTimeout(tryScroll, 300);
+        return;
+      }
+      scrollToAnchorPath(pendingAnchor);
+      onAnchorDone?.();
+    };
+    const timer = setTimeout(tryScroll, 300);
+    return () => clearTimeout(timer);
+  }, [pendingAnchor, loading]);
+
+  // 拉取反向引用
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/backlinks?kind=project&category=${encodeURIComponent(subdir)}&filename=${encodeURIComponent(filename)}`);
+        const json = await res.json();
+        if (json.success) setBacklinks(json.data || []);
+      } catch {}
+    })();
+  }, [subdir, filename]);
+
+  const backlinkMap = useMemo(() => {
+    const map: Record<string, BacklinkEntry[]> = {};
+    for (const bl of backlinks) {
+      const path = bl.resolved?.resolvedPath || [];
+      if (path.length === 0) continue;
+      const key = stripMdText(path[path.length - 1]);
+      if (!key) continue;
+      (map[key] ||= []).push({
+        sourceDocKey: bl.sourceFilename.replace(/\.md$/, ''),
+        sourceTitle: bl.sourceTitle,
+        contextAnchor: bl.contextAnchor || [],
+      });
+    }
+    return map;
+  }, [backlinks]);
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -187,11 +277,6 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved 
             )}
             <span style={{ fontSize: 12, color: '#999' }}>创建：{createdAt}</span>
             <span style={{ fontSize: 12, color: '#999' }}>修改：{updatedAt}</span>
-            <div className="doc-save-status" data-status={saveStatus} style={{ marginLeft: 'auto' }}>
-              {saveStatus === 'saving' && '保存中...'}
-              {saveStatus === 'waiting' && '待保存'}
-              {saveStatus === 'saved' && '已保存'}
-            </div>
           </div>
         </div>
       </div>
@@ -218,8 +303,13 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved 
           onChange={handleChange}
           documentTitle={displayTitle}
           sectionName={displayTitle}
+          backlinkMap={backlinkMap}
+          imageBase={imageBase}
+          uploadDir={uploadDir}
         />
       )}
+
+      <BacklinksPanel backlinks={backlinks} />
     </div>
   );
 }

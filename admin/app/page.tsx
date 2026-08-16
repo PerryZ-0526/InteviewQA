@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import GenerateForm from '@/components/GenerateForm';
 import DocumentEditor from '@/components/DocumentEditor';
@@ -9,12 +9,25 @@ import EditorToolbar from '@/components/EditorToolbar';
 import LogViewer from '@/components/LogViewer';
 import AnnotationPanel from '@/components/AnnotationPanel';
 import ProjectDocumentView from '@/components/ProjectDocumentView';
+import ExternalDocView from '@/components/ExternalDocView';
 import CreateEmptyModal from '@/components/CreateEmptyModal';
 import AIFloat from '@/components/AIFloat';
 import BackToTop from '@/components/BackToTop';
 import TocFloat from '@/components/TocFloat';
+import LinkInsertFloat from '@/components/LinkInsertFloat';
 import TagViewer from '@/components/TagViewer';
-import { CategoryInfo, TagInfo } from '@/lib/types';
+import TabBar from '@/components/TabBar';
+import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
+
+interface DocTab {
+  id: string;
+  kind: 'category' | 'random' | 'project' | 'external' | 'form';
+  category?: string;
+  filename?: string;
+  subdir?: string;
+  extId?: string;
+  label: string;
+}
 
 export default function Home() {
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
@@ -22,27 +35,40 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProjectSubdir, setSelectedProjectSubdir] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [view, setView] = useState<'browse' | 'new' | 'edit' | 'random' | 'tag' | 'project-doc' | 'new-empty'>('browse');
+  const [view, setView] = useState<'browse' | 'new' | 'edit' | 'random' | 'tag' | 'project-doc' | 'new-empty' | 'external-doc'>('browse');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [projectSubdir, setProjectSubdir] = useState<string | null>(null);
   const [projectFilename, setProjectFilename] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState<string>('');
+  const [externalDocId, setExternalDocId] = useState<string | null>(null);
+  const [browsingExternal, setBrowsingExternal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatus] = useState<string>('');
+  const [pendingAnchor, setPendingAnchor] = useState<string[] | null>(null);
+  // 并发生成计数：多个新建题目标签可同时生成，任一进行中状态栏即显示
+  const [generatingCount, setGeneratingCount] = useState(0);
+  const generating = generatingCount > 0;
   const [showLogs, setShowLogs] = useState(false);
-  const [projectSubdirs, setProjectSubdirs] = useState<{ slug: string; name: string; docs: { filename: string; title: string }[] }[]>([]);
-  const [projectStats, setProjectStats] = useState<{ subdirs: number; docs: number }>({ subdirs: 0, docs: 0 });
+  const [projectSubdirs, setProjectSubdirs] = useState<{ slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[]>([]);
+  const [projectStats, setProjectStats] = useState<{ subdirs: number; docs: number; groups: number }>({ subdirs: 0, docs: 0, groups: 0 });
+  const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
+
+  // 多标签：已打开文档的工作集（内存态，刷新即清空；文档内容本身已自动保存到磁盘）
+  const [tabs, setTabs] = useState<DocTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [tabContents, setTabContents] = useState<Record<string, string>>({});
+  const tabScrollsRef = useRef<Record<string, number>>({});
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   // Track previous state for back navigation from random mode
+  const navSeqRef = useRef(0);
   const prevStateRef = useRef<{
-    view: 'browse' | 'edit' | 'tag' | 'project-doc' | 'new-empty';
+    view: 'browse' | 'edit' | 'tag' | 'project-doc' | 'new-empty' | 'external-doc' | 'random';
     selectedCategory: string | null;
     selectedFile: string | null;
-    editContent: string;
-  }>({ view: 'browse', selectedCategory: null, selectedFile: null, editContent: '' });
+  }>({ view: 'browse', selectedCategory: null, selectedFile: null });
 
   const loadCategories = async () => {
     try {
@@ -69,13 +95,23 @@ export default function Home() {
       const res = await fetch('/api/project');
       const json = await res.json();
       if (json.success) {
-        const data = json.data as { slug: string; name: string; docs: { filename: string; title: string }[] }[];
+        const data = json.data as { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[];
         setProjectSubdirs(data);
+        const normal = data.filter(d => !d.isGroup);
         setProjectStats({
-          subdirs: data.length,
-          docs: data.reduce((s, d) => s + d.docs.length, 0),
+          subdirs: normal.length,
+          docs: normal.reduce((s, d) => s + d.docs.length, 0),
+          groups: data.filter(d => d.isGroup).length,
         });
       }
+    } catch {}
+  };
+
+  const loadExternalDocs = async () => {
+    try {
+      const res = await fetch('/api/external');
+      const json = await res.json();
+      if (json.success) setExternalDocs(json.data);
     } catch {}
   };
 
@@ -83,6 +119,7 @@ export default function Home() {
     loadCategories();
     loadTags();
     loadProjectStats();
+    loadExternalDocs();
   }, []);
 
   const showToast = (msg: string, type: string = 'info') => {
@@ -90,51 +127,149 @@ export default function Home() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const openQuestion = async (category: string, filename: string) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/categories/${category}/${filename}`);
-      const json = await res.json();
-      if (json.success) {
-        setSelectedCategory(category);
-        setSelectedFile(filename);
-        setEditContent(json.data);
-        setView('edit');
-        // Save state for potential back from random
-        prevStateRef.current = { view: 'edit', selectedCategory: category, selectedFile: filename, editContent: json.data };
-      }
-    } catch (e) {
-      showToast('加载题目失败', 'error');
-    } finally {
-      setLoading(false);
+  // ---- 多标签管理 ----
+  const DOC_VIEWS = ['edit', 'random', 'project-doc', 'external-doc', 'new'] as const;
+
+  const kindToView = (kind: DocTab['kind']) =>
+    kind === 'category' ? 'edit' : kind === 'project' ? 'project-doc' : kind === 'external' ? 'external-doc' : kind === 'form' ? 'new' : 'random';
+
+  const formSeqRef = useRef(0);
+
+  // 新建题目表单作为一个独立标签（保持挂载，草稿内容切换不丢失）
+  const openFormTab = () => {
+    const existingForms = tabs.filter((t) => t.kind === 'form').length;
+    const tab: DocTab = {
+      id: `form:${++formSeqRef.current}`,
+      kind: 'form',
+      label: existingForms > 0 ? `新建题目 ${existingForms + 1}` : '新建题目',
+    };
+    setTabs((prev) => [...prev, tab]);
+    activateTab(tab);
+  };
+
+  const saveActiveTabScroll = () => {
+    if (activeTabId && contentRef.current) {
+      tabScrollsRef.current[activeTabId] = contentRef.current.scrollTop;
     }
   };
 
-  const saveEdit = async (content: string) => {
-    if (!selectedCategory || !selectedFile) return false;
+  const activateTab = (tab: DocTab) => {
+    saveActiveTabScroll();
+    setActiveTabId(tab.id);
+    setSelectedCategory(tab.category ?? null);
+    setSelectedFile(tab.filename ?? null);
+    setProjectSubdir(tab.subdir ?? null);
+    setProjectFilename(tab.kind === 'project' ? (tab.filename ?? null) : null);
+    setExternalDocId(tab.extId ?? null);
+    setPendingAnchor(null);
+    setView(kindToView(tab.kind));
+  };
+
+  // 切到浏览/新建等非文档视图：保存当前标签滚动位置并取消激活
+  const deactivateTab = () => {
+    saveActiveTabScroll();
+    setActiveTabId(null);
+  };
+
+  const closeTab = (id: string) => {
+    const idx = tabs.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const newTabs = tabs.filter((t) => t.id !== id);
+    setTabs(newTabs);
+    delete tabScrollsRef.current[id];
+    setTabContents((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (activeTabId === id) {
+      if (newTabs.length === 0) {
+        setActiveTabId(null);
+        setView('browse');
+      } else {
+        // 直接激活相邻标签（不保存已关闭标签的滚动位置）
+        const next = newTabs[Math.min(idx, newTabs.length - 1)];
+        setActiveTabId(next.id);
+        setSelectedCategory(next.category ?? null);
+        setSelectedFile(next.filename ?? null);
+        setProjectSubdir(next.subdir ?? null);
+        setProjectFilename(next.kind === 'project' ? (next.filename ?? null) : null);
+        setExternalDocId(next.extId ?? null);
+        setPendingAnchor(null);
+        setView(kindToView(next.kind));
+      }
+    }
+  };
+
+  const closeActiveTab = () => {
+    if (activeTabId) closeTab(activeTabId);
+  };
+
+  // 切换标签后直接恢复滚动位置（无平滑动画）
+  useLayoutEffect(() => {
+    if (!activeTabId || !contentRef.current) return;
+    if (!DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number])) return;
+    contentRef.current.scrollTop = tabScrollsRef.current[activeTabId] || 0;
+  }, [activeTabId, view]);
+
+  const openQuestion = async (category: string, filename: string) => {
+    const tabId = `cat:${category}:${filename}`;
+    const existing = tabs.find((t) => t.id === tabId);
+    if (existing) {
+      activateTab(existing);
+      return;
+    }
+    // 导航序号：只应用最后一次请求的结果，防止慢的旧请求把界面跳回之前点击的文档
+    const seq = ++navSeqRef.current;
     try {
-      const res = await fetch(`/api/categories/${selectedCategory}/${selectedFile}`, {
+      setLoading(true);
+      const res = await fetch(`/api/categories/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`);
+      const json = await res.json();
+      if (seq !== navSeqRef.current) return;
+      if (json.success) {
+        const label = categories.find((c) => c.slug === category)?.questions.find((q) => q.filename === filename)?.title || filename;
+        setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
+        setTabs((prev) => [...prev, { id: tabId, kind: 'category', category, filename, label }]);
+        activateTab({ id: tabId, kind: 'category', category, filename, label });
+      }
+    } catch (e) {
+      if (seq !== navSeqRef.current) return;
+      showToast('加载题目失败', 'error');
+    } finally {
+      if (seq === navSeqRef.current) setLoading(false);
+    }
+  };
+
+  // target 由发起保存的编辑器捕获其所属文档，避免切换文档后延迟保存写到当前选中的其他文件
+  const saveEdit = async (content: string, target?: { category: string; filename: string }) => {
+    const cat = target?.category ?? selectedCategory;
+    const file = target?.filename ?? selectedFile;
+    if (!cat || !file) return false;
+    try {
+      const res = await fetch(`/api/categories/${encodeURIComponent(cat)}/${encodeURIComponent(file)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       });
       const json = await res.json();
       if (json.success) {
-        setEditContent(content);
         // Update sidebar title from H1 in content
         const h1Match = content.match(/^#\s+(.+)/m);
         if (h1Match) {
           const newTitle = h1Match[1].trim();
           setCategories((prev) =>
             prev.map((c) => {
-              if (c.slug !== selectedCategory) return c;
+              if (c.slug !== cat) return c;
               return {
                 ...c,
                 questions: c.questions.map((q) =>
-                  q.filename === selectedFile ? { ...q, title: newTitle } : q
+                  q.filename === file ? { ...q, title: newTitle } : q
                 ),
               };
             })
+          );
+          setTabs((prev) =>
+            prev.map((t) => (t.id === `cat:${cat}:${file}` ? { ...t, label: newTitle } : t))
           );
         }
         return true;
@@ -146,19 +281,6 @@ export default function Home() {
       showToast('保存失败', 'error');
       return false;
     }
-  };
-
-  const onGenerated = async (filePath: string, content: string) => {
-    const parts = filePath.replace(/\\/g, '/').split('/');
-    const cat = parts[1] || '';
-    const filename = parts[2] || '';
-    setSelectedCategory(cat);
-    setSelectedFile(filename);
-    setEditContent(content);
-    setView('edit');
-    showToast('题目生成成功！', 'success');
-    await loadCategories();
-    await loadTags();
   };
 
   const deleteQuestion = async () => {
@@ -173,8 +295,11 @@ export default function Home() {
       });
       const json = await res.json();
       if (json.success) {
-        setSelectedFile(null);
-        setView('browse');
+        if (activeTabId) closeTab(activeTabId);
+        else {
+          setSelectedFile(null);
+          setView('browse');
+        }
         showToast('删除成功！', 'success');
         await loadCategories();
         await loadTags();
@@ -203,28 +328,25 @@ export default function Home() {
       return;
     }
 
-    // Save current state before jumping to random
-    const prevView = (view === 'random' || view === 'new') ? 'browse' : view;
-    prevStateRef.current = {
-      view: prevView,
-      selectedCategory,
-      selectedFile,
-      editContent,
-    };
-
     // Pick random
     const idx = Math.floor(Math.random() * allQuestions.length);
     const picked = allQuestions[idx];
+    const tabId = `random:${picked.category}:${picked.filename}`;
+    const existing = tabs.find((t) => t.id === tabId);
+    if (existing) {
+      activateTab(existing);
+      return;
+    }
 
     try {
       setLoading(true);
       const res = await fetch(`/api/categories/${picked.category}/${picked.filename}`);
       const json = await res.json();
       if (json.success) {
-        setSelectedCategory(picked.category);
-        setSelectedFile(picked.filename);
-        setEditContent(json.data);
-        setView('random');
+        const label = categories.find((c) => c.slug === picked.category)?.questions.find((q) => q.filename === picked.filename)?.title || picked.filename;
+        setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
+        setTabs((prev) => [...prev, { id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label }]);
+        activateTab({ id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label });
       } else {
         showToast('加载失败', 'error');
       }
@@ -235,47 +357,139 @@ export default function Home() {
     }
   };
 
-  // Back from random mode to previous state
   const openTag = (tagName: string) => {
+    saveActiveTabScroll();
     prevStateRef.current = {
-      view: (view === 'new' || view === 'new-empty') ? 'browse' : (view === 'random' || view === 'tag' || view === 'project-doc' ? 'browse' : view),
+      view: (view === 'new' || view === 'new-empty' || view === 'tag') ? 'browse' : view,
       selectedCategory,
       selectedFile,
-      editContent,
     };
     setSelectedTag(tagName);
     setView('tag');
   };
 
   const openProjectDoc = (subdir: string, filename: string) => {
-    prevStateRef.current = {
-      view: (view === 'new' || view === 'new-empty') ? 'browse' : (view === 'random' || view === 'tag' || view === 'project-doc' ? 'browse' : view),
-      selectedCategory,
-      selectedFile,
-      editContent,
+    const tabId = `proj:${subdir}:${filename}`;
+    const existing = tabs.find((t) => t.id === tabId);
+    if (existing) {
+      activateTab(existing);
+      return;
+    }
+    const label = projectSubdirs.find((s) => s.slug === subdir)?.docs.find((d) => d.filename === filename)?.title || filename;
+    setTabs((prev) => [...prev, { id: tabId, kind: 'project', subdir, filename, label }]);
+    activateTab({ id: tabId, kind: 'project', subdir, filename, label });
+  };
+
+  const openExternalList = () => {
+    deactivateTab();
+    setBrowsingExternal(true);
+    setSelectedCategory(null);
+    setSelectedProjectSubdir(null);
+    setSelectedFile(null);
+    setView('browse');
+  };
+
+  const openExternalDoc = (id: string) => {
+    const tabId = `ext:${id}`;
+    const existing = tabs.find((t) => t.id === tabId);
+    if (existing) {
+      activateTab(existing);
+      return;
+    }
+    const docInfo = externalDocs.find((d) => d.id === id);
+    const label = docInfo?.title || (docInfo?.path || '').split(/[\\/]/).pop() || '外部文档';
+    setTabs((prev) => [...prev, { id: tabId, kind: 'external', extId: id, label }]);
+    activateTab({ id: tabId, kind: 'external', extId: id, label });
+  };
+
+  // 点击 wiki 链接 → 打开目标文档并滚动到锚点（含逐级回退）
+  const handleWikiLinkOpen = async (wiki: string, slugHint?: string) => {
+    const [docKey, ...anchors] = wiki.split('#').map(s => s.trim()).filter(Boolean);
+    if (!docKey) return;
+
+    // 通过搜索接口定位目标文档
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(docKey)}`);
+      const json = await res.json();
+      if (!json.success) return;
+      const docs = json.data as { kind: string; category: string; filename: string }[];
+      const byKey = (d: { kind: string; category: string; filename: string }) => d.filename.replace(/\.md$/, '') === docKey;
+      const target =
+        (slugHint && docs.find(d => byKey(d) && d.category === slugHint)) ||
+        docs.find(byKey) ||
+        docs[0];
+      if (!target) return;
+      if (target.kind === 'category') {
+        await openQuestion(target.category, target.filename);
+      } else {
+        openProjectDoc(target.category, target.filename);
+      }
+      setPendingAnchor(anchors.length > 0 ? anchors : null);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { wiki?: string; kind?: 'doc' | 'tag' | 'index'; slugHint?: string };
+      if (!detail?.wiki) return;
+
+      if (detail.kind === 'tag') {
+        deactivateTab();
+        openTag(detail.wiki);
+        return;
+      }
+      if (detail.kind === 'index') {
+        const slug = detail.wiki;
+        const isProject = projectSubdirs.some(s => s.slug === slug);
+        deactivateTab();
+        setBrowsingExternal(false);
+        setSelectedFile(null);
+        if (isProject) {
+          setSelectedCategory(null);
+          setSelectedProjectSubdir(slug);
+        } else {
+          setSelectedCategory(slug);
+          setSelectedProjectSubdir(null);
+        }
+        setView('browse');
+        return;
+      }
+      handleWikiLinkOpen(detail.wiki, detail.slugHint);
     };
-    setProjectSubdir(subdir);
-    setProjectFilename(filename);
-    setView('project-doc');
-  };
+    window.addEventListener('open-wiki-link', handler);
+    return () => window.removeEventListener('open-wiki-link', handler);
+  }, [view, selectedCategory, selectedFile, categories, projectSubdirs]);
 
-  const backFromProjectDoc = () => {
-    const prev = prevStateRef.current;
-    setSelectedCategory(prev.selectedCategory);
-    setSelectedFile(prev.selectedFile);
-    setEditContent(prev.editContent);
-    setView(prev.view);
-  };
-
+  // 标签视图（TagViewer）返回：恢复进入标签前的浏览/文档视图
   const backFromRandom = () => {
     const prev = prevStateRef.current;
     setSelectedCategory(prev.selectedCategory);
     setSelectedFile(prev.selectedFile);
-    setEditContent(prev.editContent);
     setView(prev.view);
+    // 从文档内点标签链接进入标签视图时会取消标签激活，返回时恢复
+    if ((prev.view === 'edit' || prev.view === 'random') && prev.selectedCategory && prev.selectedFile) {
+      const wantKind = prev.view === 'edit' ? 'category' : 'random';
+      const tab = tabs.find(
+        (t) => t.kind === wantKind && t.category === prev.selectedCategory && t.filename === prev.selectedFile
+      );
+      if (tab) setActiveTabId(tab.id);
+    } else if (prev.view === 'project-doc' && projectSubdir && projectFilename) {
+      const tab = tabs.find(
+        (t) => t.kind === 'project' && t.subdir === projectSubdir && t.filename === projectFilename
+      );
+      if (tab) setActiveTabId(tab.id);
+    }
   };
 
   const currentCategoryName = categories.find((c) => c.slug === selectedCategory)?.name || selectedCategory;
+
+  // 全库统计：categories + project（含分组）的全部文档，不含外部文档
+  const totalDocs =
+    categories.reduce((s, c) => s + c.questionCount, 0) +
+    projectSubdirs.reduce((s, d) => s + d.docs.length, 0);
+  const totalWords =
+    categories.reduce((s, c) => s + c.questions.reduce((w, q) => w + (q.wordCount || 0), 0), 0) +
+    projectSubdirs.reduce((s, d) => s + d.docs.reduce((w, doc) => w + (doc.wordCount || 0), 0), 0);
 
   return (
     <div id="app-root">
@@ -285,26 +499,51 @@ export default function Home() {
         selectedCategory={selectedCategory}
         selectedFile={selectedFile}
         refreshKey={refreshKey}
-        onRefresh={async () => { await loadCategories(); await loadTags(); await loadProjectStats(); setRefreshKey(k => k + 1); }}
+        onRefresh={async () => { await loadCategories(); await loadTags(); await loadProjectStats(); await loadExternalDocs(); setRefreshKey(k => k + 1); }}
         onSelectCategory={(slug) => {
+          deactivateTab();
           setSelectedCategory(slug);
           setSelectedProjectSubdir(null);
           setSelectedFile(null);
+          setBrowsingExternal(false);
           setView('browse');
         }}
         onSelectProjectSubdir={(subdir) => {
+          deactivateTab();
           setSelectedProjectSubdir(subdir);
           setSelectedCategory(null);
           setSelectedFile(null);
+          setBrowsingExternal(false);
           setView('browse');
         }}
         onSelectQuestion={(cat, filename) => openQuestion(cat, filename)}
         onSelectTag={openTag}
         onSelectProgram={openProjectDoc}
-        onNewQuestion={() => setView('new')}
+        onSelectExternalList={openExternalList}
+        onSelectExternalDoc={openExternalDoc}
+        onExternalMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
+        onToast={(msg, type) => showToast(msg, type || 'info')}
+        onNewQuestion={openFormTab}
+        onGoHome={() => {
+          deactivateTab();
+          setSelectedCategory(null);
+          setSelectedProjectSubdir(null);
+          setSelectedFile(null);
+          setBrowsingExternal(false);
+          setView('browse');
+        }}
       />
 
       <div className="main">
+        <TabBar
+          tabs={tabs.map((t) => ({ id: t.id, label: t.label }))}
+          activeId={activeTabId}
+          onSelect={(id) => {
+            const tab = tabs.find((t) => t.id === id);
+            if (tab) activateTab(tab);
+          }}
+          onClose={closeTab}
+        />
         <header className="header">
           <div>
             <h1>
@@ -316,9 +555,14 @@ export default function Home() {
                 ? selectedFile || '编辑'
                 : view === 'project-doc'
                 ? projectFilename || '文档'
+                : view === 'external-doc'
+                ? (externalDocs.find(d => d.id === externalDocId)?.title ||
+                   (externalDocs.find(d => d.id === externalDocId)?.path || '').split(/[\\/]/).pop() || '外部文档')
+                : view === 'browse' && browsingExternal
+                ? '外部文档'
                 : view === 'browse' && selectedProjectSubdir
                 ? selectedProjectSubdir
-                : currentCategoryName || '面试真题知识库'}
+                : currentCategoryName || '首页'}
             </h1>
             {view === 'edit' && selectedFile && (
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -334,7 +578,13 @@ export default function Home() {
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {selectedCategory ? `${currentCategoryName} — 题目列表` :
                  selectedProjectSubdir ? `${selectedProjectSubdir} — 文档列表` :
-                 '选择一个分类或分组查看'}
+                 browsingExternal ? '外部文档 — 文档列表' :
+                 '首页 — 全部文档'}
+              </span>
+            )}
+            {view === 'external-doc' && (
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                {externalDocs.find(d => d.id === externalDocId)?.path || ''}
               </span>
             )}
           </div>
@@ -357,15 +607,15 @@ export default function Home() {
             <button className="btn btn-secondary" onClick={() => setView('new-empty')} title="创建空白的题目文件，不调用 AI 生成">
               新建空文档
             </button>
-            <button className="btn btn-primary" onClick={() => setView('new')}>
+            <button className="btn btn-primary" onClick={openFormTab}>
               + 新建题目
             </button>
           </div>
         </header>
 
-        {(view === 'edit' || view === 'random' || view === 'project-doc') && <EditorToolbar />}
+        {(view === 'edit' || view === 'random' || view === 'project-doc' || view === 'external-doc') && <EditorToolbar />}
 
-        <div className="content">
+        <div className="content" ref={contentRef}>
           {view === 'browse' && selectedCategory && (
             <BrowseView
               categories={categories}
@@ -383,23 +633,23 @@ export default function Home() {
             />
           )}
 
-          {view === 'edit' && editContent && selectedFile && (
-            <DocumentEditor
-              key={selectedFile}
-              markdown={editContent}
-              filename={selectedFile}
-              onSave={saveEdit}
+          {view === 'browse' && browsingExternal && (
+            <ExternalBrowseView
+              docs={externalDocs}
+              onOpenDoc={openExternalDoc}
+              onMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
             />
           )}
 
-          {view === 'random' && editContent && selectedCategory && selectedFile && (
-            <RandomQuestion
-              key={selectedFile}
-              markdown={editContent}
-              filename={selectedFile}
-              category={currentCategoryName || selectedCategory}
-              onSave={saveEdit}
-              onBack={backFromRandom}
+          {view === 'browse' && !selectedCategory && !selectedProjectSubdir && !browsingExternal && (
+            <HomeView
+              categories={categories}
+              projectSubdirs={projectSubdirs}
+              externalDocs={externalDocs}
+              onSelectQuestion={openQuestion}
+              onSelectProjectDoc={openProjectDoc}
+              onSelectExternalDoc={openExternalDoc}
+              onExternalMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
             />
           )}
 
@@ -411,24 +661,84 @@ export default function Home() {
             />
           )}
 
-          {view === 'project-doc' && projectSubdir && projectFilename && (
-            <ProjectDocumentView
-              subdir={projectSubdir}
-              filename={projectFilename}
-              onBack={backFromProjectDoc}
-              onSaved={() => setRefreshKey(k => k + 1)}
-            />
-          )}
-
-          {view === 'new' && (
-            <GenerateForm
-              categories={categories}
-              tags={tags}
-              onGenerated={onGenerated}
-              onCancel={() => setView('browse')}
-              onGeneratingChange={setGenerating}
-            />
-          )}
+          {/* 已打开文档的标签面板：全部保持挂载（隐藏切换），保留编辑状态；切换时恢复各自滚动位置 */}
+          {tabs.map((tab) => {
+            const visible = tab.id === activeTabId && DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number]);
+            return (
+              <div key={tab.id} style={{ display: visible ? 'block' : 'none' }}>
+                {tab.kind === 'category' && tab.category && tab.filename && tabContents[tab.id] != null && (
+                  <DocumentEditor
+                    key={tab.id}
+                    markdown={tabContents[tab.id]}
+                    filename={tab.filename}
+                    category={tab.category}
+                    onSave={saveEdit}
+                    onSaveStatusChange={setEditorSaveStatus}
+                    pendingAnchor={visible ? pendingAnchor : null}
+                    onAnchorDone={() => setPendingAnchor(null)}
+                  />
+                )}
+                {tab.kind === 'random' && tab.category && tab.filename && tabContents[tab.id] != null && (
+                  <RandomQuestion
+                    key={tab.id}
+                    markdown={tabContents[tab.id]}
+                    filename={tab.filename}
+                    category={categories.find((c) => c.slug === tab.category)?.name || tab.category}
+                    categorySlug={tab.category}
+                    onSave={saveEdit}
+                    onBack={closeActiveTab}
+                    imageBase={`/api/raw/categories/${encodeURIComponent(tab.category)}`}
+                    uploadDir={`categories/${tab.category}`}
+                  />
+                )}
+                {tab.kind === 'project' && tab.subdir && tab.filename && (
+                  <ProjectDocumentView
+                    subdir={tab.subdir}
+                    filename={tab.filename}
+                    onBack={closeActiveTab}
+                    onSaved={() => setRefreshKey(k => k + 1)}
+                    onSaveStatusChange={setEditorSaveStatus}
+                    pendingAnchor={visible ? pendingAnchor : null}
+                    onAnchorDone={() => setPendingAnchor(null)}
+                  />
+                )}
+                {tab.kind === 'external' && tab.extId && (
+                  <ExternalDocView
+                    id={tab.extId}
+                    onBack={closeActiveTab}
+                    onSaveStatusChange={setEditorSaveStatus}
+                    onSaved={() => loadExternalDocs()}
+                  />
+                )}
+                {tab.kind === 'form' && (
+                  <GenerateForm
+                    key={tab.id}
+                    categories={categories}
+                    tags={tags}
+                    onGenerated={async (filePath: string) => {
+                      const parts = filePath.replace(/\\/g, '/').split('/');
+                      const cat = parts[1] || '';
+                      const filename = parts[2] || '';
+                      showToast('题目生成成功！', 'success');
+                      await loadCategories();
+                      await loadTags();
+                      // 先激活新题标签，再移除表单标签，避免中间切换闪烁
+                      await openQuestion(cat, filename);
+                      setTabs((prev) => prev.filter((t) => t.id !== tab.id));
+                      setTabContents((prev) => {
+                        const next = { ...prev };
+                        delete next[tab.id];
+                        return next;
+                      });
+                      delete tabScrollsRef.current[tab.id];
+                    }}
+                    onCancel={() => closeTab(tab.id)}
+                    onGeneratingChange={(g) => setGeneratingCount((c) => Math.max(0, c + (g ? 1 : -1)))}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="status-bar">
@@ -443,7 +753,13 @@ export default function Home() {
             {projectStats.subdirs} 个project |{' '}
             {projectStats.docs} 个project文档
             {' | '}
-            0 个其他分组
+            {projectStats.groups} 个其他分组
+            {' | '}
+            {externalDocs.length} 个外部文档
+            {externalDocs.some(d => d.missing) ? `（${externalDocs.filter(d => d.missing).length} 失效）` : ''}
+          </span>
+          <span style={{ marginLeft: 32 }}>
+            共 {totalDocs.toLocaleString()} 篇文档 | 共 {totalWords.toLocaleString()} 字
           </span>
           <span>
             {generating ? (
@@ -451,7 +767,7 @@ export default function Home() {
                 <span className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 1.5, marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }} />
                 正在生成题目...
               </span>
-            ) : loading ? '加载中...' : '就绪'}
+            ) : editorSaveStatus || (loading ? '加载中...' : '')}
           </span>
         </div>
       </div>
@@ -470,13 +786,10 @@ export default function Home() {
             const parts = filePath.replace(/\\/g, '/').split('/');
             const cat = parts[1] || '';
             const filename = parts[2] || '';
-            setSelectedCategory(cat);
-            setSelectedFile(filename);
-            setEditContent(content);
-            setView('edit');
             showToast('空文档创建成功！', 'success');
             await loadCategories();
             await loadTags();
+            openQuestion(cat, filename);
           }}
         />
       )}
@@ -500,12 +813,165 @@ export default function Home() {
         />
       )}
 
-      {(view === 'edit' || view === 'random' || view === 'project-doc') && (
+      {(view === 'edit' || view === 'random' || view === 'project-doc' || view === 'external-doc') && (
         <>
           <AIFloat />
+          <LinkInsertFloat />
           <TocFloat />
           <BackToTop />
         </>
+      )}
+    </div>
+  );
+}
+
+function HomeView({
+  categories,
+  projectSubdirs,
+  externalDocs,
+  onSelectQuestion,
+  onSelectProjectDoc,
+  onSelectExternalDoc,
+  onExternalMissing,
+}: {
+  categories: CategoryInfo[];
+  projectSubdirs: { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[];
+  externalDocs: ExternalDocInfo[];
+  onSelectQuestion: (cat: string, filename: string) => void;
+  onSelectProjectDoc: (subdir: string, filename: string) => void;
+  onSelectExternalDoc: (id: string) => void;
+  onExternalMissing: (path: string) => void;
+}) {
+  const projectNormal = projectSubdirs.filter((s) => !s.isGroup);
+  const groups = projectSubdirs.filter((s) => s.isGroup);
+  const catDocs = categories.reduce((s, c) => s + c.questions.length, 0);
+  const projDocs = projectNormal.reduce((s, d) => s + d.docs.length, 0);
+  const groupDocs = groups.reduce((s, d) => s + d.docs.length, 0);
+
+  if (catDocs + projDocs + groupDocs + externalDocs.length === 0) {
+    return (
+      <div className="empty-state">
+        <h3>知识库为空</h3>
+        <p>从左侧边栏创建分类、添加外部文档，或点击「新建题目」开始</p>
+      </div>
+    );
+  }
+
+  let docIndex = 0;
+  const docRow = (filename: string, title: string, onClick: () => void, wordCount?: number) => {
+    docIndex += 1;
+    return (
+      <div key={filename} className="question-list-item" onClick={onClick} title={title}>
+        <span className="doc-index">{docIndex}.</span>
+        <span className="title">{title}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
+          {wordCount != null ? wordCount.toLocaleString() + ' 字' : ''}
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="home-view">
+      <div className="home-stats">
+        <span>{categories.length} 个分类 · {catDocs} 道题目</span>
+        <span>{projectNormal.length} 个 project · {projDocs} 篇文档</span>
+        <span>{groups.length} 个分组 · {groupDocs} 篇文档</span>
+        <span>{externalDocs.length} 个外部文档</span>
+      </div>
+
+      {categories.length > 0 && (
+        <div className="home-section">
+          <div className="home-section-title">分类</div>
+          {categories.map((cat) => (
+            <div key={cat.slug} className="home-block">
+              <div className="home-block-title">
+                <span className="home-block-name" title={cat.name}>{cat.name}</span>
+                <span className="home-block-count">{cat.questions.length}</span>
+              </div>
+              <div className="card" style={{ padding: 0, margin: 0 }}>
+                {cat.questions.map((q) =>
+                  docRow(q.filename, q.title, () => onSelectQuestion(cat.slug, q.filename), (q as { wordCount?: number }).wordCount)
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {projectNormal.length > 0 && (
+        <div className="home-section">
+          <div className="home-section-title">project</div>
+          {projectNormal.map((sub) => (
+            <div key={sub.slug} className="home-block">
+              <div className="home-block-title">
+                <span className="home-block-name" title={sub.slug}>{sub.name}</span>
+                <span className="home-block-count">{sub.docs.length}</span>
+              </div>
+              <div className="card" style={{ padding: 0, margin: 0 }}>
+                {sub.docs.map((doc) =>
+                  docRow(doc.filename, doc.title, () => onSelectProjectDoc(sub.slug, doc.filename), (doc as { wordCount?: number }).wordCount)
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {groups.length > 0 && (
+        <div className="home-section">
+          <div className="home-section-title">其他分组</div>
+          {groups.map((sub) => (
+            <div key={sub.slug} className="home-block">
+              <div className="home-block-title">
+                <span className="home-block-name" title={sub.slug}>{sub.name}</span>
+                <span className="home-block-count">{sub.docs.length}</span>
+              </div>
+              <div className="card" style={{ padding: 0, margin: 0 }}>
+                {sub.docs.map((doc) =>
+                  docRow(doc.filename, doc.title, () => onSelectProjectDoc(sub.slug, doc.filename), (doc as { wordCount?: number }).wordCount)
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {externalDocs.length > 0 && (
+        <div className="home-section">
+          <div className="home-section-title">外部文档</div>
+          <div className="card" style={{ padding: 0, margin: 0 }}>
+            {externalDocs.map((doc) => {
+              docIndex += 1;
+              return (
+              <div
+                key={doc.id}
+                className="question-list-item"
+                onClick={() => (doc.missing ? onExternalMissing(doc.path) : onSelectExternalDoc(doc.id))}
+                title={doc.path}
+              >
+                <span className="doc-index">{docIndex}.</span>
+                <span className="title" style={doc.missing ? { color: '#c92a2a' } : undefined}>
+                  {doc.missing ? '⚠ ' : ''}{doc.title}
+                </span>
+                <span
+                  className="external-path"
+                  style={{ flex: 1, margin: '0 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {doc.path}
+                </span>
+                {doc.missing ? (
+                  <span style={{ fontSize: 11, color: '#c92a2a', flexShrink: 0 }}>索引失效</span>
+                ) : (
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                    {doc.wordCount.toLocaleString()} 字
+                  </span>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -569,7 +1035,9 @@ function BrowseView({
         >
           <span className="filename">{q.filename}</span>
           <span className="title">{q.title}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>打开 →</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
+            {(q as { wordCount?: number }).wordCount?.toLocaleString() ?? ''} 字
+          </span>
         </div>
       ))}
     </div>
@@ -606,7 +1074,71 @@ function ProjectBrowseView({
         >
           <span className="filename">{doc.filename}</span>
           <span className="title">{doc.title}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>打开 →</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
+            {(doc as { wordCount?: number }).wordCount?.toLocaleString() ?? ''} 字
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmtMs(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function ExternalBrowseView({
+  docs,
+  onOpenDoc,
+  onMissing,
+}: {
+  docs: ExternalDocInfo[];
+  onOpenDoc: (id: string) => void;
+  onMissing: (path: string) => void;
+}) {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
+        外部文档 — {docs.length} 篇（按修改时间倒序）
+      </div>
+      {docs.length === 0 && (
+        <div className="empty-state" style={{ padding: 20 }}>
+          <p>暂无外部文档，点击侧边栏「外部文档」旁的 + 从资源管理器选择</p>
+        </div>
+      )}
+      {docs.map((doc) => (
+        <div
+          key={doc.id}
+          className="question-list-item"
+          onClick={() => (doc.missing ? onMissing(doc.path) : onOpenDoc(doc.id))}
+          title={doc.path}
+        >
+          <span className="title" style={doc.missing ? { color: '#c92a2a' } : undefined}>
+            {doc.missing ? '⚠ ' : ''}{doc.title}
+            {doc.customTitle && !doc.missing && (
+              <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>原名：{doc.originalTitle}</span>
+            )}
+          </span>
+          <span
+            className="external-path"
+            style={{ flex: 1, margin: '0 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {doc.path}
+          </span>
+          {doc.missing ? (
+            <span style={{ fontSize: 11, color: '#c92a2a', flexShrink: 0 }}>索引失效</span>
+          ) : (
+            <>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0, marginRight: 12 }}>
+                {doc.wordCount.toLocaleString()} 字
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
+                {doc.mtimeMs != null ? fmtMs(doc.mtimeMs) : ''}
+              </span>
+            </>
+          )}
         </div>
       ))}
     </div>

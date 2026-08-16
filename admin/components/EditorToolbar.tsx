@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getActiveEditor, onChange as onEditorChange } from '@/lib/activeEditor';
+import { useEffect, useRef, useState } from 'react';
+import type { Editor } from '@tiptap/core';
+import { getActiveEditor, getActiveUploadDir, onChange as onEditorChange } from '@/lib/activeEditor';
 
 const FONT_COLORS = [
   { v: '#e03131', t: '红', k: 'R' },
@@ -26,8 +27,54 @@ const FONT_SIZES = [
   { v: '1.5em', t: '特大' },
 ];
 
+const TRAILING_PUNCTUATION = /[：、，？。！]+$/;
+
+// 将光标所在行转为指定级别标题，并去掉行末标点（：、，？。！），保留行内样式标记
+function applyHeadingLevel(ed: Editor, level: 1 | 2 | 3 | 4) {
+  const { $from } = ed.state.selection;
+  // 光标在文本内部时 $from.parent 是文本节点，需要向上找到 paragraph/heading 块
+  let depth = 0;
+  for (let d = $from.depth; d > 0; d--) {
+    const name = $from.node(d).type.name;
+    if (name === 'paragraph' || name === 'heading') {
+      depth = d;
+      break;
+    }
+  }
+  if (!depth) return;
+
+  const block = $from.node(depth);
+  let content = block.content;
+  const last = content.lastChild;
+  if (last && last.isText) {
+    const text = last.text || '';
+    const cleaned = text.replace(TRAILING_PUNCTUATION, '');
+    if (cleaned !== text) {
+      content = cleaned
+        ? content.replaceChild(content.childCount - 1, ed.state.schema.text(cleaned, last.marks))
+        : content.cut(0, content.size - last.nodeSize);
+    }
+  }
+
+  const heading = ed.state.schema.nodes.heading.create({ level }, content);
+  ed.view.dispatch(
+    ed.state.tr.replaceWith($from.before(depth), $from.before(depth) + block.nodeSize, heading).scrollIntoView(),
+  );
+  ed.view.focus();
+}
+
+// 工具栏按钮：已是该级别标题则切回正文，否则转为标题（含行末标点清理）
+function headingButtonAction(ed: Editor, level: 1 | 2 | 3 | 4) {
+  if (ed.isActive('heading', { level })) {
+    ed.chain().focus().toggleHeading({ level }).run();
+  } else {
+    applyHeadingLevel(ed, level);
+  }
+}
+
 export default function EditorToolbar() {
   const [, setTick] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Re-render when active editor changes
   useEffect(() => onEditorChange(() => setTick((t) => t + 1)), []);
@@ -43,6 +90,30 @@ export default function EditorToolbar() {
   }, [editor]);
   const activeFontSize = editor?.getAttributes('textStyle').fontSize || '';
 
+  const handleImageFile = async (file: File) => {
+    const ed = getActiveEditor();
+    const dir = getActiveUploadDir();
+    if (!ed || ed.isDestroyed) return;
+    if (!dir) {
+      alert('当前编辑器不支持插入图片');
+      return;
+    }
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('dir', dir);
+      const res = await fetch('/api/upload-image', { method: 'POST', body: form });
+      const json = await res.json();
+      if (json.success && json.src) {
+        ed.chain().focus().insertContent({ type: 'image', attrs: { src: json.src, alt: '' } }).run();
+      } else {
+        alert(json.error || '图片上传失败');
+      }
+    } catch {
+      alert('图片上传失败');
+    }
+  };
+
   // ---- Keyboard shortcuts ----
   useEffect(() => {
     const handler = (e: Event) => {
@@ -56,6 +127,14 @@ export default function EditorToolbar() {
       if (ctrl && !ke.altKey && !ke.shiftKey && key === 'e') {
         ke.preventDefault();
         ed.chain().focus().toggleCode().run();
+        return;
+      }
+      // Ctrl+1~4 / Ctrl+Alt+1~4 → 当前行转对应级别标题，去掉行末标点（：、，？。！）。
+      // Chrome/Edge 将 Ctrl+数字 保留为切换标签页，事件不会送达页面，
+      // 故提供 Ctrl+Alt+数字 这一全浏览器可用的组合，Ctrl+数字 作为兼容分支保留
+      if (ctrl && !ke.shiftKey && ['1', '2', '3', '4'].includes(key)) {
+        ke.preventDefault();
+        applyHeadingLevel(ed, parseInt(key, 10) as 1 | 2 | 3 | 4);
         return;
       }
       // Ctrl+S → strikethrough
@@ -111,13 +190,13 @@ export default function EditorToolbar() {
         <ToolBtn onClick={() => editor?.chain().focus().toggleUnderline().run()} active={editor?.isActive('underline')} label={<u>U</u>} title="下划线 (Ctrl+U)" />
         <ToolBtn onClick={() => editor?.chain().focus().toggleStrike().run()} active={editor?.isActive('strike')} label={<s>S</s>} title="删除线 (Ctrl+S)" />
         <ToolBtn onClick={() => editor?.chain().focus().toggleCode().run()} active={editor?.isActive('code')} label="&lt;&gt;" title="行内代码 (Ctrl+E)" />
-        <ToolBtn onClick={() => editor?.chain().focus().toggleHighlight().run()} active={editor?.isActive('highlight')} label="H" title="高亮" hl />
 
         <ToolSep />
 
-        <ToolBtn onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} active={editor?.isActive('heading', { level: 1 })} label="H1" title="标题1" />
-        <ToolBtn onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} active={editor?.isActive('heading', { level: 2 })} label="H2" title="标题2" />
-        <ToolBtn onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} active={editor?.isActive('heading', { level: 3 })} label="H3" title="标题3" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 1)} active={editor?.isActive('heading', { level: 1 })} label="H1" title="标题1 (Ctrl+Alt+1)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 2)} active={editor?.isActive('heading', { level: 2 })} label="H2" title="标题2 (Ctrl+Alt+2)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 3)} active={editor?.isActive('heading', { level: 3 })} label="H3" title="标题3 (Ctrl+Alt+3)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 4)} active={editor?.isActive('heading', { level: 4 })} label="H4" title="标题4 (Ctrl+Alt+4)" />
         <ToolBtn onClick={() => editor?.chain().focus().setParagraph().run()} active={editor?.isActive('paragraph')} label="P" title="正文" />
 
         <ToolSep />
@@ -127,6 +206,7 @@ export default function EditorToolbar() {
         <ToolBtn onClick={() => editor?.chain().focus().toggleBulletList().run()} active={editor?.isActive('bulletList')} label="•" title="无序列表" />
         <ToolBtn onClick={() => editor?.chain().focus().toggleOrderedList().run()} active={editor?.isActive('orderedList')} label="1." title="有序列表" />
         <ToolBtn onClick={() => editor?.chain().focus().setHorizontalRule().run()} label="—" title="分割线" />
+        <ToolBtn onClick={() => fileInputRef.current?.click()} label="图片" title="插入图片（或直接粘贴截图）" wide />
 
         <ToolSep />
 
@@ -170,16 +250,28 @@ export default function EditorToolbar() {
 
       </div>
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImageFile(file);
+          e.target.value = '';
+        }}
+      />
+
     </>
   );
 }
 
-function ToolBtn({ onClick, active, label, title, wide, hl }: {
-  onClick: () => void; active?: boolean; label: React.ReactNode; title?: string; wide?: boolean; hl?: boolean;
+function ToolBtn({ onClick, active, label, title, wide }: {
+  onClick: () => void; active?: boolean; label: React.ReactNode; title?: string; wide?: boolean;
 }) {
   return (
     <button type="button" onClick={onClick} className={`toolbar-btn${active ? ' active' : ''}`} title={title} aria-label={title}
-      style={{ ...(wide ? { width: 'auto', padding: '0 8px', fontSize: 12 } : {}), ...(hl && active ? { background: '#fff3cd' } : {}) }}>
+      style={{ ...(wide ? { width: 'auto', padding: '0 8px', fontSize: 12 } : {}) }}>
       {label}
     </button>
   );

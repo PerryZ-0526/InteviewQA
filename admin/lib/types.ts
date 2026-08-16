@@ -11,6 +11,7 @@ export interface QuestionBrief {
   filename: string;    // 如 "001-xxx.md"
   title: string;       // 题目标题
   brief: string;       // 简短说明
+  wordCount?: number;  // 纯字数
 }
 
 // 完整题目（从 MD 解析）
@@ -62,10 +63,25 @@ export interface ProjectDocBrief {
   filename: string;
   title: string;
   brief: string;
+  wordCount?: number;
 }
 
 export interface ProjectSubdir {
   slug: string;
   name: string;
+  isGroup: boolean;
   docs: ProjectDocBrief[];
+}
+
+// 外部文档（本机任意位置的 md，仅索引路径）
+export interface ExternalDocInfo {
+  id: string;        // 规范化路径 hash 派生的稳定 id
+  path: string;      // 原文件绝对路径
+  title: string;     // 显示名 = customTitle || 文件 H1 || 文件名
+  originalTitle: string; // 文件 H1 或文件名（未被自定义标题覆盖）
+  customTitle: string;   // 自命名标题（可为空），仅本项目的显示映射
+  wordCount: number;
+  mtimeMs: number | null;  // 失效时为 null
+  addedAt: string;
+  missing: boolean;  // 文件已移动/重命名/删除
 }

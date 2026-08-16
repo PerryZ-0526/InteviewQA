@@ -77,24 +77,26 @@ async function loadAll() {
   const progDocs = [];
 
   // Load project docs (scan subdirectories like categories)
-  try {
-    const res = await fetch(`${PROJECT_ROOT}project/`);
-    const text = await res.text();
-    const dirMatch = text.match(/<a href="([^"]+)\/">/g);
-    if (dirMatch) {
-      for (const m of dirMatch) {
-        const subdir = m.match(/"([^"]+)"/)[1];
-        if (subdir !== '../') {
-          const s = subdir.replace('/', '');
-          try {
-            const idxMd = await loadFile(`project/${s}/00-index.md`);
-            const docs = parseIndex(idxMd);
-            for (const d of docs) progDocs.push({ ...d, subdir: s });
-          } catch {}
+  for (const base of ['project', 'groups']) {
+    try {
+      const res = await fetch(`${PROJECT_ROOT}${base}/`);
+      const text = await res.text();
+      const dirMatch = text.match(/<a href="([^"]+)\/">/g);
+      if (dirMatch) {
+        for (const m of dirMatch) {
+          const subdir = m.match(/"([^"]+)"/)[1];
+          if (subdir !== '../') {
+            const s = subdir.replace('/', '');
+            try {
+              const idxMd = await loadFile(`${base}/${s}/00-index.md`);
+              const docs = parseIndex(idxMd);
+              for (const d of docs) progDocs.push({ ...d, subdir: s, base });
+            } catch {}
+          }
         }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   for (const slug of catDirs) {
     try {

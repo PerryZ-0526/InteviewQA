@@ -1,0 +1,81 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、单机 Redis 锁的演进：从错误写法到正确姿势"
+    },
+    {
+      "level": 3,
+      "text": "二、整体工作流"
+    },
+    {
+      "level": 3,
+      "text": "三、主从架构下的锁丢失：Redlock 的动机"
+    },
+    {
+      "level": 3,
+      "text": "四、Redlock 算法"
+    },
+    {
+      "level": 3,
+      "text": "五、Redisson 的 watchdog 与可重入实现（源码级）"
+    },
+    {
+      "level": 3,
+      "text": "六、Kleppmann 与 antirez 之争：Redlock 安全吗"
+    },
+    {
+      "level": 3,
+      "text": "七、主流分布式锁方案对比"
+    },
+    {
+      "level": 3,
+      "text": "八、Redis 8.4 的原生命令支持"
+    },
+    {
+      "level": 3,
+      "text": "九、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "十、参考链接"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "详细解析": "详细解析",
+    "一、单机 Redis 锁的演进：从错误写法到正确姿势": "一、单机 Redis 锁的演进：从错误写法到正确姿势",
+    "二、整体工作流": "二、整体工作流",
+    "三、主从架构下的锁丢失：Redlock 的动机": "三、主从架构下的锁丢失：Redlock 的动机",
+    "四、Redlock 算法": "四、Redlock 算法",
+    "五、Redisson 的 watchdog 与可重入实现（源码级）": "五、Redisson 的 watchdog 与可重入实现（源码级）",
+    "六、Kleppmann 与 antirez 之争：Redlock 安全吗": "六、Kleppmann 与 antirez 之争：Redlock 安全吗",
+    "七、主流分布式锁方案对比": "七、主流分布式锁方案对比",
+    "八、Redis 8.4 的原生命令支持": "八、Redis 8.4 的原生命令支持",
+    "九、面试追问": "九、面试追问",
+    "十、参考链接": "十、参考链接"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 3,
+      "text": "Andrew Ng 在 2024 年 3 月 Sequoia 的演讲中给出了最经典的定义对比"
+    },
+    {
+      "level": 3,
+      "text": "Ng 归纳了 agentic workflow 的四种设计模式"
+    },
+    {
+      "level": 3,
+      "text": "工程落地上，Anthropic 的《Building effective agents》给出了更精细的框架"
+    },
+    {
+      "level": 3,
+      "text": "实现层面，agentic workflow 的底层是一个执行-观察循环"
+    },
+    {
+      "level": 3,
+      "text": "必须同时讲清代价"
+    },
+    {
+      "level": 3,
+      "text": "这个概念自身的演化也值得讲"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、概念起源：从「零样本」到「迭代」"
+    },
+    {
+      "level": 3,
+      "text": "二、Ng 的四大设计模式"
+    },
+    {
+      "level": 3,
+      "text": "三、Anthropic 的工程化框架：workflow 与 agent 的分界"
+    },
+    {
+      "level": 3,
+      "text": "四、五种 workflow 模式及与 Ng 模式的映射"
+    },
+    {
+      "level": 3,
+      "text": "五、工程实现：LangGraph 的 ReAct 循环"
+    },
+    {
+      "level": 3,
+      "text": "六、代价、失败模式与防护"
+    },
+    {
+      "level": 3,
+      "text": "七、概念演化：从独立范式收敛为 agent loop"
+    },
+    {
+      "level": 3,
+      "text": "八、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "参考链接"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "详细解析": "详细解析",
+    "一、概念起源：从「零样本」到「迭代」": "一、概念起源：从「零样本」到「迭代」",
+    "二、Ng 的四大设计模式": "二、Ng 的四大设计模式",
+    "三、Anthropic 的工程化框架：workflow 与 agent 的分界": "三、Anthropic 的工程化框架：workflow 与 agent 的分界",
+    "四、五种 workflow 模式及与 Ng 模式的映射": "四、五种 workflow 模式及与 Ng 模式的映射",
+    "五、工程实现：LangGraph 的 ReAct 循环": "五、工程实现：LangGraph 的 ReAct 循环",
+    "六、代价、失败模式与防护": "六、代价、失败模式与防护",
+    "七、概念演化：从独立范式收敛为 agent loop": "七、概念演化：从独立范式收敛为 agent loop",
+    "八、面试追问": "八、面试追问",
+    "参考链接": "参考链接",
+    "Andrew Ng 在 2024 年 3 月 Sequoia 的演讲中给出了最经典的定义对比": "Andrew Ng 在 2024 年 3 月 Sequoia 的演讲中给出了最经典的定义对比",
+    "Ng 归纳了 agentic workflow 的四种设计模式": "Ng 归纳了 agentic workflow 的四种设计模式",
+    "工程落地上，Anthropic 的《Building effective agents》给出了更精细的框架": "工程落地上，Anthropic 的《Building effective agents》给出了更精细的框架",
+    "实现层面，agentic workflow 的底层是一个执行-观察循环": "实现层面，agentic workflow 的底层是一个执行-观察循环",
+    "必须同时讲清代价": "必须同时讲清代价",
+    "这个概念自身的演化也值得讲": "这个概念自身的演化也值得讲"
+  }
+}

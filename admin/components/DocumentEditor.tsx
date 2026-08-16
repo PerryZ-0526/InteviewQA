@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import WysiwygEditor from './WysiwygEditor';
+import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react';
+import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
-import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
+import BacklinksPanel, { Backlink } from './BacklinksPanel';
+import { parseQuestion, generateMarkdown, formatDateTime, stripMdText } from '@/lib/markdown';
+import { isVisibleInLayout, scrollDocToTop } from '@/lib/domScroll';
 import type { Question } from '@/lib/types';
 
 const AUTO_SAVE_DELAY = 400;
@@ -11,20 +13,34 @@ const AUTO_SAVE_DELAY = 400;
 interface Props {
   markdown: string;
   filename?: string;
-  onSave: (markdown: string) => Promise<boolean>;
+  category?: string;
+  onSave: (markdown: string, target: { category: string; filename: string }) => Promise<boolean>;
+  onSaveStatusChange?: (status: string) => void;
+  pendingAnchor?: string[] | null;
+  onAnchorDone?: () => void;
 }
 
-export default function DocumentEditor({ markdown, filename, onSave }: Props) {
+export default function DocumentEditor({ markdown, filename, category, onSave, onSaveStatusChange, pendingAnchor, onAnchorDone }: Props) {
+  const imageBase = category ? `/api/raw/categories/${encodeURIComponent(category)}` : '';
+  const uploadDir = category ? `categories/${category}` : '';
+  // 章节 id 加每实例唯一前缀：多标签页并存时避免重复 id 导致 getElementById 命中第一个标签的隐藏章节
+  const secIdPrefix = useId().replace(/[^a-zA-Z0-9-]/g, '');
   const [parsed, setParsed] = useState<Question | null>(null);
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting' | 'error'>('saved');
+
+  useEffect(() => {
+    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
+    onSaveStatusChange?.(labels[saveStatus] || '');
+  }, [saveStatus, onSaveStatusChange]);
   const [answerLen, setAnswerLen] = useState(0);
   const [analysisLen, setAnalysisLen] = useState(0);
   const [notesLen, setNotesLen] = useState(0);
   const [showToc, setShowToc] = useState(true);
   const [customSections, setCustomSections] = useState<{ title: string; content: string }[]>([]);
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
+  const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const customRefs = useRef<Record<number, string>>({});
 
   const answerRef = useRef('');
@@ -40,6 +56,7 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
   const ownSaveContentsRef = useRef<Set<string>>(new Set());
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const editVersionRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     // 忽略本组件保存成功后的内容回传，避免旧请求覆盖正在编辑的界面
@@ -101,15 +118,18 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
     const newMd = generateMarkdown(updated);
     ownSaveContentsRef.current.add(newMd);
 
-    // 保存请求按触发顺序执行，避免较慢的旧请求覆盖较新的内容
+    // 保存请求按触发顺序执行，避免较慢的旧请求覆盖较新的内容；
+    // 组件卸载后不再落盘，防止切换文档后延迟保存写入错误文件
+    const target = { category: category || '', filename: filename || '' };
     saveQueueRef.current = saveQueueRef.current.then(async () => {
-      const success = await onSave(newMd);
+      if (!mountedRef.current) return;
+      const success = await onSave(newMd, target);
       if (!success) ownSaveContentsRef.current.delete(newMd);
       if (editVersion === editVersionRef.current) {
         setSaveStatus(success ? 'saved' : 'error');
       }
     });
-  }, [parsed, title, question, onSave, customSections]);
+  }, [parsed, title, question, onSave, customSections, category, filename]);
   doSaveRef.current = doSave;
 
   const handleAnswerChange = useCallback((md: string) => {
@@ -144,8 +164,80 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
 
   // Cleanup timer on unmount
   useEffect(() => {
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
   }, []);
+
+  // 拉取反向引用
+  useEffect(() => {
+    if (!category || !filename) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/backlinks?kind=category&category=${encodeURIComponent(category)}&filename=${encodeURIComponent(filename)}`);
+        const json = await res.json();
+        if (json.success) setBacklinks(json.data || []);
+      } catch {}
+    })();
+  }, [category, filename]);
+
+  // 构建 标题文本 → 反向索引条目 映射（供编辑器挂件使用）
+  const backlinkMap = useMemo(() => {
+    const map: Record<string, BacklinkEntry[]> = {};
+    for (const bl of backlinks) {
+      const path = bl.resolved?.resolvedPath || [];
+      if (path.length === 0) continue;
+      const key = stripMdText(path[path.length - 1]);
+      if (!key) continue;
+      (map[key] ||= []).push({
+        sourceDocKey: bl.sourceFilename.replace(/\.md$/, ''),
+        sourceTitle: bl.sourceTitle,
+        contextAnchor: bl.contextAnchor || [],
+      });
+    }
+    return map;
+  }, [backlinks]);
+
+  // wiki 链接跳转：编辑器加载完成后滚动到锚点
+  useEffect(() => {
+    if (!pendingAnchor || !parsed) return;
+    let attempts = 0;
+    const tryScroll = () => {
+      const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
+      const sectionLabels = document.querySelectorAll<HTMLElement>('.doc-section-label');
+      if (headings.length === 0 && sectionLabels.length === 0 && attempts < 10) {
+        attempts += 1;
+        setTimeout(tryScroll, 300);
+        return;
+      }
+      for (let i = pendingAnchor.length - 1; i >= 0; i--) {
+        const text = stripMdText(pendingAnchor[i]);
+        for (const h of Array.from(headings)) {
+          if (!isVisibleInLayout(h)) continue;
+          if (stripMdText(h.textContent || '') === text) {
+            h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            onAnchorDone?.();
+            return;
+          }
+        }
+        // 章节级锚点（如「面试直接答」）匹配节标签
+        for (const lb of Array.from(sectionLabels)) {
+          if (!isVisibleInLayout(lb)) continue;
+          if (stripMdText(lb.textContent || '') === text) {
+            lb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            onAnchorDone?.();
+            return;
+          }
+        }
+      }
+      scrollDocToTop();
+      onAnchorDone?.();
+    };
+    const timer = setTimeout(tryScroll, 300);
+    return () => clearTimeout(timer);
+  }, [pendingAnchor, parsed]);
 
 
 
@@ -180,12 +272,6 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
           >
             {showToc ? '隐藏目录' : '目录'}
           </button>
-          <div className="doc-save-status" data-status={saveStatus}>
-            {saveStatus === 'saving' && '保存中...'}
-            {saveStatus === 'waiting' && '待保存'}
-            {saveStatus === 'saved' && '已保存'}
-            {saveStatus === 'error' && '保存失败'}
-          </div>
           <div className="doc-time-info">
             {createdAtRef.current && <span>创建：{createdAtRef.current}</span>}
             {updatedAtRef.current && <span>修改：{updatedAtRef.current}</span>}
@@ -195,15 +281,15 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
 
       {showToc && (
         <TocPanel sections={[
-          { id: 'sec-1', label: '题目' },
-          ...(hiddenSections.has('面试直接答') ? [] : [{ id: 'sec-2', label: '面试直接答', markdown: answerRef.current }]),
-          ...(hiddenSections.has('详细解析') ? [] : [{ id: 'sec-3', label: '详细解析', markdown: analysisRef.current }]),
-          ...(hiddenSections.has('我的作答') ? [] : [{ id: 'sec-4', label: '我的作答', markdown: notesRef.current }]),
-          ...customSections.map((s: any, i: number) => ({ id: `sec-c${i}`, label: s.title || '未命名', markdown: customRefs.current[i] || s.content })),
+          { id: `${secIdPrefix}-sec-1`, label: '题目' },
+          ...(hiddenSections.has('面试直接答') ? [] : [{ id: `${secIdPrefix}-sec-2`, label: '面试直接答', markdown: answerRef.current }]),
+          ...(hiddenSections.has('详细解析') ? [] : [{ id: `${secIdPrefix}-sec-3`, label: '详细解析', markdown: analysisRef.current }]),
+          ...(hiddenSections.has('我的作答') ? [] : [{ id: `${secIdPrefix}-sec-4`, label: '我的作答', markdown: notesRef.current }]),
+          ...customSections.map((s: any, i: number) => ({ id: `${secIdPrefix}-sec-c${i}`, label: s.title || '未命名', markdown: customRefs.current[i] || s.content })),
         ]} />
       )}
 
-      <div className="doc-section" id="sec-1">
+      <div className="doc-section" id={`${secIdPrefix}-sec-1`}>
         <div className="doc-section-header">
           <span className="doc-section-label">题目</span>
         </div>
@@ -219,7 +305,7 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
       {!hiddenSections.has('面试直接答') && (
         <div className="doc-section">
           <div className="doc-section-header">
-            <span className="doc-section-label" id="sec-2">面试直接答</span>
+            <span className="doc-section-label" id={`${secIdPrefix}-sec-2`}>面试直接答</span>
             <span className="doc-count">{answerLen.toLocaleString()} 字</span>
             <button className="btn btn-small btn-danger" style={{ marginLeft: 8, padding: '0 6px', fontSize: 14 }} onClick={() => {
               answerRef.current = '';
@@ -235,6 +321,9 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
             placeholder="面试可直接作答的版本..."
             documentTitle={parsed?.title || ""}
             sectionName="面试直接答"
+            imageBase={imageBase}
+            uploadDir={uploadDir}
+            backlinkMap={backlinkMap}
           />
         </div>
       )}
@@ -242,7 +331,7 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
       {!hiddenSections.has('详细解析') && (
         <div className="doc-section">
           <div className="doc-section-header">
-            <span className="doc-section-label" id="sec-3">详细解析</span>
+            <span className="doc-section-label" id={`${secIdPrefix}-sec-3`}>详细解析</span>
             <span className="doc-count">{analysisLen.toLocaleString()} 字</span>
             <button className="btn btn-small btn-danger" style={{ marginLeft: 8, padding: '0 6px', fontSize: 14 }} onClick={() => {
               analysisRef.current = '';
@@ -258,6 +347,9 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
             placeholder="详细解析内容..."
             documentTitle={parsed?.title || ""}
             sectionName="详细解析"
+            imageBase={imageBase}
+            uploadDir={uploadDir}
+            backlinkMap={backlinkMap}
           />
         </div>
       )}
@@ -265,7 +357,7 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
       {!hiddenSections.has('我的作答') && (
         <div className="doc-section">
           <div className="doc-section-header">
-            <span className="doc-section-label" id="sec-4">我的作答</span>
+            <span className="doc-section-label" id={`${secIdPrefix}-sec-4`}>我的作答</span>
             <span className="doc-count">{notesLen.toLocaleString()} 字</span>
             <button className="btn btn-small btn-danger" style={{ marginLeft: 8, padding: '0 6px', fontSize: 14 }} onClick={() => {
               notesRef.current = '';
@@ -281,6 +373,9 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
             placeholder="记录你的作答思路、要点..."
             documentTitle={parsed?.title || ""}
             sectionName="我的作答"
+            imageBase={imageBase}
+            uploadDir={uploadDir}
+            backlinkMap={backlinkMap}
           />
         </div>
       )}
@@ -308,7 +403,7 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
 
       {/* Custom sections */}
       {customSections.map((s, i) => (
-        <div className="doc-section" key={i} id={`sec-c${i}`}>
+        <div className="doc-section" key={i} id={`${secIdPrefix}-sec-c${i}`}>
           <div className="doc-section-header">
             <input
               className="doc-custom-title"
@@ -342,6 +437,9 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
             placeholder="自定义内容..."
             documentTitle={parsed?.title || ""}
             sectionName={s.title}
+            imageBase={imageBase}
+            uploadDir={uploadDir}
+            backlinkMap={backlinkMap}
           />
         </div>
       ))}
@@ -355,6 +453,8 @@ export default function DocumentEditor({ markdown, filename, onSave }: Props) {
           }}
         >+ 添加自定义章节</button>
       </div>
+
+      <BacklinksPanel backlinks={backlinks} />
     </div>
   );
 }

@@ -1,0 +1,255 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 3,
+      "text": "架构的第一层是 Cordis 插件微内核`/ˈkɔː.diːs/`"
+    },
+    {
+      "level": 3,
+      "text": "第二层是 Profile 与组合包的分层组装"
+    },
+    {
+      "level": 3,
+      "text": "第三层是核心包与轮次流程"
+    },
+    {
+      "level": 3,
+      "text": "第四层是会话日志与「模型可见即已记录」不变量"
+    },
+    {
+      "level": 3,
+      "text": "第五层是能力 seam 与 agent preset"
+    },
+    {
+      "level": 3,
+      "text": "最后提 Code Mode SDK（PTC模式）"
+    },
+    {
+      "level": 3,
+      "text": "通俗易懂版"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、整体结构图"
+    },
+    {
+      "level": 3,
+      "text": "二、轮次流程（官方架构文档原文结构）"
+    },
+    {
+      "level": 3,
+      "text": "三、Cordis 四种事件分发模式"
+    },
+    {
+      "level": 3,
+      "text": "四、配置示例：用 patch 替换任意条目"
+    },
+    {
+      "level": 3,
+      "text": "五、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "六、与题库已有题目交叉引用"
+    },
+    {
+      "level": 3,
+      "text": "七、参考"
+    },
+    {
+      "level": 2,
+      "text": "Cordis 插件微内核-简述"
+    },
+    {
+      "level": 3,
+      "text": "⚙️ “什么都不干”的内核"
+    },
+    {
+      "level": 3,
+      "text": "🧩 “一切皆插件”的设计"
+    },
+    {
+      "level": 3,
+      "text": "⏳🧩 “时空可组合性”：Cordis 的核心创新"
+    },
+    {
+      "level": 3,
+      "text": "🔗 生态系统与应用"
+    },
+    {
+      "level": 2,
+      "text": "PTC 程序化工具调用"
+    },
+    {
+      "level": 3,
+      "text": "**什么是PTC（程序化工具调用）？**"
+    },
+    {
+      "level": 3,
+      "text": "**在DeepSeek Harness (dsh) 中如何体现？**"
+    },
+    {
+      "level": 3,
+      "text": "**与其他模式的区别**"
+    },
+    {
+      "level": 3,
+      "text": "**总结**"
+    },
+    {
+      "level": 2,
+      "text": "什么是 Agent Preset"
+    },
+    {
+      "level": 3,
+      "text": "**Agent Preset 的核心构成**"
+    },
+    {
+      "level": 3,
+      "text": "**Agent Preset 如何工作？**"
+    },
+    {
+      "level": 3,
+      "text": "**dsh 内置的四种 Agent Preset (运行模式)**"
+    },
+    {
+      "level": 3,
+      "text": "**如何自定义 Agent Preset？**"
+    },
+    {
+      "level": 2,
+      "text": "Seam（能力接缝）"
+    },
+    {
+      "level": 3,
+      "text": "**Seam 的三大角色**"
+    },
+    {
+      "level": 3,
+      "text": "**Seam 的核心特点**"
+    },
+    {
+      "level": 3,
+      "text": "**dsh 中的 Seam 示例**"
+    },
+    {
+      "level": 3,
+      "text": "**总结**"
+    },
+    {
+      "level": 3,
+      "text": "**如何替换三大模块**"
+    },
+    {
+      "level": 4,
+      "text": "**1. 替换 Subagent 模块**"
+    },
+    {
+      "level": 4,
+      "text": "**2. 替换记忆模块**"
+    },
+    {
+      "level": 4,
+      "text": "**3. 替换上下文压缩模块**"
+    },
+    {
+      "level": 3,
+      "text": "**为什么可以做到？**"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "详细解析": "详细解析",
+    "一、整体结构图": "一、整体结构图",
+    "二、轮次流程（官方架构文档原文结构）": "二、轮次流程（官方架构文档原文结构）",
+    "三、Cordis 四种事件分发模式": "三、Cordis 四种事件分发模式",
+    "四、配置示例：用 patch 替换任意条目": "四、配置示例：用 patch 替换任意条目",
+    "五、面试追问": "五、面试追问",
+    "六、与题库已有题目交叉引用": "六、与题库已有题目交叉引用",
+    "七、参考": "七、参考",
+    "Cordis 插件微内核": "Cordis 插件微内核-简述",
+    "Cordis 插件微内核-jian'shu": "Cordis 插件微内核-简述",
+    "Cordis 插件微内核-简述": "Cordis 插件微内核-简述",
+    "架构的第一层是 Cordis 插件微内核`/ˈkɔː.diːs/`": "架构的第一层是 Cordis 插件微内核`/ˈkɔː.diːs/`",
+    "第二层是 Profile 与组合包的分层组装": "第二层是 Profile 与组合包的分层组装",
+    "第三层是核心包与轮次流程": "第三层是核心包与轮次流程",
+    "第五层是能力 seam 与 agent preset": "第五层是能力 seam 与 agent preset",
+    "最后提 Code Mode": "最后提 Code Mode SDK（PTC模式）",
+    "**⚙️ “什么都不干”的内核**": "⚙️ “什么都不干”的内核",
+    "**🧩 “一切皆插件”的设计**": "🧩 “一切皆插件”的设计",
+    "**⏳🧩 “时空可组合性”：Cordis 的核心创新**": "⏳🧩 “时空可组合性”：Cordis 的核心创新",
+    "**🔗 生态系统与应用**": "🔗 生态系统与应用",
+    "⚙️ “什么都不干”的内核": "⚙️ “什么都不干”的内核",
+    "🧩 “一切皆插件”的设计": "🧩 “一切皆插件”的设计",
+    "⏳🧩 “时空可组合性”：Cordis 的核心创新": "⏳🧩 “时空可组合性”：Cordis 的核心创新",
+    "🔗 生态系统与应用": "🔗 生态系统与应用",
+    "通俗易懂版": "通俗易懂版",
+    "最后提 Code Mode，PTC模式": "最后提 Code Mode SDK（PTC模式）",
+    "最后提 Code ModePTC模式": "最后提 Code Mode SDK（PTC模式）",
+    "最后提 Code Mode（PTC模式": "最后提 Code Mode SDK（PTC模式）",
+    "最后提 Code Mode（PTC模式）": "最后提 Code Mode SDK（PTC模式）",
+    "最后提 Code Mode SDK（PTC模式）": "最后提 Code Mode SDK（PTC模式）",
+    "she'm": "PTC 程序化工具调用",
+    "什么是PTC": "PTC 程序化工具调用",
+    "什么是PTC（程序化工具调用）？": "**什么是PTC（程序化工具调用）？**",
+    "在DeepSeek Harness (dsh) 中如何体现？": "**在DeepSeek Harness (dsh) 中如何体现？**",
+    "与其他模式的区别": "**与其他模式的区别**",
+    "总结": "**总结**",
+    "Agent Preset 的核心构成": "**Agent Preset 的核心构成**",
+    "Agent Preset 如何工作？": "**Agent Preset 如何工作？**",
+    "dsh 内置的四种 Agent Preset (运行模式)": "**dsh 内置的四种 Agent Preset (运行模式)**",
+    "如何自定义 Agent Preset？": "**如何自定义 Agent Preset？**",
+    "什么是 Agent Preset": "什么是 Agent Preset",
+    "Agent Preset": "什么是 Agent Preset",
+    "**什么是PTC（程序化工具调用）？**": "**什么是PTC（程序化工具调用）？**",
+    "**在DeepSeek Harness (dsh) 中如何体现？**": "**在DeepSeek Harness (dsh) 中如何体现？**",
+    "**与其他模式的区别**": "**与其他模式的区别**",
+    "**总结**": "**总结**",
+    "**Agent Preset 的核心构成**": "**Agent Preset 的核心构成**",
+    "**Agent Preset 如何工作？**": "**Agent Preset 如何工作？**",
+    "**dsh 内置的四种 Agent Preset (运行模式)**": "**dsh 内置的四种 Agent Preset (运行模式)**",
+    "**如何自定义 Agent Preset？**": "**如何自定义 Agent Preset？**",
+    "PTC": "PTC 程序化工具调用",
+    "PTC，": "PTC 程序化工具调用",
+    "PTC，cxh": "PTC 程序化工具调用",
+    "PTC，c'x'hua": "PTC 程序化工具调用",
+    "PTC，程序化h": "PTC 程序化工具调用",
+    "PTC，程序化g'ju'diao'y": "PTC 程序化工具调用",
+    "PTC，程序化工具调用": "PTC 程序化工具调用",
+    "PTC程序化工具调用": "PTC 程序化工具调用",
+    "PTC 程序化工具调用": "PTC 程序化工具调用",
+    "**Seam 的三大角色**": "**Seam 的三大角色**",
+    "**Seam 的核心特点**": "**Seam 的核心特点**",
+    "**dsh 中的 Seam 示例**": "**dsh 中的 Seam 示例**",
+    "Seam（能力接缝）": "Seam（能力接缝）",
+    "**如何替换三大模块**": "**如何替换三大模块**",
+    "**1. 替换 Subagent 模块**": "**1. 替换 Subagent 模块**",
+    "**2. 替换记忆模块**": "**2. 替换记忆模块**",
+    "**3. 替换上下文压缩模块**": "**3. 替换上下文压缩模块**",
+    "**为什么可以做到？**": "**为什么可以做到？**",
+    "第四层是会话日志与「模型可见即已记录」不变量": "第四层是会话日志与「模型可见即已记录」不变量"
+  }
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CategoryInfo, TagInfo } from '@/lib/types';
 
 interface Props {
@@ -23,6 +23,11 @@ export default function GenerateForm({ categories, tags, onGenerated, onCancel, 
   const [generatingSince, setGeneratingSince] = useState<number>(0);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState('');
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 全局生成计数：started 表示本表单发起过生成，released 表示已完成/失败并上报过结束
+  const startedRef = useRef(false);
+  const releasedRef = useRef(false);
 
   const allTagNames = Array.from(new Set([...tags.map((t) => t.name), ...selectedTags])).sort();
 
@@ -35,6 +40,16 @@ export default function GenerateForm({ categories, tags, onGenerated, onCancel, 
   const toggleTag = (tag: string) => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
   const addNewTag = () => { if (newTagInput.trim() && !selectedTags.includes(newTagInput.trim())) setSelectedTags((prev) => [...prev, newTagInput.trim()]); setNewTagInput(''); };
 
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  };
+
+  const stopGenerating = () => {
+    releasedRef.current = true;
+    setGenerating(false);
+    onGeneratingChange(false);
+  };
+
   const handleGenerate = async () => {
     if (!question.trim()) { setError('请输入题目描述'); return; }
     setError('');
@@ -42,6 +57,8 @@ export default function GenerateForm({ categories, tags, onGenerated, onCancel, 
     const start = Date.now();
     setGeneratingSince(start);
     setElapsed(0);
+    startedRef.current = true;
+    releasedRef.current = false;
     onGeneratingChange(true);
     try {
       const res = await fetch('/api/generate', {
@@ -50,11 +67,59 @@ export default function GenerateForm({ categories, tags, onGenerated, onCancel, 
         body: JSON.stringify({ question: question.trim(), category: category || '', tags: selectedTags, extraRequirements: extraRequirements.trim(), includeAnswer, includeAnalysis }),
       });
       const json = await res.json();
-      if (json.success) { onGenerated(json.filePath, json.content); }
-      else { setError(json.error || '生成失败'); if (json.output) console.error('Claude output:', json.output); }
-    } catch (e: any) { setError('请求失败: ' + e.message); }
-    finally { setGenerating(false); onGeneratingChange(false); }
+      if (json.success && json.taskId) {
+        setTaskId(json.taskId);
+        // 提交即返回，轮询任务状态直到收敛
+        pollRef.current = setInterval(async () => {
+          try {
+            const r = await fetch(`/api/tasks/${json.taskId}`);
+            const data = await r.json();
+            if (!data.success) return;
+            const status = data.data.status;
+            if (status === 'success') {
+              stopPolling();
+              stopGenerating();
+              onGenerated(data.data.filePath, data.data.content || '');
+            } else if (status === 'fail') {
+              stopPolling();
+              stopGenerating();
+              setError(data.data.error || '生成失败');
+            } else if (Date.now() - start > 35 * 60 * 1000) {
+              stopPolling();
+              stopGenerating();
+              setError('任务超时未完成，请到操作日志查看状态');
+            }
+          } catch {}
+        }, 5000);
+      } else {
+        setError(json.error || '生成失败');
+        stopGenerating();
+      }
+    } catch (e: any) {
+      setError('请求失败: ' + e.message);
+      stopGenerating();
+    }
   };
+
+  const handleAbandon = async () => {
+    if (!taskId) return;
+    if (!confirm('确认放弃生成？已消耗的额度不会退还。')) return;
+    try {
+      await fetch(`/api/tasks/${taskId}`, { method: 'POST' });
+    } catch {}
+    stopPolling();
+    stopGenerating();
+    setError('已放弃生成');
+  };
+
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      // 卸载时仍在生成中才释放全局计数（完成/失败路径已通过 stopGenerating 上报）
+      if (startedRef.current && !releasedRef.current) onGeneratingChange(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="gen-form">
@@ -171,6 +236,11 @@ export default function GenerateForm({ categories, tags, onGenerated, onCancel, 
             <p className="gen-hint">{generating ? '正在分析题目、撰写答案并更新索引…' : '生成后仍可在编辑器中继续调整内容'}</p>
           )}
         </div>
+        {generating && taskId && (
+          <button type="button" className="btn btn-secondary btn-small" onClick={handleAbandon} style={{ marginRight: 10 }}>
+            放弃
+          </button>
+        )}
         <button className="gen-submit" onClick={handleGenerate} disabled={generating || !question.trim()}>
           {generating ? (
             <><span className="gen-spinner" />生成中 · {Math.floor(elapsed / 60)}分{elapsed % 60}秒</>
