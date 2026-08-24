@@ -8,25 +8,26 @@ const PROJECT_ROOT = process.cwd() + '/..';
  * 处理高亮语法 ==text==，修复表格/代码块与后续标题间的空行，
  * 修正 marked.js 在代码块末尾保留的换行。
  */
-/** 剥离标题/锚点文本中的 markdown 格式，得到与 DOM textContent 一致的纯文本 */
-export function stripMdText(s: string): string {
-  return s
-    .replace(/\[\[([^\]]+)\]\]/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/==([^=]+)==/g, '$1')
-    .replace(/[*_~]/g, '')
-    .trim();
+
+// 仅对代码块之外的内容执行替换，避免代码示例里的 ++/== 被误转
+function replaceOutsideCodeFences(md: string, regexp: RegExp, replace: (match: string, inner: string) => string): string {
+  const parts = md.split('```');
+  return parts
+    .map((part, index) => (index % 2 === 1 ? part : part.replace(regexp, replace)))
+    .join('```');
 }
 
 export function mdToHtml(md: string): string {
-  const preprocessed = md
+  let preprocessed = md
     .replace(/<\/(table|pre)>[ \t]*(?:\r?\n[ \t]*)?(?=#{1,6}[ \t]+)/gi, '</$1>\n\n')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>')
     .replace(/\[\[([^\]]+)\]\]/g, (_m, wiki: string) => {
       const safe = wiki.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
       return `<a class="wiki-link" data-wiki="${safe}">[[${safe}]]</a>`;
     });
+  // 高亮 ==text== 与历史下划线 ++text++（新版序列化为 <u>，见 WysiwygEditor 的 ColoredUnderline）
+  // 都只在代码块之外替换，避免代码示例里的比较表达式（a == b）或自增运算被误转
+  preprocessed = replaceOutsideCodeFences(preprocessed, /==(.+?)==/g, (_m, inner: string) => `<mark>${inner}</mark>`);
+  preprocessed = replaceOutsideCodeFences(preprocessed, /\+{2}([^+\n][^+\n]*?)\+{2}/g, (_m, inner: string) => `<u>${inner}</u>`);
   let html = marked.parse(preprocessed, { breaks: true }) as string;
   html = html.replace(/\n(<\/code><\/pre>)/g, '$1');
   return html;

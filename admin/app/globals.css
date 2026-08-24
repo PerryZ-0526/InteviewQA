@@ -256,6 +256,94 @@ body {
   color: #e03131;
 }
 
+/* 侧边栏拖拽移动（分类题目 → 分类区块） */
+[data-sidebar-draggable] {
+  touch-action: none;
+  cursor: grab;
+}
+.sidebar-cat {
+  position: relative;
+  border-radius: var(--radius);
+  transition: background 0.15s;
+}
+.sidebar-cat.drag-target-cat {
+  background: var(--sidebar-hover);
+}
+.sidebar-item.drag-source {
+  opacity: 0.35;
+}
+.sidebar-drop-indicator {
+  position: absolute;
+  left: 20px;
+  right: 8px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(117, 99, 168, 0.18);
+  pointer-events: none;
+}
+.sidebar-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #433855;
+  background: var(--sidebar-active);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(67, 56, 85, 0.22);
+  pointer-events: none;
+  will-change: transform;
+}
+/* 拖拽期间：非分类区块变暗（提示不可落点），分类区块保持正常 */
+body.sidebar-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+body.sidebar-dragging .sidebar-section {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+body.sidebar-dragging .sidebar-cats {
+  opacity: 1;
+}
+body.sidebar-dragging [data-sidebar-draggable] {
+  cursor: grabbing;
+}
+/* 标签栏右侧固定操作区：横向滚动时保持可见 */
+.tab-bar-actions {
+  position: sticky;
+  right: 0;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 8px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-left: 1px solid #e7e5ea;
+}
+.tab-close-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tab-close-all:hover {
+  background: #ffe3e3;
+  color: #e03131;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -557,7 +645,7 @@ body {
 .markdown-preview h3 { font-size: 1.15em; margin: 0.6em 0 0.2em; }
 .markdown-preview p { margin: 0.5em 0; }
 .markdown-preview code { background: #f1f3f5; padding: 2px 6px; border-radius: 3px; font-family: var(--font-mono); font-size: 0.9em; }
-.markdown-preview pre { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: var(--radius); overflow-x: auto; margin: 12px 0; font-size: 13px; }
+.markdown-preview pre { background: var(--code-bg); color: var(--code-fg); border: 1px solid var(--code-border); padding: 16px; border-radius: var(--radius); overflow-x: auto; margin: 12px 0; font-size: 13px; }
 .markdown-preview pre code { background: none; padding: 0; color: inherit; }
 .markdown-preview table { border-collapse: collapse; width: 100%; margin: 12px 0; }
 .markdown-preview th, .markdown-preview td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-size: 14px; }
@@ -980,6 +1068,166 @@ body {
   border-radius: 4px;
 }
 
+/* ---- 颜色拆分按钮（下划线/字体/标题颜色共用）：单控件内含颜色选择 ---- */
+.tb-ul-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tb-ul-main {
+  width: 30px;
+  border-radius: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.tb-ul-glyph {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.tb-ul-bar {
+  width: 14px;
+  height: 2.5px;
+  border-radius: 1.25px;
+}
+
+.tb-ul-caret {
+  width: 14px;
+  border-radius: 0;
+  color: #9a9a9a;
+  border-left: 1px solid #ececec;
+}
+
+/* 悬停时整体高亮，视觉上是一个控件 */
+.tb-ul-wrap:hover .tb-ul-main:not(.active),
+.tb-ul-wrap:hover .tb-ul-caret {
+  background: #e9ecef;
+}
+
+/* ---- 颜色选择弹出层（下划线/字体/标题颜色共用） ---- */
+.tb-ul-pop {
+  position: fixed;
+  z-index: 300;
+  width: 216px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(30, 30, 45, 0.16), 0 2px 6px rgba(30, 30, 45, 0.08);
+}
+
+.tb-ul-pop-title {
+  padding: 1px 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a9a9a;
+  letter-spacing: 0.4px;
+}
+
+.tb-ul-pop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.tb-ul-swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: #4f4f4f;
+  transition: background 0.12s;
+}
+
+.tb-ul-swatch:hover {
+  background: #f4f4f7;
+}
+
+.tb-ul-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s;
+}
+
+.tb-ul-swatch:hover .tb-ul-dot {
+  transform: scale(1.1);
+}
+
+.tb-ul-swatch.current .tb-ul-dot {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary);
+}
+
+.tb-ul-swatch.current .tb-ul-name {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ---- 代码块配色主题选择列表（代码块按钮 caret 弹层）---- */
+.tb-code-theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tb-code-theme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: #4f4f4f;
+  transition: background 0.12s;
+}
+
+.tb-code-theme:hover {
+  background: #f4f4f7;
+}
+
+.tb-code-theme-chip {
+  width: 28px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  transition: transform 0.12s;
+}
+
+.tb-code-theme:hover .tb-code-theme-chip {
+  transform: scale(1.08);
+}
+
+.tb-code-theme.current .tb-code-theme-chip {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary);
+}
+
+.tb-code-theme.current .tb-code-theme-name {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 .wysiwyg-content {
   min-height: 150px;
   padding: 16px 20px;
@@ -1047,9 +1295,75 @@ body {
   color: #555;
 }
 
+/* ---- 代码块配色主题（浅灰 / 深灰 / 纯黑，前端可切换）----
+   由 <html> 的 data-code-theme 属性控制（见 lib/codeThemes.ts，选择持久化）。
+   token 颜色全部用 CSS 变量驱动：切换/新增主题只需改变量，token 选择器不用动。
+   三套色板取自 highlight.js 官方主题：GitHub Light / GitHub Dark Dimmed / GitHub Dark。 */
+:root {
+  /* 浅灰（GitHub Light，默认） */
+  --code-bg: #f6f8fa;
+  --code-fg: #1f2328;
+  --code-border: #e8eaed;
+  --hl-keyword: #d73a49;
+  --hl-title: #6f42c1;
+  --hl-ident: #005cc5;
+  --hl-string: #032f62;
+  --hl-builtin: #e36209;
+  --hl-comment: #6a737d;
+  --hl-tag: #22863a;
+  --hl-subst: #1f2328;
+  --hl-bullet: #735c0f;
+  --hl-add-fg: #116329;
+  --hl-add-bg: #dafbe1;
+  --hl-del-fg: #82071e;
+  --hl-del-bg: #ffebe9;
+}
+
+/* 深灰（GitHub Dark Dimmed） */
+[data-code-theme='dark'] {
+  --code-bg: #22272e;
+  --code-fg: #adbac7;
+  --code-border: #373e47;
+  --hl-keyword: #f47067;
+  --hl-title: #dcbdfb;
+  --hl-ident: #6cb6ff;
+  --hl-string: #96d0ff;
+  --hl-builtin: #f69d50;
+  --hl-comment: #768390;
+  --hl-tag: #8ddb8c;
+  --hl-subst: #adbac7;
+  --hl-bullet: #eac55f;
+  --hl-add-fg: #b4f1b4;
+  --hl-add-bg: #1b4721;
+  --hl-del-fg: #ffd8d3;
+  --hl-del-bg: #78191b;
+}
+
+/* 纯黑（GitHub Dark） */
+[data-code-theme='black'] {
+  --code-bg: #0d1117;
+  --code-fg: #c9d1d9;
+  --code-border: #30363d;
+  --hl-keyword: #ff7b72;
+  --hl-title: #d2a8ff;
+  --hl-ident: #79c0ff;
+  --hl-string: #a5d6ff;
+  --hl-builtin: #ffa657;
+  --hl-comment: #8b949e;
+  --hl-tag: #7ee787;
+  --hl-subst: #c9d1d9;
+  --hl-bullet: #f2cc60;
+  --hl-add-fg: #aff5b4;
+  --hl-add-bg: #033a16;
+  --hl-del-fg: #ffdcd7;
+  --hl-del-bg: #67060c;
+}
+
 .tiptap-editor pre {
-  background: #1e1e2e;
-  color: #cdd6f4;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: 1px solid var(--code-border);
+  caret-color: var(--code-fg); /* 暗色主题下光标可见 */
   padding: 14px 18px;
   border-radius: var(--radius);
   overflow-x: auto;
@@ -1063,6 +1377,113 @@ body {
   color: inherit;
   padding: 0;
   font-size: inherit;
+}
+
+/* ---- lowlight/highlight.js token 配色（颜色由上方主题变量驱动，仅作用于代码块内）---- */
+.tiptap-editor pre .hljs-doctag,
+.tiptap-editor pre .hljs-keyword,
+.tiptap-editor pre .hljs-meta .hljs-keyword,
+.tiptap-editor pre .hljs-template-tag,
+.tiptap-editor pre .hljs-template-variable,
+.tiptap-editor pre .hljs-type,
+.tiptap-editor pre .hljs-variable.language_ { color: var(--hl-keyword); }
+
+.tiptap-editor pre .hljs-title,
+.tiptap-editor pre .hljs-title.class_,
+.tiptap-editor pre .hljs-title.class_.inherited__,
+.tiptap-editor pre .hljs-title.function_ { color: var(--hl-title); }
+
+.tiptap-editor pre .hljs-attr,
+.tiptap-editor pre .hljs-attribute,
+.tiptap-editor pre .hljs-literal,
+.tiptap-editor pre .hljs-meta,
+.tiptap-editor pre .hljs-number,
+.tiptap-editor pre .hljs-operator,
+.tiptap-editor pre .hljs-variable,
+.tiptap-editor pre .hljs-selector-attr,
+.tiptap-editor pre .hljs-selector-class,
+.tiptap-editor pre .hljs-selector-id { color: var(--hl-ident); }
+
+.tiptap-editor pre .hljs-regexp,
+.tiptap-editor pre .hljs-string,
+.tiptap-editor pre .hljs-meta .hljs-string { color: var(--hl-string); }
+
+.tiptap-editor pre .hljs-built_in,
+.tiptap-editor pre .hljs-symbol { color: var(--hl-builtin); }
+
+.tiptap-editor pre .hljs-code,
+.tiptap-editor pre .hljs-comment,
+.tiptap-editor pre .hljs-formula { color: var(--hl-comment); }
+
+.tiptap-editor pre .hljs-name,
+.tiptap-editor pre .hljs-quote,
+.tiptap-editor pre .hljs-selector-tag,
+.tiptap-editor pre .hljs-selector-pseudo { color: var(--hl-tag); }
+
+.tiptap-editor pre .hljs-subst { color: var(--hl-subst); }
+
+.tiptap-editor pre .hljs-section { color: var(--hl-ident); font-weight: 700; }
+
+.tiptap-editor pre .hljs-bullet { color: var(--hl-bullet); }
+
+.tiptap-editor pre .hljs-emphasis { color: var(--hl-subst); font-style: italic; }
+
+.tiptap-editor pre .hljs-strong { color: var(--hl-subst); font-weight: 700; }
+
+.tiptap-editor pre .hljs-addition { color: var(--hl-add-fg); background-color: var(--hl-add-bg); }
+
+.tiptap-editor pre .hljs-deletion { color: var(--hl-del-fg); background-color: var(--hl-del-bg); }
+
+/* ---- 代码块节点视图：外层容器（背景/边框）+ 顶部语言标注栏 + 内部 pre ---- */
+.tiptap-editor .code-block-view {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius);
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.tiptap-editor .code-block-view pre.code-block {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 18px 14px;
+}
+
+.code-block-head {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px 0;
+}
+
+.code-block-lang {
+  max-width: 140px;
+  padding: 1px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--code-fg);
+  opacity: 0.65;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: opacity 0.12s, border-color 0.12s;
+}
+
+.code-block-lang:hover,
+.code-block-lang:focus-visible {
+  opacity: 1;
+  border-color: var(--code-border);
+  outline: none;
+}
+
+.code-block-lang-label {
+  padding: 1px 6px;
+  color: var(--code-fg);
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .tiptap-editor code {
@@ -1081,7 +1502,7 @@ body {
 }
 
 .tiptap-editor u {
-  text-decoration-thickness: 1.5px;
+  text-decoration-thickness: 2px;
   text-underline-offset: 0.24em;
   text-decoration-skip-ink: auto;
 }

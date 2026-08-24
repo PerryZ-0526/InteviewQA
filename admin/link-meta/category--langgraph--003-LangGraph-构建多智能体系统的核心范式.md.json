@@ -1,0 +1,491 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "🧠 三大经典协作范式"
+    },
+    {
+      "level": 3,
+      "text": "🚀 高级与衍生范式"
+    },
+    {
+      "level": 3,
+      "text": "💡 核心设计原则"
+    },
+    {
+      "level": 2,
+      "text": "结构图"
+    },
+    {
+      "level": 3,
+      "text": "1. 主管模式（Supervisor Pattern）—— 星型调度"
+    },
+    {
+      "level": 3,
+      "text": "🔄 闭环的主管模式结构图"
+    },
+    {
+      "level": 3,
+      "text": "🛑 循环退出的三种“终止条件”"
+    },
+    {
+      "level": 3,
+      "text": "🧠 最精妙的点：状态（State）的“累积汇总”而非“覆盖”"
+    },
+    {
+      "level": 3,
+      "text": "2. 群组模式（Swarm Pattern）—— 对等网络"
+    },
+    {
+      "level": 3,
+      "text": "3. 层级模式（Hierarchical Pattern）—— 树状分解"
+    },
+    {
+      "level": 3,
+      "text": "4. 路由器模式（Router Pattern）—— 并行扇出/扇入"
+    },
+    {
+      "level": 3,
+      "text": "5. 规划-执行-聚合模式（Plan-Execute-Aggregate）—— 闭环迭代"
+    },
+    {
+      "level": 3,
+      "text": "💡 选型速记口诀（供参考）"
+    },
+    {
+      "level": 2,
+      "text": "supervisor & swam"
+    },
+    {
+      "level": 3,
+      "text": "1. 决策机制：计划 vs. 应急"
+    },
+    {
+      "level": 3,
+      "text": "2. 状态可见性：上帝视角 vs. 任务视角"
+    },
+    {
+      "level": 3,
+      "text": "3. 流程稳定性：写死 vs. 失控边界"
+    },
+    {
+      "level": 3,
+      "text": "4. 扩展性与瓶颈"
+    },
+    {
+      "level": 3,
+      "text": "🧭 决策速查表（拿来即用）"
+    },
+    {
+      "level": 3,
+      "text": "⚠️ 一个反直觉的陷阱"
+    },
+    {
+      "level": 2,
+      "text": "主管模式本身是带循环的，那么其下的专家智能体也带循环吗？"
+    },
+    {
+      "level": 3,
+      "text": "形态一：专家是“ReAct 智能体”（最主流）"
+    },
+    {
+      "level": 3,
+      "text": "形态二：专家本身是“嵌套子图”"
+    },
+    {
+      "level": 3,
+      "text": "形态三：专家内部是“简单的多步顺序执行”（无复杂循环）"
+    },
+    {
+      "level": 3,
+      "text": "⚙️ 执行逻辑的关键规则：原子性（Atomicity）"
+    },
+    {
+      "level": 3,
+      "text": "🚨 实战中的两大“坑”与对策"
+    },
+    {
+      "level": 3,
+      "text": "💡 总结与建议"
+    },
+    {
+      "level": 2,
+      "text": "supervisor的带循环专家Agent的三形态混合"
+    },
+    {
+      "level": 3,
+      "text": "🧩 混血架构全景图（主管 + 三形态混合）"
+    },
+    {
+      "level": 3,
+      "text": "📋 三种形态在“混血系统”中的具体职责划分"
+    },
+    {
+      "level": 3,
+      "text": "🚀 为什么要混合？（三大核心优势）"
+    },
+    {
+      "level": 3,
+      "text": "🧠 主管如何“看待”这些形态各异的专家？"
+    },
+    {
+      "level": 3,
+      "text": "⚙️ 实现上的技术要点（避坑指南）"
+    },
+    {
+      "level": 3,
+      "text": "💡 总结"
+    },
+    {
+      "level": 2,
+      "text": "supervisor 子 Agent 之间绝对可以进行通信"
+    },
+    {
+      "level": 3,
+      "text": "1. 通信机制：间接的“黑板报”模式"
+    },
+    {
+      "level": 3,
+      "text": "2. 两个关键维度：数据流 vs. 控制流"
+    },
+    {
+      "level": 3,
+      "text": "3. 实战例子：代码审查场景"
+    },
+    {
+      "level": 3,
+      "text": "4. 为什么你不能让子 Agent 直接通信？（设计边界）"
+    },
+    {
+      "level": 3,
+      "text": "5. 那么，shared 和 private 到底怎么用？"
+    },
+    {
+      "level": 3,
+      "text": "6. 这个机制与“群组模式”的本质区别"
+    },
+    {
+      "level": 3,
+      "text": "💡 总结一句"
+    },
+    {
+      "level": 2,
+      "text": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐"
+    },
+    {
+      "level": 3,
+      "text": "📚 理论基础：从“信息不对称”到“主管-代理问题”"
+    },
+    {
+      "level": 3,
+      "text": "🧪 前沿研究：探索“透明度”的价值"
+    },
+    {
+      "level": 3,
+      "text": "🏗️ 工程实践：如何有选择地共享？"
+    },
+    {
+      "level": 3,
+      "text": "⚖️ 何时需要透明度：一个决策框架"
+    },
+    {
+      "level": 3,
+      "text": "代表性研究论文"
+    },
+    {
+      "level": 3,
+      "text": "🌟 高关注度开源项目"
+    },
+    {
+      "level": 2,
+      "text": "TJ-EDU--AGENT 架构设计再思考"
+    },
+    {
+      "level": 3,
+      "text": "一、总体评估：要不要用 Supervisor"
+    },
+    {
+      "level": 3,
+      "text": "二、工具集层级梳理"
+    },
+    {
+      "level": 4,
+      "text": "1. 基础工具层（原子能力，无智能，被专家调用）"
+    },
+    {
+      "level": 4,
+      "text": "2. 专家 Agent 层（封装工具 + 提示词 + 内部循环）"
+    },
+    {
+      "level": 4,
+      "text": "3. 调度层"
+    },
+    {
+      "level": 3,
+      "text": "三、方案一：入口 Router + 内层 Supervisor 混合架构（推荐）"
+    },
+    {
+      "level": 4,
+      "text": "3.1 架构图"
+    },
+    {
+      "level": 4,
+      "text": "3.2 数据流转 &amp; 决策流转"
+    },
+    {
+      "level": 4,
+      "text": "3.3 专家智能体数量、形态及理由"
+    },
+    {
+      "level": 4,
+      "text": "3.4 专家智能体之间的通信协作"
+    },
+    {
+      "level": 4,
+      "text": "3.5 Supervisor Prompt 设计（按层次）"
+    },
+    {
+      "level": 2,
+      "text": "你的职责"
+    },
+    {
+      "level": 2,
+      "text": "可选专家"
+    },
+    {
+      "level": 2,
+      "text": "可用共享信息"
+    },
+    {
+      "level": 2,
+      "text": "调度规则"
+    },
+    {
+      "level": 2,
+      "text": "终止规则"
+    },
+    {
+      "level": 2,
+      "text": "输出格式"
+    },
+    {
+      "level": 4,
+      "text": "3.6 终止条件设计"
+    },
+    {
+      "level": 4,
+      "text": "3.7 State 设计（shared / private）"
+    },
+    {
+      "level": 3,
+      "text": "四、方案二：Router + 去中心化专家网络（Swarm 变体，备选）"
+    },
+    {
+      "level": 4,
+      "text": "4.1 架构图"
+    },
+    {
+      "level": 4,
+      "text": "4.2 数据流转 &amp; 决策流转"
+    },
+    {
+      "level": 4,
+      "text": "4.3 专家设计"
+    },
+    {
+      "level": 4,
+      "text": "4.4 终止条件"
+    },
+    {
+      "level": 4,
+      "text": "4.5 State 设计（简要）"
+    },
+    {
+      "level": 3,
+      "text": "五、子智能体内部决策要不要共享一部分给 Supervisor"
+    },
+    {
+      "level": 4,
+      "text": "5.1 为什么要共享"
+    },
+    {
+      "level": 4,
+      "text": "5.2 共享什么"
+    },
+    {
+      "level": 4,
+      "text": "5.3 如何衡量真的提升了精度"
+    },
+    {
+      "level": 3,
+      "text": "六、总结建议"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "详细解析": "详细解析",
+    "🧠 三大经典协作范式": "🧠 三大经典协作范式",
+    "🚀 高级与衍生范式": "🚀 高级与衍生范式",
+    "💡 核心设计原则": "💡 核心设计原则",
+    "结构图": "结构图",
+    "主管模式（Supervisor Pattern）—— 星型调度": "1. 主管模式（Supervisor Pattern）—— 星型调度",
+    "2. 群组模式（Swarm Pattern）—— 链式移交": "2. 群组模式（Swarm Pattern）—— 对等网络",
+    "3. 层级模式（Hierarchical Pattern）—— 树状分解": "3. 层级模式（Hierarchical Pattern）—— 树状分解",
+    "4. 路由器模式（Router Pattern）—— 并行扇出/扇入": "4. 路由器模式（Router Pattern）—— 并行扇出/扇入",
+    "5. 规划-执行-聚合模式（Plan-Execute-Aggregate）—— 闭环迭代": "5. 规划-执行-聚合模式（Plan-Execute-Aggregate）—— 闭环迭代",
+    "💡 选型速记口诀（供参考）": "💡 选型速记口诀（供参考）",
+    "1.主管模式（Supervisor Pattern）—— 星型调度": "1. 主管模式（Supervisor Pattern）—— 星型调度",
+    "1. 主管模式（Supervisor Pattern）—— 星型调度": "1. 主管模式（Supervisor Pattern）—— 星型调度",
+    "🔄 真实的主管模式结构图（带闭环）": "🔄 闭环的主管模式结构图",
+    "🛑 循环退出的三种“终止条件”": "🛑 循环退出的三种“终止条件”",
+    "🔄 真实的主管模式结构图": "🔄 闭环的主管模式结构图",
+    "🔄 闭环的主管模式结构图": "🔄 闭环的主管模式结构图",
+    "🧠 最精妙的点：状态（State）的“累积汇总”而非“覆盖”": "🧠 最精妙的点：状态（State）的“累积汇总”而非“覆盖”",
+    "2. 群组模式（Swarm Pattern）—— 对等网络": "2. 群组模式（Swarm Pattern）—— 对等网络",
+    "su'p'er": "supervisor & swam",
+    "supervi": "supervisor & swam",
+    "supervisor": "supervisor & swam",
+    "supervisor &": "supervisor & swam",
+    "supervisor vs": "supervisor & swam",
+    "supervisor vs s'wa": "supervisor & swam",
+    "supervisor vs s'wa'm": "supervisor & swam",
+    "supervisor vs swam": "supervisor & swam",
+    "supervisor  swam": "supervisor & swam",
+    "supervisor & swam": "supervisor & swam",
+    "1. 决策机制：计划 vs. 应急": "1. 决策机制：计划 vs. 应急",
+    "3. 流程稳定性：写死 vs. 失控边界": "3. 流程稳定性：写死 vs. 失控边界",
+    "4. 扩展性与瓶颈": "4. 扩展性与瓶颈",
+    "🧭 决策速查表（拿来即用）": "🧭 决策速查表（拿来即用）",
+    "⚠️ 一个反直觉的陷阱": "⚠️ 一个反直觉的陷阱",
+    "主管模式本身是带循环的，那么其下的专家智能体也带循环吗？": "主管模式本身是带循环的，那么其下的专家智能体也带循环吗？",
+    "形态一：专家是“ReAct 智能体”（最主流）": "形态一：专家是“ReAct 智能体”（最主流）",
+    "形态二：专家本身是“嵌套子图（Subgraph）”": "形态二：专家本身是“嵌套子图”",
+    "形态三：专家内部是“简单的多步顺序执行”（无复杂循环）": "形态三：专家内部是“简单的多步顺序执行”（无复杂循环）",
+    "⚙️ 执行逻辑的关键规则：原子性（Atomicity）": "⚙️ 执行逻辑的关键规则：原子性（Atomicity）",
+    "🚨 实战中的两大“坑”与对策": "🚨 实战中的两大“坑”与对策",
+    "💡 总结与建议": "💡 总结与建议",
+    "2. 状态可见性：上帝视角 vs. 任务视角": "2. 状态可见性：上帝视角 vs. 任务视角",
+    "san'xing't": "supervisor的带循环专家Agent的三形态混合",
+    "三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "s三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "su三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "sup三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "sup'er三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervi三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "zhuansupervisor 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "zhuan'jiasupervisor 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "专家智能体supervisor 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "专supervisor 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的dai'xun'h 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环zhuan'j 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环专家agent 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环专家agent三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环专家Agent三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环专家Agent 三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "supervisor的带循环专家Agent的三形态混合": "supervisor的带循环专家Agent的三形态混合",
+    "🧩 混血架构全景图（主管 + 三形态混合）": "🧩 混血架构全景图（主管 + 三形态混合）",
+    "📋 三种形态在“混血系统”中的具体职责划分": "📋 三种形态在“混血系统”中的具体职责划分",
+    "🚀 为什么要混合？（三大核心优势）": "🚀 为什么要混合？（三大核心优势）",
+    "🧠 主管如何“看待”这些形态各异的专家？": "🧠 主管如何“看待”这些形态各异的专家？",
+    "⚙️ 实现上的技术要点（避坑指南）": "⚙️ 实现上的技术要点（避坑指南）",
+    "💡 总结": "💡 总结",
+    "形态二：专家本身是“嵌套子图”": "形态二：专家本身是“嵌套子图”",
+    "super": "supervisor 子 Agent 之间绝对可以进行通信",
+    "supervisor模型下子 Agent 之间绝对可以进行通信": "supervisor 子 Agent 之间绝对可以进行通信",
+    "supervisor子 Agent 之间绝对可以进行通信": "supervisor 子 Agent 之间绝对可以进行通信",
+    "supervisor 子 Agent 之间绝对可以进行通信": "supervisor 子 Agent 之间绝对可以进行通信",
+    "1. 通信机制：间接的“黑板报”模式": "1. 通信机制：间接的“黑板报”模式",
+    "2. 两个关键维度：数据流 vs. 控制流": "2. 两个关键维度：数据流 vs. 控制流",
+    "3. 实战例子：代码审查场景": "3. 实战例子：代码审查场景",
+    "4. 为什么你不能让子 Agent 直接通信？（设计边界）": "4. 为什么你不能让子 Agent 直接通信？（设计边界）",
+    "5. 那么，shared 和 private 到底怎么用？": "5. 那么，shared 和 private 到底怎么用？",
+    "6. 这个机制与“群组模式”的本质区别": "6. 这个机制与“群组模式”的本质区别",
+    "💡 总结一句": "💡 总结一句",
+    "zi": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的hzong'j": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容shi": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否zhi'de": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被su": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被sup": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被super": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被supervisor看到？": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "📚 理论基础：从“信息不对称”到“主管-代理问题”": "📚 理论基础：从“信息不对称”到“主管-代理问题”",
+    "🧪 前沿研究：探索“透明度”的价值": "🧪 前沿研究：探索“透明度”的价值",
+    "🏗️ 工程实践：如何有选择地共享？": "🏗️ 工程实践：如何有选择地共享？",
+    "⚖️ 何时需要透明度：一个决策框架": "⚖️ 何时需要透明度：一个决策框架",
+    "代表性研究论文": "代表性研究论文",
+    "🌟 高关注度开源项目": "🌟 高关注度开源项目",
+    "子agent内部的中间思考内容是否值得被supervisor看到？x'x": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/ying'beu'i被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/ying'bei被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/应被被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/应被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/应gai被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/应该被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否值得/应该 被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐": "子agent内部的中间思考内容是否 值得/应该 被supervisor看到？⭐",
+    "TJ-": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT 架构设计": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT L架构设计": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT 架构设计SIK1": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT 架构设计zai": "TJ-EDU--AGENT 架构设计再思考",
+    "TJ-EDU--AGENT 架构设计再思考": "TJ-EDU--AGENT 架构设计再思考",
+    "二、工具集层级梳理": "二、工具集层级梳理",
+    "1. 基础工具层（原子能力，无智能，被专家调用）": "1. 基础工具层（原子能力，无智能，被专家调用）",
+    "2. 专家 Agent 层（封装工具 + 提示词 + 内部循环）": "2. 专家 Agent 层（封装工具 + 提示词 + 内部循环）",
+    "3. 调度层": "3. 调度层",
+    "三、方案一：入口 Router + 内层 Supervisor 混合架构（推荐）": "三、方案一：入口 Router + 内层 Supervisor 混合架构（推荐）",
+    "3.1 架构图": "3.1 架构图",
+    "3.2 数据流转 &amp; 决策流转": "3.2 数据流转 &amp; 决策流转",
+    "3.3 专家智能体数量、形态及理由": "3.3 专家智能体数量、形态及理由",
+    "3.4 专家智能体之间的通信协作": "3.4 专家智能体之间的通信协作",
+    "3.5 Supervisor Prompt 设计（按层次）": "3.5 Supervisor Prompt 设计（按层次）",
+    "你的职责": "你的职责",
+    "可选专家": "可选专家",
+    "可用共享信息": "可用共享信息",
+    "调度规则": "调度规则",
+    "终止规则": "终止规则",
+    "输出格式": "输出格式",
+    "3.6 终止条件设计": "3.6 终止条件设计",
+    "3.7 State 设计（shared / private）": "3.7 State 设计（shared / private）",
+    "四、方案二：Router + 去中心化专家网络（Swarm 变体，备选）": "四、方案二：Router + 去中心化专家网络（Swarm 变体，备选）",
+    "4.1 架构图": "4.1 架构图",
+    "4.2 数据流转 &amp; 决策流转": "4.2 数据流转 &amp; 决策流转",
+    "4.3 专家设计": "4.3 专家设计",
+    "4.4 终止条件": "4.4 终止条件",
+    "4.5 State 设计（简要）": "4.5 State 设计（简要）",
+    "六、总结建议": "六、总结建议",
+    "一、总体评估：要不要用 Supervisor": "一、总体评估：要不要用 Supervisor",
+    "五、子智能体内部决策要不要共享一部分给 Supervisor": "五、子智能体内部决策要不要共享一部分给 Supervisor",
+    "5.1 为什么要共享": "5.1 为什么要共享",
+    "5.2 共享什么": "5.2 共享什么",
+    "5.3 如何衡量真的提升了精度": "5.3 如何衡量真的提升了精度"
+  }
+}

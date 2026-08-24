@@ -13,7 +13,8 @@ register('question', (container, { category, filename }) => {
 
   // 渲染 markdown 并将文档内相对图片路径 images/xxx.png 解析为 /categories/<category>/images/xxx.png
   const renderMd = (md) => {
-    const html = marked.parse(md || '');
+    // 旧版编辑器将下划线存为 ++text++，marked 不认识，转回 <u> 显示
+    const html = marked.parse((md || '').replace(/\+{2}([^+\n][^+\n]*?)\+{2}/g, '<u>$1</u>'));
     return html.replace(/<img\b[^>]*?\bsrc=("|')([^"']+)\1/gi, (m, quote, src) => {
       if (/^(https?:|data:|blob:|\/)/i.test(src)) return m;
       return m.replace(`src=${quote}${src}${quote}`, `src=${quote}/categories/${category}/${src.replace(/^\.\//, '')}${quote}`);

@@ -1,0 +1,57 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "1. 首先，它把“人”和“Agent”建模成两个 Peer"
+    },
+    {
+      "level": 3,
+      "text": "2. 每轮对话都会成为 Honcho 的观察材料"
+    },
+    {
+      "level": 3,
+      "text": "3. “观察”是可配置的"
+    },
+    {
+      "level": 3,
+      "text": "4. 真正的“辩证推理”由 Honcho 后端 LLM 完成"
+    },
+    {
+      "level": 3,
+      "text": "5. 为什么叫“辩证式”"
+    },
+    {
+      "level": 3,
+      "text": "6. 但不会每一轮都跑昂贵的辩证 LLM"
+    },
+    {
+      "level": 3,
+      "text": "7. 下一轮到底给 Hermes 注入什么"
+    },
+    {
+      "level": 3,
+      "text": "8. Honcho 有 5 个工具，Agent 也可以主动查询"
+    }
+  ],
+  "renames": {}
+}

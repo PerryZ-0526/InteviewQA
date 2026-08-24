@@ -1,5 +1,6 @@
 {
   "groups": [
-    "Claude-Code-Docs"
+    "Claude-Code-Docs",
+    "CodeGraph"
   ]
 }

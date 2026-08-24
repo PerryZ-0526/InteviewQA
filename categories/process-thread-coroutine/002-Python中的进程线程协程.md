@@ -10,21 +10,33 @@
 
 ## 题目导航
 
-← [001-进程线程协程的理解](001-进程线程协程的理解.md) | [003-为什么要有线程和协程](003-为什么要有线程和协程.md) →
+← [001-进程线程协程的理解](001-进程线程协程的理解) | [003-为什么要有线程和协程](003-为什么要有线程和协程) →
 
 ## 面试直接答
 
 > CPython 并发的核心约束是 **GIL**：同一时刻只有一个线程能执行字节码，所以线程模型只对 IO 密集任务有效，CPU 密集必须走 multiprocessing 多进程；asyncio 用单线程事件循环加协程实现万级并发 IO，绕开了线程与锁的全部开销。Python 3.13 起 free-threaded 构建让无 GIL 成为可选项，3.14 起该构建正式受支持，并引入了 PEP 734 子解释器，这套格局正在被官方逐步改写。
 
-先讲 GIL。**GIL（全局解释器锁）** 是 CPython 解释器级的一把大锁，任何线程执行字节码前必须持有它，因此多线程在纯 Python 代码上无法并行，只会并发——单核轮流跑。GIL 存在的历史原因是 **引用计数**：CPython 的内存管理基于引用计数，`x = y` 这种赋值在字节码层就要修改计数值，如果没有一把全局锁，多线程下的引用计数更新会数据竞争，导致对象被提前释放或内存泄漏。为 GIL 提供配套的是**字节码层面的定期切换**：解释器默认每执行约 5 毫秒（可用 `sys.setswitchinterval` 调整）强制释放一次 GIL，让其他线程有机会获得调度。但要注意，GIL 只保证单条字节码的原子性，`count += 1` 是四条字节码，仍然会丢更新，所以多线程共享状态照样要加 `threading.Lock`。
+### 先讲 GIL
 
-接着讲线程。`threading` 模块在 IO 密集场景下是有效的：线程执行 `socket.recv`、`time.sleep`、文件读取等阻塞系统调用时，解释器会**主动释放 GIL**，让其他线程运行，所以"十个线程各自等网络响应"确实能并发推进。`concurrent.futures.ThreadPoolExecutor` 是日常首选，比手管线程更安全。线程的坑在共享状态：除了锁，还有 CPython 特有现象——多线程下垃圾回收的分代收集需要先暂停所有线程（STW），大量小对象高频分配时 GC 可能成为瓶颈，这和引用计数机制直接相关，可参考 [001-谈谈 Python 中的垃圾回收机制](../python/001-谈谈-Python-中的垃圾回收机制.md)。
+> **GIL（全局解释器锁）** 是 CPython 解释器级的一把大锁，任何线程执行字节码前必须持有它，因此<span style="background-color: #fff3cd">多线程在纯 Python 代码上无法并行，只会</span>`并发——单核轮流跑`。
 
-再讲进程。CPU 密集任务在 CPython 里线程无效，唯一正途是 `multiprocessing` 或 `concurrent.futures.ProcessPoolExecutor`：每个进程有独立解释器和独立 GIL，多核真正并行。代价是**进程创建与数据传递的序列化开销**——任务函数和参数必须可 pickle，大数据跨进程传输要序列化加管道拷贝，比线程共享内存贵得多。启动方式有三种：`fork` 利用写时复制瞬间复制父进程内存，但在多线程进程里 fork 有死锁风险（子进程只继承了调用 fork 的那一个线程，其他线程持有的锁状态被冻结）；`spawn` 从干净的解释器重新启动，最安全但最慢；`forkserver` 折中——从一个干净的服务器进程 fork。**Python 3.14 起 Linux 上的默认方式从 fork 改为 forkserver**（macOS 和 Windows 仍是 spawn），这是官方为了规避多线程 fork 死锁问题做的重大默认变更，迁移时最大的坑是：以前 fork 下依赖的"子进程继承父进程内存状态"，forkserver 下不再成立，所有数据都必须可 pickle。
+GIL 存在的历史原因是 **引用计数**：<span style="background-color: #fff3cd">CPython 的内存管理基于引用计数</span>，`x = y` 这种赋值在字节码层就要修改计数值，如果没有一把全局锁，多线程下的引用计数更新会数据竞争，导致对象被提前释放或内存泄漏。为 GIL 提供配套的是**字节码层面的定期切换**：解释器默认每执行约 5 毫秒（可用 `sys.setswitchinterval` 调整）强制释放一次 GIL，让其他线程有机会获得调度。但要注意，GIL 只保证单条字节码的原子性，`count += 1` 是四条字节码，仍然会丢更新，所以多线程共享状态照样要加 `threading.Lock`。
 
-然后讲协程。`asyncio` 是单线程事件循环模型：`async def` 定义协程，`await` 是协作式让出点，事件循环在 IO 等待期间切换到其他协程。因为没有锁、没有线程切换、没有解释器竞争，单个进程能轻松承载上万并发连接，网络服务是它的主场。两个关键边界：第一，协程里绝对不能调用阻塞函数——`requests.get` 或 `time.sleep` 会卡死整个事件循环，阻塞任务必须丢给 `asyncio.to_thread` 或 `loop.run_in_executor`；第二，CPU 密集代码放协程里同样阻塞循环，必须走进程池。
+### 接着讲线程
 
-最后讲正在发生的变化。Python 3.13 引入实验性的 **free-threaded 构建**（PEP 703，编译参数 `--disable-gil`），3.14 起转为正式支持特性，以独立二进制 `python3.14t` 发行：单线程性能损失降到 5%~10%，4 线程下多核扩展约 4 倍。注意两点：C 扩展必须声明 `Py_mod_gil` 标记自己 GIL 安全，否则导入时**静默退回全局 GIL 模式**；即使无 GIL，内置容器也不承诺线程安全，锁依然要自己加。同版本还落地了 **PEP 734** 的 `concurrent.interpreters` 模块——同一进程内多个独立解释器，各自持有独立 GIL，通过 channel 传数据，比多进程轻、比多线程隔离性好，适用于插件系统、沙箱和 CPU 并行任务。
+`threading` 模块在 IO 密集场景下是有效的：线程执行 `socket.recv`、`time.sleep`、文件读取等阻塞系统调用时，解释器会**主动释放 GIL**，让其他线程运行，所以"十个线程各自等网络响应"确实能并发推进。`concurrent.futures.ThreadPoolExecutor` 是日常首选，比手管线程更安全。线程的坑在共享状态：除了锁，还有 CPython 特有现象——多线程下垃圾回收的分代收集需要先暂停所有线程（STW），大量小对象高频分配时 GC 可能成为瓶颈，这和引用计数机制直接相关，可参考 [001-谈谈 Python 中的垃圾回收机制](../python/001-%E8%B0%88%E8%B0%88-Python-%E4%B8%AD%E7%9A%84%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6.md)。
+
+### 再讲进程
+
+CPU 密集任务在 CPython 里线程无效，唯一正途是 `multiprocessing` 或 `concurrent.futures.ProcessPoolExecutor`：每个进程有独立解释器和独立 GIL，多核真正并行。代价是**进程创建与数据传递的序列化开销**——任务函数和参数必须可 pickle，大数据跨进程传输要序列化加管道拷贝，比线程共享内存贵得多。启动方式有三种：`fork` 利用写时复制瞬间复制父进程内存，但在多线程进程里 fork 有死锁风险（子进程只继承了调用 fork 的那一个线程，其他线程持有的锁状态被冻结）；`spawn` 从干净的解释器重新启动，最安全但最慢；`forkserver` 折中——从一个干净的服务器进程 fork。**Python 3.14 起 Linux 上的默认方式从 fork 改为 forkserver**（macOS 和 Windows 仍是 spawn），这是官方为了规避多线程 fork 死锁问题做的重大默认变更，迁移时最大的坑是：以前 fork 下依赖的"子进程继承父进程内存状态"，forkserver 下不再成立，所有数据都必须可 pickle。
+
+### 然后讲协程
+
+`asyncio` 是单线程事件循环模型：`async def` 定义协程，`await` 是协作式让出点，事件循环在 IO 等待期间切换到其他协程。因为没有锁、没有线程切换、没有解释器竞争，单个进程能轻松承载上万并发连接，网络服务是它的主场。两个关键边界：第一，协程里绝对不能调用阻塞函数——`requests.get` 或 `time.sleep` 会卡死整个事件循环，阻塞任务必须丢给 `asyncio.to_thread` 或 `loop.run_in_executor`；第二，CPU 密集代码放协程里同样阻塞循环，必须走进程池。
+
+### 最后讲正在发生的变化
+
+Python 3.13 引入实验性的 **free-threaded 构建**（PEP 703，编译参数 `--disable-gil`），3.14 起转为正式支持特性，以独立二进制 `python3.14t` 发行：单线程性能损失降到 5%\~10%，4 线程下多核扩展约 4 倍。注意两点：C 扩展必须声明 `Py_mod_gil` 标记自己 GIL 安全，否则导入时**静默退回全局 GIL 模式**；即使无 GIL，内置容器也不承诺线程安全，锁依然要自己加。同版本还落地了 **PEP 734** 的 `concurrent.interpreters` 模块——同一进程内多个独立解释器，各自持有独立 GIL，通过 channel 传数据，比多进程轻、比多线程隔离性好，适用于插件系统、沙箱和 CPU 并行任务。
 
 总结：IO 密集低并发用线程，CPU 密集用进程，高并发网络 IO 用 asyncio；free-threading 和子解释器是官方给出的新选项，但在 C 扩展生态全面兼容之前，多进程仍是 CPU 密集任务的稳妥答案。
 
@@ -145,6 +157,5 @@ async def main(urls):
 - [multiprocessing — Contexts and start methods（官方文档）](https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)
 - [asyncio — Coroutines and Tasks（官方文档）](https://docs.python.org/3/library/asyncio-task.html)
 - [concurrent.futures — 线程池与进程池（官方文档）](https://docs.python.org/3/library/concurrent.futures.html)
-
 <!-- created: 2026-08-16 00:07:12 -->
-<!-- updated: 2026-08-16 00:07:12 -->
+<!-- updated: 2026-08-18 05:44:03 -->

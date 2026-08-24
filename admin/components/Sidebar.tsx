@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CategoryInfo, TagInfo, ProjectSubdir, ExternalDocInfo } from '@/lib/types';
+import { useSidebarDrag } from './useSidebarDrag';
 
 interface Props {
   categories: CategoryInfo[];
@@ -21,6 +23,7 @@ interface Props {
   onToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onGoHome?: () => void;
   refreshKey?: number;
+  onMoveQuestion: (fromCat: string, filename: string, toCat: string, toIndex: number) => void;
 }
 
 interface CreateForm {
@@ -50,6 +53,7 @@ export default function Sidebar({
   onToast,
   onGoHome,
   refreshKey = 0,
+  onMoveQuestion,
 }: Props) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [expandedProjectSubdirs, setExpandedProjectSubdirs] = useState<Set<string>>(new Set());
@@ -106,6 +110,66 @@ export default function Sidebar({
       return next;
     });
   };
+
+  // ---- 拖拽移动（分类题目 → 分类区块） ----
+  const drag = useSidebarDrag({
+    onMoveQuestion,
+    onExpandCategory: (slug) => {
+      setExpandedCategories((prev) => {
+        if (prev.has(slug)) return prev;
+        const next = new Set(prev);
+        next.add(slug);
+        return next;
+      });
+    },
+  });
+
+  // FLIP 动画：拖放后（乐观更新生效）把受影响行从旧位置平滑过渡到新位置。
+  // 全部走内联样式，避免 React 重渲染覆盖过渡状态。
+  useLayoutEffect(() => {
+    const pending = drag.flipBeforeRef.current;
+    if (!pending || pending.before.size === 0) return;
+    drag.flipBeforeRef.current = null;
+
+    const rows = document.querySelectorAll<HTMLElement>('[data-sidebar-draggable]');
+    const shifted: HTMLElement[] = [];
+    for (const el of Array.from(rows)) {
+      const key = `${el.dataset.catSlug}:${el.dataset.filename}`;
+      const before = pending.before.get(key);
+      if (!before) continue;
+      const dy = el.getBoundingClientRect().top - before.top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${-dy}px)`;
+      shifted.push(el);
+    }
+    // 被插入行：若未被 FLIP 覆盖（如源分类被折叠导致捕获不到旧位置），做淡入 + 上浮补偿
+    const inserted = pending.insertKey
+      ? Array.from(rows).find((el) => `${el.dataset.catSlug}:${el.dataset.filename}` === pending.insertKey)
+      : undefined;
+    if (inserted && !shifted.includes(inserted)) {
+      inserted.style.transition = 'none';
+      inserted.style.opacity = '0';
+      inserted.style.transform = 'translateY(-8px)';
+      shifted.push(inserted);
+    }
+
+    void document.body.offsetHeight; // 强制回流，让浏览器记录起始状态
+
+    for (const el of shifted) {
+      el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+    }
+    const t = window.setTimeout(() => {
+      for (const el of shifted) {
+        el.style.transition = '';
+        el.style.transform = '';
+        el.style.opacity = '';
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [categories, drag.flipBeforeRef]);
 
   const openForm = (type: CreateForm['type'], parent?: string) => {
     setCreateForm({ type, parent });
@@ -299,13 +363,18 @@ export default function Sidebar({
       </div>
 
       {/* 分类 */}
-      <div className="sidebar-section">
+      <div className="sidebar-section sidebar-cats">
         <div className="sidebar-section-title">
           <span>分类 ({categories.length})</span>
           <button className="sidebar-add-btn" onClick={() => openForm('category')} title="新建分类" aria-label="新建分类">+</button>
         </div>
         {categories.map((cat) => (
-          <div key={cat.slug}>
+          <div
+            key={cat.slug}
+            data-sidebar-cat={cat.slug}
+            className={`sidebar-cat ${drag.state.drop?.category === cat.slug ? 'drag-target-cat' : ''}`}
+            onPointerDown={drag.onPointerDown}
+          >
             <button
               className={`sidebar-item ${selectedCategory === cat.slug && !selectedFile ? 'active' : ''} ${selectedCategory === cat.slug && selectedFile ? 'category-current' : ''}`}
               onClick={() => {
@@ -324,7 +393,11 @@ export default function Sidebar({
                 {cat.questions.length > 0 && cat.questions.map((q) => (
                   <button
                     key={q.filename}
-                    className={`sidebar-item sidebar-sub ${selectedFile === q.filename && selectedCategory === cat.slug ? 'active-question' : ''}`}
+                    data-sidebar-draggable=""
+                    data-cat-slug={cat.slug}
+                    data-filename={q.filename}
+                    data-title={q.title}
+                    className={`sidebar-item sidebar-sub ${selectedFile === q.filename && selectedCategory === cat.slug ? 'active-question' : ''} ${drag.state.item?.filename === q.filename && drag.state.item?.category === cat.slug ? 'drag-source' : ''}`}
                     onClick={() => onSelectQuestion(cat.slug, q.filename)}
                     title={q.title}
                   >
@@ -345,6 +418,9 @@ export default function Sidebar({
                   </span>
                 </button>
               </div>
+            )}
+            {drag.state.drop?.category === cat.slug && (
+              <div className="sidebar-drop-indicator" style={{ top: drag.state.drop.indicatorTop }} />
             )}
           </div>
         ))}
@@ -678,6 +754,25 @@ export default function Sidebar({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 拖拽幽灵：portal 到 body，transform 由 hook 每帧直接更新（不走 React 渲染） */}
+      {drag.state.phase !== 'idle' && drag.state.item && createPortal(
+        <div
+          ref={drag.ghostRef}
+          className="sidebar-drag-ghost"
+          style={{
+            left: 0,
+            top: 0,
+            transform: `translate3d(${drag.state.ghost?.x ?? 0}px, ${drag.state.ghost?.y ?? 0}px, 0) scale(1.04)`,
+          }}
+        >
+          <span className="sidebar-question-index">{drag.state.item.chip}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {drag.state.item.title}
+          </span>
+        </div>,
+        document.body,
       )}
     </aside>
   );

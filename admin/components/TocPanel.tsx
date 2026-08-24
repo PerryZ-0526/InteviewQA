@@ -1,23 +1,13 @@
 'use client';
 
-import { isVisibleInLayout } from '@/lib/domScroll';
+import { isVisibleInLayout, headingMatch } from '@/lib/domScroll';
+import { stripMdText } from '@/lib/stripText';
 
 interface TocItem { id: string; label: string; level: 1 | 2 | 3; num?: string; sectionId?: string; }
 
 interface Props {
   sections: { id: string; label: string; markdown?: string }[];
   headings?: { label: string; level: number }[];
-}
-
-/** 去掉标题中的 markdown 格式，得到与 DOM textContent 一致的纯文本 */
-function stripMd(s: string): string {
-  return s
-    .replace(/\[\[([^\]]+)\]\]/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/==([^=]+)==/g, '$1')
-    .replace(/[*_~]/g, '')
-    .trim();
 }
 
 export default function TocPanel({ sections, headings }: Props) {
@@ -60,8 +50,8 @@ export default function TocPanel({ sections, headings }: Props) {
                     const allH = document.querySelectorAll<HTMLElement>('.tiptap-editor h1, .tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
                     for (const el of Array.from(allH)) {
                       if (!isVisibleInLayout(el)) continue;
-                      if (el.textContent?.trim() === item.label) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      if (headingMatch(el, item.label)) {
+                        el.scrollIntoView({ behavior: 'auto', block: 'start' });
                         break;
                       }
                     }
@@ -86,7 +76,7 @@ export default function TocPanel({ sections, headings }: Props) {
       if (h3s) {
         for (const h of h3s) {
           const raw = h.replace(/^###\s+/, '').trim();
-          const label = stripMd(raw);
+          const label = stripMdText(raw);
           group.push({ id: '', label, level: 2, sectionId: sec.id });
         }
       }
@@ -119,7 +109,7 @@ export default function TocPanel({ sections, headings }: Props) {
                   if (item.id) {
                     const target = document.getElementById(item.id);
                     if (isVisibleInLayout(target)) {
-                      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      target.scrollIntoView({ behavior: 'auto', block: 'start' });
                     }
                   } else {
                     // 限定在该章节的编辑器内搜索，避免跨章节同名标题误跳
@@ -130,8 +120,8 @@ export default function TocPanel({ sections, headings }: Props) {
                     const h3s = scope.querySelectorAll('.tiptap-editor h3');
                     for (const el of h3s) {
                       if (!isVisibleInLayout(el)) continue;
-                      if (el.textContent?.trim() === item.label) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      if (headingMatch(el, item.label)) {
+                        el.scrollIntoView({ behavior: 'auto', block: 'start' });
                         break;
                       }
                     }

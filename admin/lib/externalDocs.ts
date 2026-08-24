@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { PROJECT_ROOT } from './fileUtils';
+import { stripMdText } from './stripText';
 
 const EXTERNAL_DOCS_PATH = path.join(PROJECT_ROOT, 'admin', 'external-docs.json');
 
@@ -148,7 +149,7 @@ async function readTitle(filePath: string): Promise<string> {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     const h1 = content.match(/^#\s+(.+)/m);
-    return h1 ? h1[1].trim() : fallback;
+    return h1 ? stripMdText(h1[1]) || fallback : fallback;
   } catch {
     return fallback;
   }
@@ -192,7 +193,7 @@ export async function listExternalDocs(): Promise<ExternalDocInfo[]> {
       mtimeMs = stat.mtimeMs;
       const content = await fs.readFile(norm, 'utf-8');
       const h1 = content.match(/^#\s+(.+)/m);
-      if (h1) title = h1[1].trim();
+      if (h1) title = stripMdText(h1[1]) || title;
       wordCount = countWordsExternal(content);
     } catch {
       isMissing = true;

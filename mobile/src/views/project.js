@@ -48,7 +48,8 @@ register('project', (container) => {
           const end = md.indexOf('---', 3);
           if (end > 0) content = md.slice(end + 3).trim();
         }
-        const html = marked.parse(content).replace(/<img\b[^>]*?\bsrc=("|')([^"']+)\1/gi, (m, quote, src) => {
+        // 旧版编辑器将下划线存为 ++text++，marked 不认识，转回 <u> 显示
+        const html = marked.parse(content.replace(/\+{2}([^+\n][^+\n]*?)\+{2}/g, '<u>$1</u>')).replace(/<img\b[^>]*?\bsrc=("|')([^"']+)\1/gi, (m, quote, src) => {
           if (/^(https?:|data:|blob:|\/)/i.test(src)) return m;
           return m.replace(`src=${quote}${src}${quote}`, `src=${quote}/${base}/${subdir}/${src.replace(/^\.\//, '')}${quote}`);
         });

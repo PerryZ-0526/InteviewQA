@@ -172,7 +172,13 @@
       "WebFetch(domain:docs.anthropic.com)",
       "Read(//c/Users/24848/AppData/Local/Microsoft/WinGet/Packages/Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe/**)",
       "Bash(claude --version)",
-      "Bash(winget upgrade *)"
+      "Bash(winget upgrade *)",
+      "Bash(git -C \"C:\\\\Users\\\\24848\\\\Desktop\\\\InteviewQA\" status --porcelain)",
+      "Bash(echo \"tsc-exit:$?\")",
+      "WebFetch(domain:en.wikipedia.org)",
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(cd *)",
+      "Bash(echo \"=== exit $? ===\")"
     ]
   }
 }

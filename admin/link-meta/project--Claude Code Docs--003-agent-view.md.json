@@ -1,0 +1,216 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "快速开始"
+    },
+    {
+      "level": 2,
+      "text": "使用 agent view 监控会话"
+    },
+    {
+      "level": 3,
+      "text": "读取会话状态"
+    },
+    {
+      "level": 3,
+      "text": "行摘要"
+    },
+    {
+      "level": 3,
+      "text": "拉取请求状态"
+    },
+    {
+      "level": 3,
+      "text": "窥视和回复"
+    },
+    {
+      "level": 3,
+      "text": "附加到会话"
+    },
+    {
+      "level": 3,
+      "text": "组织列表"
+    },
+    {
+      "level": 3,
+      "text": "过滤会话"
+    },
+    {
+      "level": 3,
+      "text": "快捷键"
+    },
+    {
+      "level": 2,
+      "text": "调度新代理"
+    },
+    {
+      "level": 3,
+      "text": "从 agent view"
+    },
+    {
+      "level": 4,
+      "text": "调度到特定目录"
+    },
+    {
+      "level": 3,
+      "text": "从会话内部"
+    },
+    {
+      "level": 3,
+      "text": "从你的 shell"
+    },
+    {
+      "level": 4,
+      "text": "运行 shell 命令"
+    },
+    {
+      "level": 3,
+      "text": "文件编辑如何隔离"
+    },
+    {
+      "level": 3,
+      "text": "设置模型"
+    },
+    {
+      "level": 3,
+      "text": "权限模式、模型和工作量"
+    },
+    {
+      "level": 3,
+      "text": "Settings、plugins 和 MCP servers"
+    },
+    {
+      "level": 2,
+      "text": "从 shell 管理会话"
+    },
+    {
+      "level": 2,
+      "text": "后台会话如何被托管"
+    },
+    {
+      "level": 3,
+      "text": "监督进程"
+    },
+    {
+      "level": 3,
+      "text": "状态存储位置"
+    },
+    {
+      "level": 3,
+      "text": "关闭 agent view"
+    },
+    {
+      "level": 2,
+      "text": "故障排除"
+    },
+    {
+      "level": 3,
+      "text": "\\`claude agents\\` 列出子代理而不是打开代理视图"
+    },
+    {
+      "level": 3,
+      "text": "Agent view 打开时没有会话"
+    },
+    {
+      "level": 3,
+      "text": "后台化显示 \\`Background this session?\\` 对话"
+    },
+    {
+      "level": 3,
+      "text": "提示被拒绝，因为太短"
+    },
+    {
+      "level": 3,
+      "text": "会话在关闭后显示为已失败"
+    },
+    {
+      "level": 3,
+      "text": "打开会话说对话已经打开"
+    },
+    {
+      "level": 3,
+      "text": "会话在启动前失败，并显示 \\`possibly low memory\\` 注记"
+    },
+    {
+      "level": 3,
+      "text": "Agent view 说后台服务没有响应"
+    },
+    {
+      "level": 3,
+      "text": "后台调度失败，出现 \\`Could not resolve authentication method\\`"
+    },
+    {
+      "level": 3,
+      "text": "后台会话无法在 macOS 上读取 Desktop、Documents 或 Downloads"
+    },
+    {
+      "level": 3,
+      "text": "后台会话无法在 macOS 上访问本地网络主机"
+    },
+    {
+      "level": 3,
+      "text": "附加后会话响应缓慢"
+    },
+    {
+      "level": 3,
+      "text": "\\`.claude/worktrees/\\` 填满了"
+    },
+    {
+      "level": 2,
+      "text": "限制"
+    },
+    {
+      "level": 2,
+      "text": "相关资源"
+    },
+    {
+      "level": 2,
+      "text": "版本历史"
+    }
+  ],
+  "renames": {
+    "快速开始": "快速开始",
+    "使用 agent view 监控会话": "使用 agent view 监控会话",
+    "读取会话状态": "读取会话状态",
+    "行摘要": "行摘要",
+    "拉取请求状态": "拉取请求状态",
+    "窥视和回复": "窥视和回复",
+    "附加到会话": "附加到会话",
+    "组织列表": "组织列表",
+    "过滤会话": "过滤会话",
+    "快捷键": "快捷键",
+    "调度新代理": "调度新代理",
+    "从 agent view": "从 agent view",
+    "调度到特定目录": "调度到特定目录",
+    "从会话内部": "从会话内部",
+    "从你的 shell": "从你的 shell",
+    "运行 shell 命令": "运行 shell 命令",
+    "文件编辑如何隔离": "文件编辑如何隔离",
+    "设置模型": "设置模型",
+    "权限模式、模型和工作量": "权限模式、模型和工作量",
+    "Settings、plugins 和 MCP servers": "Settings、plugins 和 MCP servers",
+    "从 shell 管理会话": "从 shell 管理会话",
+    "后台会话如何被托管": "后台会话如何被托管",
+    "监督进程": "监督进程",
+    "状态存储位置": "状态存储位置",
+    "关闭 agent view": "关闭 agent view",
+    "故障排除": "故障排除",
+    "\\`claude agents\\` 列出子代理而不是打开代理视图": "\\`claude agents\\` 列出子代理而不是打开代理视图",
+    "Agent view 打开时没有会话": "Agent view 打开时没有会话",
+    "后台化显示 \\`Background this session?\\` 对话": "后台化显示 \\`Background this session?\\` 对话",
+    "提示被拒绝，因为太短": "提示被拒绝，因为太短",
+    "会话在关闭后显示为已失败": "会话在关闭后显示为已失败",
+    "打开会话说对话已经打开": "打开会话说对话已经打开",
+    "会话在启动前失败，并显示 \\`possibly low memory\\` 注记": "会话在启动前失败，并显示 \\`possibly low memory\\` 注记",
+    "Agent view 说后台服务没有响应": "Agent view 说后台服务没有响应",
+    "后台调度失败，出现 \\`Could not resolve authentication method\\`": "后台调度失败，出现 \\`Could not resolve authentication method\\`",
+    "后台会话无法在 macOS 上读取 Desktop、Documents 或 Downloads": "后台会话无法在 macOS 上读取 Desktop、Documents 或 Downloads",
+    "后台会话无法在 macOS 上访问本地网络主机": "后台会话无法在 macOS 上访问本地网络主机",
+    "附加后会话响应缓慢": "附加后会话响应缓慢",
+    "\\`.claude/worktrees/\\` 填满了": "\\`.claude/worktrees/\\` 填满了",
+    "限制": "限制",
+    "相关资源": "相关资源",
+    "版本历史": "版本历史"
+  }
+}

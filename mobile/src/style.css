@@ -24,6 +24,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 a { color: var(--primary); text-decoration: none; }
+u { text-decoration-thickness: 2px; text-underline-offset: 2px; }
 
 /* Layout */
 .page { max-width: 600px; margin: 0 auto; padding: 0 16px 48px; }
@@ -60,7 +61,7 @@ a { color: var(--primary); text-decoration: none; }
 .card-body.md ul, .card-body.md ol { padding-left: 20px; margin: 0.5em 0; }
 .card-body.md li { margin: 0.3em 0; }
 .card-body.md code { background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 3px; font-family: var(--mono); font-size: 0.85em; }
-.card-body.md pre { background: #1e1e2e; color: #cdd6f4; padding: 14px; border-radius: 6px; overflow-x: auto; margin: 10px 0; font-size: 0.82rem; line-height: 1.5; }
+.card-body.md pre { background: #f6f8fa; color: #1f2328; border: 1px solid #e8eaed; padding: 14px; border-radius: 6px; overflow-x: auto; margin: 10px 0; font-size: 0.82rem; line-height: 1.5; }
 .card-body.md pre code { background: none; padding: 0; color: inherit; }
 .card-body.md table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.85rem; }
 .card-body.md th, .card-body.md td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }

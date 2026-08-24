@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react'
 import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
-import { parseQuestion, generateMarkdown, formatDateTime, stripMdText } from '@/lib/markdown';
-import { isVisibleInLayout, scrollDocToTop } from '@/lib/domScroll';
+import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
+import { stripMdText } from '@/lib/stripText';
+import { isVisibleInLayout, scrollDocToTop, headingMatch } from '@/lib/domScroll';
 import type { Question } from '@/lib/types';
 
 const AUTO_SAVE_DELAY = 400;
@@ -216,8 +217,8 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
         const text = stripMdText(pendingAnchor[i]);
         for (const h of Array.from(headings)) {
           if (!isVisibleInLayout(h)) continue;
-          if (stripMdText(h.textContent || '') === text) {
-            h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (headingMatch(h, text)) {
+            h.scrollIntoView({ behavior: 'auto', block: 'start' });
             onAnchorDone?.();
             return;
           }
@@ -225,8 +226,8 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
         // 章节级锚点（如「面试直接答」）匹配节标签
         for (const lb of Array.from(sectionLabels)) {
           if (!isVisibleInLayout(lb)) continue;
-          if (stripMdText(lb.textContent || '') === text) {
-            lb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (headingMatch(lb, text)) {
+            lb.scrollIntoView({ behavior: 'auto', block: 'start' });
             onAnchorDone?.();
             return;
           }

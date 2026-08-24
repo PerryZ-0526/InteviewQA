@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { isVisibleInLayout } from '@/lib/domScroll';
+import { isVisibleInLayout, findVisibleHeading, headingPlainText } from '@/lib/domScroll';
 
 export default function TocFloat() {
   const [open, setOpen] = useState(false);
@@ -11,13 +11,14 @@ export default function TocFloat() {
 
   useEffect(() => {
     if (!open) return;
-    const sections = document.querySelectorAll<HTMLElement>('.doc-section');
+    // 多标签系统下隐藏标签保持挂载（display:none），其中的 .doc-section 会污染模式判断：
+    // 先按可见性过滤，否则打开过分类题目后，项目文档会被误判为结构化模式、目录收集为空
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('.doc-section')).filter(isVisibleInLayout);
     const toc: { id: string; label: string; level: 1 | 2 }[] = [];
 
     if (sections.length > 0) {
       // Structured interview question editor: doc-section + doc-section-label
-      for (const sec of Array.from(sections)) {
-        if (!isVisibleInLayout(sec)) continue;
+      for (const sec of sections) {
         const label = sec.querySelector<HTMLElement>('.doc-section-label');
         const customTitle = sec.querySelector<HTMLInputElement>('.doc-custom-title');
         const secId = sec.id || label?.id || '';
@@ -29,19 +30,22 @@ export default function TocFloat() {
         }
         const subs = sec.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3');
         for (const el of Array.from(subs)) {
-          if (el.textContent) toc.push({ id: '', label: el.textContent.trim(), level: 2 });
+          // headingPlainText：排除反向索引 chip 文本，得到与目录标签可比的纯文本
+          const label = headingPlainText(el);
+          if (label) toc.push({ id: '', label, level: 2 });
         }
       }
     } else {
       // Flat editor (project docs): scan headings directly
-      const editors = document.querySelectorAll<HTMLElement>('.tiptap-editor');
-      for (const editor of Array.from(editors)) {
+      const editors = Array.from(document.querySelectorAll<HTMLElement>('.tiptap-editor'));
+      for (const editor of editors) {
         if (!isVisibleInLayout(editor)) continue;
         const headings = editor.querySelectorAll<HTMLElement>('h1, h2, h3');
         for (const el of Array.from(headings)) {
-          if (el.textContent) {
+          const label = headingPlainText(el);
+          if (label) {
             const level = el.tagName === 'H1' ? 1 : el.tagName === 'H2' ? 1 : 2;
-            toc.push({ id: '', label: el.textContent.trim(), level: level as 1 | 2 });
+            toc.push({ id: '', label, level: level as 1 | 2 });
           }
         }
       }
@@ -55,17 +59,16 @@ export default function TocFloat() {
     if (id) {
       const target = document.getElementById(id);
       if (isVisibleInLayout(target)) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.scrollIntoView({ behavior: 'auto', block: 'start' });
       }
     } else {
-      const h3s = document.querySelectorAll('.tiptap-editor h3');
-      for (const el of h3s) {
-        if (!isVisibleInLayout(el)) continue;
-        if (el.textContent?.trim() === label) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          break;
-        }
-      }
+      // 扁平目录项可能来自 h1/h2（项目文档常见），不能只搜 h3
+      const target = findVisibleHeading(
+        document,
+        '.tiptap-editor h1, .tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4',
+        label,
+      );
+      target?.scrollIntoView({ behavior: 'auto', block: 'start' });
     }
   }, []);
 

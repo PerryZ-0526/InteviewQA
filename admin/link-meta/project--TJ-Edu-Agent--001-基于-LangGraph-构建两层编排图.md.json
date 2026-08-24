@@ -1,115 +1,97 @@
 {
   "headings": [
     {
-      "level": 3,
-      "text": "简历描述"
+      "level": 2,
+      "text": "方案变迁"
     },
     {
       "level": 2,
-      "text": "一、一句话定位"
+      "text": "gen-4方案"
+    },
+    {
+      "level": 3,
+      "text": "不要拆得太细，目前四类"
+    },
+    {
+      "level": 4,
+      "text": "1. Knowledge ReAct"
+    },
+    {
+      "level": 4,
+      "text": "2. Search ReAct"
+    },
+    {
+      "level": 4,
+      "text": "3. Task ReAct"
+    },
+    {
+      "level": 4,
+      "text": "4. Planning ReAct"
     },
     {
       "level": 2,
-      "text": "二、为什么是 LangGraph（范式选择）"
+      "text": "gen-4方案拆分原因"
     },
     {
       "level": 3,
-      "text": "2.1 候选方案对比"
+      "text": "1. Tool Selection 会更稳定"
     },
     {
       "level": 3,
-      "text": "2.2 关键决策：Plan-Validate-Execute 而不是纯 ReAct"
+      "text": "2. 可以写真正定制化的 Prompt"
     },
     {
       "level": 3,
-      "text": "2.3 为什么两张图而不是一张"
+      "text": "3. 不同任务本来就应该有不同的终止条件"
     },
     {
       "level": 2,
-      "text": "三、实时对话图详解"
+      "text": "架构设计"
     },
     {
       "level": 3,
-      "text": "3.1 图拓扑"
+      "text": "1. gen-4.1"
+    },
+    {
+      "level": 4,
+      "text": "Orchestrator 第一步：先生成“任务计划”，不是生成最终答案"
     },
     {
       "level": 3,
-      "text": "3.2 状态设计：TypedDict + 部分合并"
-    },
-    {
-      "level": 3,
-      "text": "3.3 节点职责（按执行顺序）"
-    },
-    {
-      "level": 3,
-      "text": "3.4 工具治理：ToolRegistry（自建，不用 LangChain Tool）"
-    },
-    {
-      "level": 3,
-      "text": "3.5 Local ReAct：executor 内的受限补救循环"
-    },
-    {
-      "level": 3,
-      "text": "3.6 流式路径"
-    },
-    {
-      "level": 2,
-      "text": "四、在线资源检索：\"ReAct 子图\"的完整技术链路"
-    },
-    {
-      "level": 3,
-      "text": "4.1 多轮循环：Local ReAct（executor 内嵌，见 3.5）"
-    },
-    {
-      "level": 3,
-      "text": "4.2 查询改写：KnowledgeGraphTool 内"
-    },
-    {
-      "level": 3,
-      "text": "4.3 补充检索：多 Provider 扇出与降级链"
-    },
-    {
-      "level": 3,
-      "text": "4.4 结果聚合：打分、过滤、去重、置信度"
-    },
-    {
-      "level": 3,
-      "text": "4.5 架构表述与实现落点（设计演进视角）"
-    },
-    {
-      "level": 2,
-      "text": "五、后台异步图详解"
-    },
-    {
-      "level": 3,
-      "text": "5.1 事件驱动链路"
-    },
-    {
-      "level": 3,
-      "text": "5.2 图拓扑（纯 DAG，无循环）"
-    },
-    {
-      "level": 3,
-      "text": "5.3 节点职责与治理要点"
-    },
-    {
-      "level": 3,
-      "text": "5.4 事件状态机与可观测性"
-    },
-    {
-      "level": 2,
-      "text": "六、降级设计（面试高频追问点）"
-    },
-    {
-      "level": 2,
-      "text": "七、高频面试问答"
-    },
-    {
-      "level": 2,
-      "text": "八、相关代码索引"
+      "text": "2. gen-4.2"
     }
   ],
   "renames": {
-    "简历描述": "简历描述"
+    "方案变迁": "方案变迁",
+    "`gen-4`方案，更准确地说，可以做成": "gen-4方案",
+    "`gen-4`<span style=\"color: #7950f2\">方案拆分原因</span>": "gen-4方案拆分原因",
+    "<span style=\"color: #7950f2\">1. Tool Selection 会更稳定</span>": "1. Tool Selection 会更稳定",
+    "<span style=\"color: #7950f2\">2. 可以写真正定制化的 Prompt</span>": "2. 可以写真正定制化的 Prompt",
+    "<span style=\"color: #7950f2\">3. 不同任务本来就应该有不同的终止条件</span>": "3. 不同任务本来就应该有不同的终止条件",
+    "`gen-4`方案，": "gen-4方案",
+    "`gen-4`方案": "gen-4方案",
+    "`gen-4`方案拆分原因": "gen-4方案拆分原因",
+    "1. Tool Selection 会更稳定": "1. Tool Selection 会更稳定",
+    "不要拆得太细": "不要拆得太细，目前四类",
+    "不要拆得太细，目前四类：": "不要拆得太细，目前四类",
+    "不要拆得太细，目前四类": "不要拆得太细，目前四类",
+    "Knowledge ReAct": "1. Knowledge ReAct",
+    "1. Knowledge ReAct": "1. Knowledge ReAct",
+    "Search ReAct": "2. Search ReAct",
+    "2. Search ReAct": "2. Search ReAct",
+    "Task ReAct": "3. Task ReAct",
+    "3. Task ReAct": "3. Task ReAct",
+    "Planning ReAct": "4. Planning ReAct",
+    "4. Planning ReAct": "4. Planning ReAct",
+    "gen-4方案": "gen-4方案",
+    "gen-4方案拆分原因": "gen-4方案拆分原因",
+    "2. 可以写真正定制化的 Prompt": "2. 可以写真正定制化的 Prompt",
+    "3. 不同任务本来就应该有不同的终止条件": "3. 不同任务本来就应该有不同的终止条件",
+    "gen-4.1": "1. gen-4.1",
+    "1. gen-4.1": "1. gen-4.1",
+    "2. gen-4.2": "2. gen-4.2",
+    "Orchestrator是如何编排的": "Orchestrator 第一步：先生成“任务计划”，不是生成最终答案",
+    "Orchestrator 第一步：先生成“任务计划”，不是生成最终答案": "Orchestrator 第一步：先生成“任务计划”，不是生成最终答案",
+    "架构设计": "架构设计"
   }
 }

@@ -1,0 +1,304 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">内置 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">1.</span> `Explore`"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">2.</span> `Plan`"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">3.</span> `General-purpose`"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">4. 其他</span>"
+    },
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">快速入门：创建您的第一个 subagent</span>"
+    },
+    {
+      "level": 2,
+      "text": "配置 subagents"
+    },
+    {
+      "level": 3,
+      "text": "选择 subagent 范围"
+    },
+    {
+      "level": 3,
+      "text": "编写 subagent 文件"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">支持的 frontmatter 字段</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">选择模型</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">控制 subagent 能力</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">可用工具</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">限制可以生成哪些 subagents</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">将 MCP 服务器限定于 subagent</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">权限模式</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">将技能预加载到 subagents</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">启用持久内存</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">使用 hooks 的条件规则</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">禁用特定 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">为 subagents 定义 hooks</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">Subagent frontmatter 中的 Hooks</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">用于 subagent 事件的项目级 hooks</span>"
+    },
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">使用 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">理解自动委托</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">显式调用 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">在前台或后台运行 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">Subagents 中的 API 错误</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">常见模式</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">隔离高容量操作</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">运行并行研究</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">链接 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">在 subagents 和主对话之间选择</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">生成嵌套 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">管理 subagent 上下文</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">启动时加载的内容</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">恢复 subagents</span>"
+    },
+    {
+      "level": 4,
+      "text": "<span style=\"font-size: 1em\">自动压缩</span>"
+    },
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">分叉当前对话</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">观察和引导运行中的分叉</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">分叉与命名 subagents 的区别</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">限制</span>"
+    },
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">示例 subagents</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">代码审查者</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">调试器</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">数据科学家</span>"
+    },
+    {
+      "level": 3,
+      "text": "<span style=\"font-size: 1em\">数据库查询验证器</span>"
+    },
+    {
+      "level": 2,
+      "text": "<span style=\"font-size: 1em\">后续步骤</span>"
+    }
+  ],
+  "renames": {
+    "快速入门：创建您的第一个 subagent": "<span style=\"font-size: 1em\">快速入门：创建您的第一个 subagent</span>",
+    "配置 subagents": "配置 subagents",
+    "选择 subagent 范围": "选择 subagent 范围",
+    "编写 subagent 文件": "编写 subagent 文件",
+    "支持的 frontmatter 字段": "<span style=\"font-size: 1em\">支持的 frontmatter 字段</span>",
+    "选择模型": "<span style=\"font-size: 1em\">选择模型</span>",
+    "控制 subagent 能力": "<span style=\"font-size: 1em\">控制 subagent 能力</span>",
+    "可用工具": "<span style=\"font-size: 1em\">可用工具</span>",
+    "限制可以生成哪些 subagents": "<span style=\"font-size: 1em\">限制可以生成哪些 subagents</span>",
+    "将 MCP 服务器限定于 subagent": "<span style=\"font-size: 1em\">将 MCP 服务器限定于 subagent</span>",
+    "权限模式": "<span style=\"font-size: 1em\">权限模式</span>",
+    "将技能预加载到 subagents": "<span style=\"font-size: 1em\">将技能预加载到 subagents</span>",
+    "启用持久内存": "<span style=\"font-size: 1em\">启用持久内存</span>",
+    "使用 hooks 的条件规则": "<span style=\"font-size: 1em\">使用 hooks 的条件规则</span>",
+    "禁用特定 subagents": "<span style=\"font-size: 1em\">禁用特定 subagents</span>",
+    "为 subagents 定义 hooks": "<span style=\"font-size: 1em\">为 subagents 定义 hooks</span>",
+    "Subagent frontmatter 中的 Hooks": "<span style=\"font-size: 1em\">Subagent frontmatter 中的 Hooks</span>",
+    "用于 subagent 事件的项目级 hooks": "<span style=\"font-size: 1em\">用于 subagent 事件的项目级 hooks</span>",
+    "使用 subagents": "<span style=\"font-size: 1em\">使用 subagents</span>",
+    "理解自动委托": "<span style=\"font-size: 1em\">理解自动委托</span>",
+    "显式调用 subagents": "<span style=\"font-size: 1em\">显式调用 subagents</span>",
+    "在前台或后台运行 subagents": "<span style=\"font-size: 1em\">在前台或后台运行 subagents</span>",
+    "Subagents 中的 API 错误": "<span style=\"font-size: 1em\">Subagents 中的 API 错误</span>",
+    "常见模式": "<span style=\"font-size: 1em\">常见模式</span>",
+    "隔离高容量操作": "<span style=\"font-size: 1em\">隔离高容量操作</span>",
+    "运行并行研究": "<span style=\"font-size: 1em\">运行并行研究</span>",
+    "链接 subagents": "<span style=\"font-size: 1em\">链接 subagents</span>",
+    "在 subagents 和主对话之间选择": "<span style=\"font-size: 1em\">在 subagents 和主对话之间选择</span>",
+    "生成嵌套 subagents": "<span style=\"font-size: 1em\">生成嵌套 subagents</span>",
+    "管理 subagent 上下文": "<span style=\"font-size: 1em\">管理 subagent 上下文</span>",
+    "启动时加载的内容": "<span style=\"font-size: 1em\">启动时加载的内容</span>",
+    "恢复 subagents": "<span style=\"font-size: 1em\">恢复 subagents</span>",
+    "自动压缩": "<span style=\"font-size: 1em\">自动压缩</span>",
+    "分叉当前对话": "<span style=\"font-size: 1em\">分叉当前对话</span>",
+    "观察和引导运行中的分叉": "<span style=\"font-size: 1em\">观察和引导运行中的分叉</span>",
+    "分叉与命名 subagents 的区别": "<span style=\"font-size: 1em\">分叉与命名 subagents 的区别</span>",
+    "限制": "<span style=\"font-size: 1em\">限制</span>",
+    "示例 subagents": "<span style=\"font-size: 1em\">示例 subagents</span>",
+    "代码审查者": "<span style=\"font-size: 1em\">代码审查者</span>",
+    "调试器": "<span style=\"font-size: 1em\">调试器</span>",
+    "数据科学家": "<span style=\"font-size: 1em\">数据科学家</span>",
+    "数据库查询验证器": "<span style=\"font-size: 1em\">数据库查询验证器</span>",
+    "后续步骤": "<span style=\"font-size: 1em\">后续步骤</span>",
+    "plan": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "1.plan": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "1. plan": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "其他": "<span style=\"font-size: 1em\">4. 其他</span>",
+    "4. 其他": "<span style=\"font-size: 1em\">4. 其他</span>",
+    "**General-purpose**": "<span style=\"font-size: 1em\">3.</span> `General-purpose`",
+    "**3. General-purpose**": "<span style=\"font-size: 1em\">3.</span> `General-purpose`",
+    "3. General-purpose": "<span style=\"font-size: 1em\">3.</span> `General-purpose`",
+    "3. `General-purpose`": "<span style=\"font-size: 1em\">3.</span> `General-purpose`",
+    "Plan": "<span style=\"font-size: 1em\">2.</span> `Plan`",
+    "2.Plan": "<span style=\"font-size: 1em\">2.</span> `Plan`",
+    "2. Plan": "<span style=\"font-size: 1em\">2.</span> `Plan`",
+    "2. `Plan`": "<span style=\"font-size: 1em\">2.</span> `Plan`",
+    "1. Ex'po'l": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "1. Expolre": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "1. Expre": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "1. Explore": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "<span style=\"font-size: 1em\">2.</span> `Plan`": "<span style=\"font-size: 1em\">2.</span> `Plan`",
+    "<span style=\"font-size: 1em\">3.</span> `General-purpose`": "<span style=\"font-size: 1em\">3.</span> `General-purpose`",
+    "<span style=\"font-size: 1em\">4. 其他</span>": "<span style=\"font-size: 1em\">4. 其他</span>",
+    "<span style=\"font-size: 1em\">快速入门：创建您的第一个 subagent</span>": "<span style=\"font-size: 1em\">快速入门：创建您的第一个 subagent</span>",
+    "<span style=\"font-size: 1em\">支持的 frontmatter 字段</span>": "<span style=\"font-size: 1em\">支持的 frontmatter 字段</span>",
+    "<span style=\"font-size: 1em\">选择模型</span>": "<span style=\"font-size: 1em\">选择模型</span>",
+    "<span style=\"font-size: 1em\">控制 subagent 能力</span>": "<span style=\"font-size: 1em\">控制 subagent 能力</span>",
+    "<span style=\"font-size: 1em\">可用工具</span>": "<span style=\"font-size: 1em\">可用工具</span>",
+    "<span style=\"font-size: 1em\">限制可以生成哪些 subagents</span>": "<span style=\"font-size: 1em\">限制可以生成哪些 subagents</span>",
+    "<span style=\"font-size: 1em\">将 MCP 服务器限定于 subagent</span>": "<span style=\"font-size: 1em\">将 MCP 服务器限定于 subagent</span>",
+    "<span style=\"font-size: 1em\">权限模式</span>": "<span style=\"font-size: 1em\">权限模式</span>",
+    "<span style=\"font-size: 1em\">将技能预加载到 subagents</span>": "<span style=\"font-size: 1em\">将技能预加载到 subagents</span>",
+    "<span style=\"font-size: 1em\">启用持久内存</span>": "<span style=\"font-size: 1em\">启用持久内存</span>",
+    "<span style=\"font-size: 1em\">使用 hooks 的条件规则</span>": "<span style=\"font-size: 1em\">使用 hooks 的条件规则</span>",
+    "<span style=\"font-size: 1em\">禁用特定 subagents</span>": "<span style=\"font-size: 1em\">禁用特定 subagents</span>",
+    "<span style=\"font-size: 1em\">为 subagents 定义 hooks</span>": "<span style=\"font-size: 1em\">为 subagents 定义 hooks</span>",
+    "<span style=\"font-size: 1em\">Subagent frontmatter 中的 Hooks</span>": "<span style=\"font-size: 1em\">Subagent frontmatter 中的 Hooks</span>",
+    "<span style=\"font-size: 1em\">用于 subagent 事件的项目级 hooks</span>": "<span style=\"font-size: 1em\">用于 subagent 事件的项目级 hooks</span>",
+    "<span style=\"font-size: 1em\">使用 subagents</span>": "<span style=\"font-size: 1em\">使用 subagents</span>",
+    "<span style=\"font-size: 1em\">理解自动委托</span>": "<span style=\"font-size: 1em\">理解自动委托</span>",
+    "<span style=\"font-size: 1em\">显式调用 subagents</span>": "<span style=\"font-size: 1em\">显式调用 subagents</span>",
+    "<span style=\"font-size: 1em\">在前台或后台运行 subagents</span>": "<span style=\"font-size: 1em\">在前台或后台运行 subagents</span>",
+    "<span style=\"font-size: 1em\">Subagents 中的 API 错误</span>": "<span style=\"font-size: 1em\">Subagents 中的 API 错误</span>",
+    "<span style=\"font-size: 1em\">常见模式</span>": "<span style=\"font-size: 1em\">常见模式</span>",
+    "<span style=\"font-size: 1em\">隔离高容量操作</span>": "<span style=\"font-size: 1em\">隔离高容量操作</span>",
+    "<span style=\"font-size: 1em\">运行并行研究</span>": "<span style=\"font-size: 1em\">运行并行研究</span>",
+    "<span style=\"font-size: 1em\">链接 subagents</span>": "<span style=\"font-size: 1em\">链接 subagents</span>",
+    "<span style=\"font-size: 1em\">在 subagents 和主对话之间选择</span>": "<span style=\"font-size: 1em\">在 subagents 和主对话之间选择</span>",
+    "<span style=\"font-size: 1em\">生成嵌套 subagents</span>": "<span style=\"font-size: 1em\">生成嵌套 subagents</span>",
+    "<span style=\"font-size: 1em\">管理 subagent 上下文</span>": "<span style=\"font-size: 1em\">管理 subagent 上下文</span>",
+    "<span style=\"font-size: 1em\">启动时加载的内容</span>": "<span style=\"font-size: 1em\">启动时加载的内容</span>",
+    "<span style=\"font-size: 1em\">恢复 subagents</span>": "<span style=\"font-size: 1em\">恢复 subagents</span>",
+    "<span style=\"font-size: 1em\">自动压缩</span>": "<span style=\"font-size: 1em\">自动压缩</span>",
+    "<span style=\"font-size: 1em\">分叉当前对话</span>": "<span style=\"font-size: 1em\">分叉当前对话</span>",
+    "<span style=\"font-size: 1em\">观察和引导运行中的分叉</span>": "<span style=\"font-size: 1em\">观察和引导运行中的分叉</span>",
+    "<span style=\"font-size: 1em\">分叉与命名 subagents 的区别</span>": "<span style=\"font-size: 1em\">分叉与命名 subagents 的区别</span>",
+    "<span style=\"font-size: 1em\">限制</span>": "<span style=\"font-size: 1em\">限制</span>",
+    "<span style=\"font-size: 1em\">示例 subagents</span>": "<span style=\"font-size: 1em\">示例 subagents</span>",
+    "<span style=\"font-size: 1em\">代码审查者</span>": "<span style=\"font-size: 1em\">代码审查者</span>",
+    "<span style=\"font-size: 1em\">调试器</span>": "<span style=\"font-size: 1em\">调试器</span>",
+    "<span style=\"font-size: 1em\">数据科学家</span>": "<span style=\"font-size: 1em\">数据科学家</span>",
+    "<span style=\"font-size: 1em\">数据库查询验证器</span>": "<span style=\"font-size: 1em\">数据库查询验证器</span>",
+    "<span style=\"font-size: 1em\">后续步骤</span>": "<span style=\"font-size: 1em\">后续步骤</span>",
+    "<span style=\"font-size: 1em\">1. Explore</span>": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "<span style=\"font-size: 1em\">1.</span> `Explore`": "<span style=\"font-size: 1em\">1.</span> `Explore`",
+    "<span style=\"font-size: 1em\">内置 subagents</span>": "<span style=\"font-size: 1em\">内置 subagents</span>"
+  }
+}

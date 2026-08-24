@@ -1,12 +1,14 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import type { NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { common, createLowlight } from 'lowlight';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { ListItem } from '@tiptap/extension-list-item';
 import Highlight from '@tiptap/extension-highlight';
-import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
 import Link from '@tiptap/extension-link';
@@ -16,7 +18,7 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
-import { Extension, Mark } from '@tiptap/core';
+import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import { liftListItem, sinkListItem } from '@tiptap/pm/schema-list';
 import { Plugin } from '@tiptap/pm/state';
@@ -26,8 +28,74 @@ import type { EditorView } from '@tiptap/pm/view';
 import { Markdown } from '@tiptap/markdown';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { setActiveEditor } from '@/lib/activeEditor';
-import { mdToHtml, stripMdText } from '@/lib/markdown';
+import { mdToHtml } from '@/lib/markdown';
+import { stripMdText } from '@/lib/stripText';
+import { headingMatch } from '@/lib/domScroll';
 import { ResizableImage, setImageBase } from '@/lib/resizableImage';
+import { getEditorColor, toColorAttr } from '@/lib/editorColors';
+
+// 代码块语法高亮：lowlight（highlight.js 内核）+ 常用语言集。
+// token 配色由 globals.css 的 CSS 变量驱动（浅灰/深灰/纯黑三主题可切换）
+const lowlight = createLowlight(common);
+// mermaid 是图表源码不是代码语法，按纯文本处理，避免自动猜测染色误导
+// （registerAlias 参数顺序：语言在前、别名在后）
+lowlight.registerAlias('plaintext', 'mermaid');
+
+// 语言下拉选项：已注册语言 + 常用别名（text 是 plaintext 的别名，历史文档在用）
+const CODE_LANGUAGES = Array.from(
+  new Set([...lowlight.listLanguages(), 'text', 'plaintext', 'mermaid']),
+).sort();
+
+/**
+ * 代码块节点视图：顶部显示语言标注，编辑态可下拉切换（未标注的块可在此补标注）。
+ * 切换 language 属性后 lowlight 自动按新语言重新染色，保存时写回 ```语言 围栏。
+ */
+function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
+  const language = (node.attrs.language as string | null) || '';
+  const editable = editor.isEditable;
+  const options = (() => {
+    const set = new Set<string>(CODE_LANGUAGES);
+    if (language) set.add(language); // 兜底：未在常用集里的历史标注仍显示在下拉里
+    return Array.from(set).sort();
+  })();
+  return (
+    <NodeViewWrapper className="code-block-view">
+      {(editable || language) && (
+        <div className="code-block-head" contentEditable={false}>
+          {editable ? (
+            <select
+              className="code-block-lang"
+              value={language}
+              onChange={e => updateAttributes({ language: e.target.value || null })}
+              // 事件隔离：避免 ProseMirror 抢焦点/拦截按键，保证下拉能正常打开
+              onMouseDown={e => e.stopPropagation()}
+              onKeyDown={e => e.stopPropagation()}
+              title="代码块语言（切换后按该语言染色）"
+              aria-label="代码块语言"
+            >
+              <option value="">未标注</option>
+              {options.map(l => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="code-block-lang-label">{language}</span>
+          )}
+        </div>
+      )}
+      <pre className="code-block">
+        <NodeViewContent<'code'> as="code" />
+      </pre>
+    </NodeViewWrapper>
+  );
+}
+
+// 语法高亮代码块 + 语言标注节点视图
+const HighlightedCodeBlock = CodeBlockLowlight.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeBlockView);
+  },
+});
 
 // --- Custom FontSize extension ---
 declare module '@tiptap/core' {
@@ -117,6 +185,91 @@ const BackgroundColor = Extension.create({
         () =>
         ({ chain }: { chain: any }) =>
           chain().setMark('textStyle', { backgroundColor: null }).removeEmptyTextStyle().run(),
+    };
+  },
+});
+
+// --- Custom Underline: 支持下划线颜色（text-decoration-color），黑色为默认不写样式 ---
+// 不用 @tiptap/extension-underline：它把下划线序列化为 ++text++，本项目加载管线
+// （mdToHtml/marked）不认识 ++，保存后重新打开会显示为字面 ++（历史文件中已出现）。
+// 这里独立定义 mark，统一序列化为 <u>，与加载管线一致；markdown.ts 会把历史 ++ 数据转回 <u>。
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    // 替代 @tiptap/extension-underline 的基类命令（不再依赖该包）
+    setUnderline: () => ReturnType;
+    toggleUnderline: () => ReturnType;
+    unsetUnderline: () => ReturnType;
+    underlineColor: {
+      setUnderlineColor: (color: string | null) => ReturnType;
+      toggleUnderlineColor: (color: string | null) => ReturnType;
+    };
+  }
+}
+
+// 从 text-decoration 简写中提取颜色（粘贴的外部内容可能只有简写属性，没有 text-decoration-color）
+function underlineColorFromDecoration(decoration: string | null): string | null {
+  if (!decoration) return null;
+  const match = decoration.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i);
+  return match ? match[0] : null;
+}
+
+const ColoredUnderline = Mark.create({
+  name: 'underline',
+  addOptions() {
+    return { HTMLAttributes: {} };
+  },
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+        parseHTML: (element: HTMLElement) =>
+          element.style.textDecorationColor ||
+          underlineColorFromDecoration(element.style.textDecoration) ||
+          null,
+        renderHTML: (attributes: Record<string, string | null>) => {
+          if (!attributes.color) return {};
+          return { style: `text-decoration-color: ${attributes.color}` };
+        },
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      { tag: 'u' },
+      // 兼容外部粘贴的 text-decoration: underline 简写
+      { style: 'text-decoration', consuming: false, getAttrs: (style: string) => (style.includes('underline') ? {} : false) },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['u', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+  },
+  renderMarkdown(node: any, helpers: any) {
+    const content = helpers.renderChildren(node);
+    const color = node.attrs?.color;
+    return color ? `<u style="text-decoration-color: ${color}">${content}</u>` : `<u>${content}</u>`;
+  },
+  addCommands() {
+    return {
+      setUnderline: () => ({ commands }: { commands: any }) => commands.setMark(this.name),
+      toggleUnderline: () => ({ commands }: { commands: any }) => commands.toggleMark(this.name),
+      unsetUnderline: () => ({ commands }: { commands: any }) => commands.unsetMark(this.name),
+      setUnderlineColor:
+        (color: string | null) =>
+        ({ commands }: { commands: any }) =>
+          commands.setMark(this.name, color ? { color } : null),
+      toggleUnderlineColor:
+        (color: string | null) =>
+        ({ chain, editor }: { chain: any; editor: any }) => {
+          // 已有下划线则整体移除；否则以指定颜色添加（黑色 → 干净的无样式 <u>）
+          if (editor.isActive(this.name)) return chain().unsetMark(this.name).run();
+          return chain().setMark(this.name, color ? { color } : null).run();
+        },
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      'Mod-u': () => this.editor.commands.toggleUnderlineColor(toColorAttr(getEditorColor('underline'))),
+      'Mod-U': () => this.editor.commands.toggleUnderlineColor(toColorAttr(getEditorColor('underline'))),
     };
   },
 });
@@ -504,8 +657,8 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // 代码块内使用 Tab 和 Shift+Tab 进行四空格缩进或反缩进
-        codeBlock: { HTMLAttributes: { class: 'code-block' }, enableTabIndentation: true, tabSize: 4 },
+        // 代码块换成下方的 CodeBlockLowlight（语法高亮版），此处关闭内置实现避免冲突
+        codeBlock: false,
         heading: { levels: [1, 2, 3, 4] },
         link: false,
         underline: false,
@@ -513,6 +666,14 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         orderedList: false,
         listItem: false,
         hardBreak: false,
+      }),
+      // 代码块：lowlight 语法高亮 + 语言标注下拉（CodeBlockView）。
+      // 节点名仍为 codeBlock，Tab 四空格缩进行为保持不变
+      HighlightedCodeBlock.configure({
+        lowlight,
+        HTMLAttributes: { class: 'code-block' },
+        enableTabIndentation: true,
+        tabSize: 4,
       }),
       // 自定义 HardBreak：mdToHtml 用 breaks:true 加载，单个 \n 即转 <br>，
       // 用两个空格+换行反而会变成双重换行
@@ -522,14 +683,15 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         },
       }),
       Highlight,
-      Underline,
+      ColoredUnderline,
       MarkdownTextStyle,
       WikiLinkMark,
       BacklinkChipExtension,
       Color,
       FontSize,
       BackgroundColor,
-      Link.configure({ openOnClick: true, HTMLAttributes: { target: '_blank' } }),
+      // openOnClick 关闭：链接统一由容器 onClickCapture 拦截处理（内部链接开平台标签/页内滚动，外部链接走浏览器默认导航）
+      Link.configure({ openOnClick: false, HTMLAttributes: { target: '_blank' } }),
       Table.configure({ resizable: true }),
       TableRow,
       TableCell,
@@ -832,6 +994,26 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
             e.preventDefault();
             e.stopPropagation();
             window.dispatchEvent(new CustomEvent('open-wiki-link', { detail: { wiki: wikiAttr } }));
+            return;
+          }
+
+          // 页内锚点链接（#标题）：滚动到对应标题，不开新窗口
+          const rawHref = anchorEl.getAttribute('href') || '';
+          if (rawHref.startsWith('#')) {
+            e.preventDefault();
+            e.stopPropagation();
+            let anchorText = '';
+            try { anchorText = decodeURIComponent(rawHref.slice(1)); } catch { anchorText = rawHref.slice(1); }
+            const heads = editor.view.dom.querySelectorAll<HTMLElement>('h1, h2, h3, h4');
+            let matched = false;
+            for (const h of Array.from(heads)) {
+              if (headingMatch(h, stripMdText(anchorText))) {
+                h.scrollIntoView({ behavior: 'auto', block: 'start' });
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) editor.view.dom.scrollIntoView({ behavior: 'auto', block: 'start' });
             return;
           }
 

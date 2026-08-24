@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { PROJECT_ROOT } from './fileUtils';
+import { stripMdText } from './stripText';
 
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
 const PROJECT_DIR = path.join(PROJECT_ROOT, 'project');
@@ -39,12 +40,14 @@ export function docKeyOf(filename: string): string {
   return filename.replace(/\.md$/, '');
 }
 
-/** 解析 markdown 的 H2-H4 标题层级树 */
+/** 解析 markdown 的 H2-H4 标题层级树。
+ * 标题文本统一经 stripMdText 剥成纯文本：标题可能带颜色等内联 HTML（<span style>），
+ * 不剥离会污染锚点匹配、link-meta sidecar 与前端目录/链接选择列表。 */
 export function parseHeadingTree(content: string): HeadingNode[] {
   const flat: { level: number; text: string }[] = [];
   for (const line of content.split('\n')) {
     const m = line.match(/^(#{2,4})\s+(.+)/);
-    if (m) flat.push({ level: m[1].length, text: m[2].trim() });
+    if (m) flat.push({ level: m[1].length, text: stripMdText(m[2]) });
   }
 
   const roots: HeadingNode[] = [];
@@ -109,7 +112,7 @@ async function locateDoc(docKey: string): Promise<(DocRef & { filePath: string }
       if (docKeyOf(f) === docKey) {
         const filePath = path.join(CATEGORIES_DIR, entry.name, f);
         const content = await fs.readFile(filePath, 'utf-8');
-        const title = content.match(/^#\s+(.+)/m)?.[1]?.trim() || f;
+        const title = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '') || f;
         return { kind: 'category', category: entry.name, filename: f, title, filePath };
       }
     }
@@ -124,7 +127,7 @@ async function locateDoc(docKey: string): Promise<(DocRef & { filePath: string }
         if (docKeyOf(f) === docKey) {
           const filePath = path.join(base, entry.name, f);
           const content = await fs.readFile(filePath, 'utf-8');
-          const title = content.match(/^#\s+(.+)/m)?.[1]?.trim() || f;
+          const title = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '') || f;
           return { kind: 'project', category: entry.name, filename: f, title, filePath };
         }
       }
@@ -268,7 +271,7 @@ export async function searchAllDocs(query: string): Promise<(DocRef & { headings
       for (const f of files) {
         if (!f.match(/^\d{3}-.+\.md$/) || f === '00-index.md') continue;
         const content = await fs.readFile(path.join(subPath, f), 'utf-8').catch(() => '');
-        const title = content.match(/^#\s+(.+)/m)?.[1]?.trim() || f;
+        const title = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '') || f;
         if (title.toLowerCase().includes(q) || f.toLowerCase().includes(q)) {
           results.push({
             kind, category: entry.name, filename: f, title,
@@ -307,7 +310,7 @@ export async function getBacklinks(kind: string, category: string, filename: str
         for (const link of links) {
           const [docKey, ...anchors] = link.split('#').map(s => s.trim()).filter(Boolean);
           if (docKey !== targetKey) continue;
-          const title = content.match(/^#\s+(.+)/m)?.[1]?.trim() || f;
+          const title = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '') || f;
           // 找到链接文本出现的位置，取最近的前置标题作为上下文锚点
           const linkIdx = content.indexOf(link);
           const before = content.slice(0, Math.max(0, linkIdx));
@@ -316,9 +319,9 @@ export async function getBacklinks(kind: string, category: string, filename: str
             const m = hLine.match(/^(#{2,4})\s+(.+)/);
             if (m) {
               const lv = m[1].length;
-              // 维护层级路径
+              // 维护层级路径（剥掉颜色等内联 HTML，与锚点解析口径一致）
               while (contextAnchor.length >= lv - 1) contextAnchor.pop();
-              contextAnchor.push(m[2].trim());
+              contextAnchor.push(stripMdText(m[2]));
             }
           }
           let resolved: ResolvedLink | null = null;

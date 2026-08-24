@@ -1,4 +1,26 @@
 {
-  "headings": [],
-  "renames": {}
+  "headings": [
+    {
+      "level": 2,
+      "text": "Claude Code 的“多 Agent”体系"
+    },
+    {
+      "level": 2,
+      "text": "选择一种方法"
+    },
+    {
+      "level": 2,
+      "text": "检查运行中的工作"
+    },
+    {
+      "level": 2,
+      "text": "了解更多"
+    }
+  ],
+  "renames": {
+    "选择一种方法": "选择一种方法",
+    "检查运行中的工作": "检查运行中的工作",
+    "了解更多": "了解更多",
+    "Claude Code 的“多 Agent”体系": "Claude Code 的“多 Agent”体系"
+  }
 }

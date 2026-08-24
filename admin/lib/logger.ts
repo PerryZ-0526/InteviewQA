@@ -247,6 +247,16 @@ export async function logDelete(category: string, filename: string) {
   });
 }
 
+export async function logMove(category: string, filename: string, detail: string) {
+  await appendLog({
+    action: 'move_question',
+    status: 'success',
+    category,
+    filename,
+    detail: detail.slice(0, 200),
+  });
+}
+
 export async function logAnswer(category: string, filename: string, detail?: string) {
   await appendLog({
     action: 'answer_random',

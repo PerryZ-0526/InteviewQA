@@ -10,7 +10,7 @@ Kafka 如何保证消息不丢失？
 
 ## 题目导航
 
-← [kafka为什么快？](003-kafka为什么快？.md) | 无 →
+← [kafka为什么快？](kafka为什么快？) | 无 →
 
 ## 面试直接答
 
@@ -29,7 +29,6 @@ Broker 端的不丢靠副本与选举策略。生产环境通常设置 replicati
 ### 一、消息在哪几个环节会丢
 
 一条消息从产生到被业务处理，经过三个环节，每个环节都有独立的丢失场景：
-
 ```text
 Producer ──send──▶ Broker(leader) ──replicate──▶ Broker(follower×2)
    │                    │                              │
@@ -52,13 +51,15 @@ Consumer ◀──poll── Broker ──commit offset──▶ __consumer_offs
 
 ### 二、三种投递语义
 
-Kafka 官方文档将投递语义分为三档，这是理解「不丢」的坐标系（详见 [001-mq概览](001-mq概览.md)「消息投递语义」一节）：
+Kafka 官方文档将投递语义分为三档，这是理解「不丢」的坐标系（详见 [001-mq概览](001-mq%E6%A6%82%E8%A7%88.md)「消息投递语义」一节）：
 
-| 语义 | 典型做法 | 会丢吗 | 会重吗 | Kafka 实现 |
-| --- | --- | --- | --- | --- |
-| 最多一次（At Most Once） | acks=0，或先提交位移再处理 | 可能 | 不会 | 默认自动提交+不检查发送结果 |
-| 至少一次（At Least Once） | acks=all+重试，先处理后提交位移 | 不会 | 可能 | 关闭自动提交，手动提交位移 |
-| 精确一次（Exactly Once） | 幂等生产者+事务+业务幂等 | 不会 | 不会 | KIP-98 事务 / 幂等生产者 |
+
+| 语义                  | 典型做法                 | 会丢吗 | 会重吗 | Kafka 实现          |
+| ------------------- | -------------------- | --- | --- | ----------------- |
+| 最多一次（At Most Once）  | acks=0，或先提交位移再处理     | 可能  | 不会  | 默认自动提交+不检查发送结果    |
+| 至少一次（At Least Once） | acks=all+重试，先处理后提交位移 | 不会  | 可能  | 关闭自动提交，手动提交位移     |
+| 精确一次（Exactly Once）  | 幂等生产者+事务+业务幂等        | 不会  | 不会  | KIP-98 事务 / 幂等生产者 |
+
 
 「保证不丢」对应的就是第二档 at-least-once。分布式环境里不存在既绝对不丢、又绝对不重、还完全可用的免费方案，因此工程答案永远是「至少一次 + 幂等」，用业务层的去重把 at-least-once 收敛成「效果上的 exactly-once」。
 
@@ -66,14 +67,15 @@ Kafka 官方文档将投递语义分为三档，这是理解「不丢」的坐�
 
 acks 的三个取值决定了确认时机：
 
-| acks | 确认时机 | 丢失风险 |
-| --- | --- | --- |
-| 0 | 不等待确认 | 网络/序列化失败即丢，无感知 |
-| 1 | leader 落盘即确认 | leader 在副本同步前宕机，消息丢失 |
+
+| acks    | 确认时机         | 丢失风险                                                 |
+| ------- | ------------ | ---------------------------------------------------- |
+| 0       | 不等待确认        | 网络/序列化失败即丢，无感知                                       |
+| 1       | leader 落盘即确认 | leader 在副本同步前宕机，消息丢失                                 |
 | all（-1） | ISR 全副本落盘才确认 | ISR 收缩到只剩 leader 且 min.insync.replicas=1 时退化为 acks=1 |
 
-生产端推荐配置（Java 客户端）：
 
+生产端推荐配置（Java 客户端）：
 ```java
 Properties props = new Properties();
 props.put("bootstrap.servers", "broker1:9092,broker2:9092");
@@ -96,19 +98,19 @@ try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
 
 两个关键机制：
 
-- **重试边界**：retries=Integer.MAX_VALUE 意味着生产者几乎无限重试，delivery.timeout.ms 才是真正的上限——超过该时长仍失败，send 回调会收到最终异常，此时应用必须兜底，否则消息就是丢了。
+- **重试边界**：retries=Integer.MAX\_VALUE 意味着生产者几乎无限重试，delivery.timeout.ms 才是真正的上限——超过该时长仍失败，send 回调会收到最终异常，此时应用必须兜底，否则消息就是丢了。
 - **幂等生产者（KIP-98，Kafka 0.11）**：Broker 为每个生产者分配 **PID**，消息携带单调递增的 **序列号**；Broker 收到乱序或重复的序列号时只接受连续的批次、丢弃重复批次，从而保证「重试不产生重复」且「单分区内有序」。注意幂等只覆盖**单分区、单生产者会话**内的去重：生产者重启后 PID 重新分配，旧会话的重复发送无法再被识别（KIP-360 在 2.5 修复了日志截断导致 producer 状态被过早清除的问题，但跨会话去重仍然不成立）。
 
 ### 四、Broker 端：副本、ISR 与选举策略
 
 Broker 端不丢的核心是「确认过的消息必须存在于多个物理副本上」，由三个配置共同保证：
 
-| 配置 | 默认值 | 推荐值 | 作用 |
-| --- | --- | --- | --- |
-| replication.factor | 1（自动建主题） | 3 | 每个分区的副本总数 |
-| min.insync.replicas | 1 | 2 | acks=all 时最少确认副本数 |
-| unclean.leader.election.enable | false（0.11 起，KIP-106） | false | 是否允许落后副本当选 leader |
 
+| 配置                             | 默认值                   | 推荐值   | 作用                |
+| ------------------------------ | --------------------- | ----- | ----------------- |
+| replication.factor             | 1（自动建主题）              | 3     | 每个分区的副本总数         |
+| min.insync.replicas            | 1                     | 2     | acks=all 时最少确认副本数 |
+| unclean.leader.election.enable | false（0.11 起，KIP-106） | false | 是否允许落后副本当选 leader |
 ```text
 Partition-0
 ├─ Broker1: leader     ◀── 写入 + 确认
@@ -128,7 +130,6 @@ min.insync.replicas=2：ISR 收缩到 1 时拒绝写入（NotEnoughReplicasExcep
 ### 五、消费端：位移提交时机
 
 消费端的丢失几乎全部来自「位移提交早于处理完成」。默认行为：
-
 ```text
 enable.auto.commit=true（默认）
   → 每 auto.commit.interval.ms（默认 5 秒）、在下一次 poll() 之前
@@ -139,7 +140,6 @@ enable.auto.commit=true（默认）
 ```
 
 正确姿势是关闭自动提交、处理成功后再提交：
-
 ```java
 props.put("enable.auto.commit", "false");
 
@@ -160,14 +160,13 @@ while (true) {
 
 - **提交失败要处理**：commitSync 抛异常时不能忽略，否则位移停留在旧位置，重启后重复消费（不丢，但重）；常见做法是重试提交或记录待补偿。
 - **rebalance 打断**：分区被撤销（partition revoked）时正在处理的批次可能来不及提交，应在 ConsumerRebalanceListener.onPartitionsRevoked 中提交或持久化当前进度，避免新消费者重复处理甚至产生业务冲突。
-- **位移过期**：消费组长期不活跃，__consumer_offsets 中的位移超过 offsets.retention.minutes（默认 7 天）被清理，重启后按 auto.offset.reset 重新定位，latest 会跳过期间的历史消息。
+- **位移过期**：消费组长期不活跃，\_\_consumer\_offsets 中的位移超过 offsets.retention.minutes（默认 7 天）被清理，重启后按 auto.offset.reset 重新定位，latest 会跳过期间的历史消息。
 
-消费端的结论与 [002-kafka的常见使用场景](002-kafka的常见使用场景.md)「可靠传递与故障恢复」一致：先处理后提交换来的是重复而非丢失，重复交给幂等解决。
+消费端的结论与 [002-kafka的常见使用场景](002-kafka%E7%9A%84%E5%B8%B8%E8%A7%81%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF.md)「可靠传递与故障恢复」一致：先处理后提交换来的是重复而非丢失，重复交给幂等解决。
 
 ### 六、Exactly-Once：幂等生产者 + 事务
 
 在「不丢」之上消除重复，Kafka 的路线是 KIP-98（0.11）引入的两层机制：
-
 ```text
 第一层：幂等生产者（enable.idempotence=true）
   单分区内：PID + 序列号 → 重试去重、保持顺序
@@ -177,7 +176,6 @@ while (true) {
   事务协调器 + __transaction_state 主题记录事务状态
   消费端 isolation.level=read_committed 过滤未提交消息
 ```
-
 ```java
 props.put("transactional.id", "order-tx-01");   // 稳定的唯一 ID
 producer.initTransactions();
@@ -191,7 +189,7 @@ try {
 }
 ```
 
-演进脉络：KIP-98 要求每个生产者实例持有全局唯一的 transactionalId，海量分区场景下 ID 成为扩展瓶颈；KIP-447（2.5）引入 epoch 隔离机制，允许同一 transactionalId 被多个实例共享，崩溃恢复时旧实例被 fence 掉，事务状态得以安全接管。Kafka Streams 的 processing.guarantee=exactly_once_v2 即构建在这套机制之上。
+演进脉络：KIP-98 要求每个生产者实例持有全局唯一的 transactionalId，海量分区场景下 ID 成为扩展瓶颈；KIP-447（2.5）引入 epoch 隔离机制，允许同一 transactionalId 被多个实例共享，崩溃恢复时旧实例被 fence 掉，事务状态得以安全接管。Kafka Streams 的 processing.guarantee=exactly\_once\_v2 即构建在这套机制之上。
 
 但必须明确边界：**事务的 exactly-once 只覆盖 Kafka 内部**。「消费消息 → 写 MySQL → 提交位移」这条链路中，MySQL 的写入无法与位移提交放进同一个 Kafka 事务，Kafka 无法替你保证外部系统的原子性；此时需要 Transactional Outbox（业务数据与待发消息同库同事务）或消费端幂等把语义补齐。
 
@@ -207,15 +205,15 @@ try {
 
 **追问 3：既然 Kafka 事务能 exactly-once，为什么业务还要做幂等？**
 
-因为事务边界止于 Kafka。read_committed 保证消费者看不到未提交消息、跨分区写入原子，但无法覆盖外部数据库等系统；「写库 + 提交位移」的原子性必须由 Outbox 或本地消息表解决。另外事务有成本：transaction.timeout.ms（默认 60 秒）限制长事务、事务协调器是额外依赖，滥用事务会拖累吞吐，因此大多数业务链路仍是「at-least-once + 幂等」。
+因为事务边界止于 Kafka。read\_committed 保证消费者看不到未提交消息、跨分区写入原子，但无法覆盖外部数据库等系统；「写库 + 提交位移」的原子性必须由 Outbox 或本地消息表解决。另外事务有成本：transaction.timeout.ms（默认 60 秒）限制长事务、事务协调器是额外依赖，滥用事务会拖累吞吐，因此大多数业务链路仍是「at-least-once + 幂等」。
 
 **追问 4：关闭自动提交、先处理后提交，还有哪些场景会丢消息？**
 
-还有三类：第一，rebalance 时分区被撤销，处理中的批次未提交且新消费者从旧位置消费，如果业务在 onPartitionsRevoked 里错误地提交了「已拉取未处理」的位移，消息会被跳过；第二，提交动作本身失败被忽略，位移停在旧位置只是重复，但若错误地把位移向前跳（如 seek 或提交了错误的 offset）则直接跳过消息；第三，位移在 __consumer_offsets 中过期被清理，重启后按 auto.offset.reset=latest 重新定位，历史消息不再投递。
+还有三类：第一，rebalance 时分区被撤销，处理中的批次未提交且新消费者从旧位置消费，如果业务在 onPartitionsRevoked 里错误地提交了「已拉取未处理」的位移，消息会被跳过；第二，提交动作本身失败被忽略，位移停在旧位置只是重复，但若错误地把位移向前跳（如 seek 或提交了错误的 offset）则直接跳过消息；第三，位移在 \_\_consumer\_offsets 中过期被清理，重启后按 auto.offset.reset=latest 重新定位，历史消息不再投递。
 
 **追问 5：「不丢」和「不重」为什么不能同时免费获得？**
 
-因为确认与重试本身就是重复的来源：生产端网络分区时，Broker 已写入但确认包丢失，生产者重试必然产生重复；消费端处理成功但提交前崩溃，重启重放必然重复。要去重就需要跨节点的协调状态（PID、事务日志、去重表），这些状态本身有成本和故障模式。所以工程上的标准答案是「至少一次 + 幂等」，把可靠性问题转化为可重复执行的问题，这也与 [001-mq概览](001-mq概览.md) 中「提高可靠性通常会带来消息重复问题」的结论一致。
+因为确认与重试本身就是重复的来源：生产端网络分区时，Broker 已写入但确认包丢失，生产者重试必然产生重复；消费端处理成功但提交前崩溃，重启重放必然重复。要去重就需要跨节点的协调状态（PID、事务日志、去重表），这些状态本身有成本和故障模式。所以工程上的标准答案是「至少一次 + 幂等」，把可靠性问题转化为可重复执行的问题，这也与 [001-mq概览](001-mq%E6%A6%82%E8%A7%88.md) 中「提高可靠性通常会带来消息重复问题」的结论一致。
 
 ### 参考链接
 
@@ -229,5 +227,6 @@ try {
 - [KIP-360 - Improve reliability of idempotent producer](https://cwiki.apache.org/confluence/display/KAFKA/KIP-360+-+Improve+reliability+of+idempotent+producer)
 - [KIP-447 - Producer scalability for exactly once semantics](https://cwiki.apache.org/confluence/display/KAFKA/KIP-447+-+Producer+scalability+for+exactly+once+semantics)
 
+
 <!-- created: 2026-08-13 19:11:55 -->
-<!-- updated: 2026-08-13 19:11:55 -->
+<!-- updated: 2026-08-20 12:29:01 -->

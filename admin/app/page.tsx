@@ -18,6 +18,7 @@ import LinkInsertFloat from '@/components/LinkInsertFloat';
 import TagViewer from '@/components/TagViewer';
 import TabBar from '@/components/TabBar';
 import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
+import { stripMdText } from '@/lib/stripText';
 
 interface DocTab {
   id: string;
@@ -64,6 +65,8 @@ export default function Home() {
 
   // Track previous state for back navigation from random mode
   const navSeqRef = useRef(0);
+  // 文档内链接跳转：点击总是新开一个标签页，不复用已打开的文档标签
+  const linkTabSeqRef = useRef(0);
   const prevStateRef = useRef<{
     view: 'browse' | 'edit' | 'tag' | 'project-doc' | 'new-empty' | 'external-doc' | 'random';
     selectedCategory: string | null;
@@ -135,6 +138,11 @@ export default function Home() {
 
   const formSeqRef = useRef(0);
 
+  // 标签页采用 MRU 排序：新开的标签插到最左侧；重开已打开文档时将其移到最前
+  const addTabToFront = (tab: DocTab) => {
+    setTabs((prev) => [tab, ...prev.filter((t) => t.id !== tab.id)]);
+  };
+
   // 新建题目表单作为一个独立标签（保持挂载，草稿内容切换不丢失）
   const openFormTab = () => {
     const existingForms = tabs.filter((t) => t.kind === 'form').length;
@@ -143,7 +151,7 @@ export default function Home() {
       kind: 'form',
       label: existingForms > 0 ? `新建题目 ${existingForms + 1}` : '新建题目',
     };
-    setTabs((prev) => [...prev, tab]);
+    addTabToFront(tab);
     activateTab(tab);
   };
 
@@ -205,6 +213,17 @@ export default function Home() {
     if (activeTabId) closeTab(activeTabId);
   };
 
+  // 一键关闭全部标签：清空工作集并回到浏览视图（文档内容已由编辑器自动保存，草稿标签同单关行为不拦截）
+  const closeAllTabs = () => {
+    if (tabs.length === 0) return;
+    tabScrollsRef.current = {};
+    setTabContents({});
+    setTabs([]);
+    setActiveTabId(null);
+    setPendingAnchor(null);
+    setView('browse');
+  };
+
   // 切换标签后直接恢复滚动位置（无平滑动画）
   useLayoutEffect(() => {
     if (!activeTabId || !contentRef.current) return;
@@ -216,6 +235,7 @@ export default function Home() {
     const tabId = `cat:${category}:${filename}`;
     const existing = tabs.find((t) => t.id === tabId);
     if (existing) {
+      addTabToFront(existing);
       activateTab(existing);
       return;
     }
@@ -228,15 +248,118 @@ export default function Home() {
       if (seq !== navSeqRef.current) return;
       if (json.success) {
         const label = categories.find((c) => c.slug === category)?.questions.find((q) => q.filename === filename)?.title || filename;
+        const tab: DocTab = { id: tabId, kind: 'category', category, filename, label };
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
-        setTabs((prev) => [...prev, { id: tabId, kind: 'category', category, filename, label }]);
-        activateTab({ id: tabId, kind: 'category', category, filename, label });
+        addTabToFront(tab);
+        activateTab(tab);
       }
     } catch (e) {
       if (seq !== navSeqRef.current) return;
       showToast('加载题目失败', 'error');
     } finally {
       if (seq === navSeqRef.current) setLoading(false);
+    }
+  };
+
+  // ---- 拖拽移动题目（跨分类 / 同分类重排） ----
+
+  // 移动成功后重映射受影响的已打开标签（源重排、目标 shift、被移文档三类改名），
+  // 并静默重取内容（服务端已改写其导航/内部引用）。
+  const remapTabsAfterMove = (json: {
+    moved: { from: { category: string; filename: string }; to: { category: string; filename: string } };
+    sourceRenames: Record<string, string>;
+    targetRenames: Record<string, string>;
+  }) => {
+    const { moved, sourceRenames, targetRenames } = json;
+    const map = new Map<string, { cat: string; file: string }>();
+    const key = (c: string, f: string) => `${c}\u0000${f}`;
+    for (const [o, n] of Object.entries(sourceRenames)) map.set(key(moved.from.category, o), { cat: moved.from.category, file: n });
+    for (const [o, n] of Object.entries(targetRenames)) map.set(key(moved.to.category, o), { cat: moved.to.category, file: n });
+    map.set(key(moved.from.category, moved.from.filename), { cat: moved.to.category, file: moved.to.filename });
+
+    const touched: { oldId: string; newId: string; newCat: string; newFile: string }[] = [];
+    const newTabs = tabs.map((t) => {
+      if (t.kind !== 'category' && t.kind !== 'random') return t;
+      const parts = t.id.split(':');
+      // cat:<c>:<f> 或 cat:<c>:<f>:<seq>（文档内链接新开的标签带序号后缀）
+      const hit = map.get(key(parts[1], parts[2]));
+      if (!hit) return t;
+      const rest = parts.slice(3).join(':');
+      const newId = `${parts[0]}:${hit.cat}:${hit.file}${rest ? ':' + rest : ''}`;
+      touched.push({ oldId: t.id, newId, newCat: hit.cat, newFile: hit.file });
+      return { ...t, id: newId, category: hit.cat, filename: hit.file };
+    });
+    if (touched.length === 0) return;
+
+    setTabs(newTabs);
+    setTabContents((prev) => {
+      const next = { ...prev };
+      for (const t of touched) {
+        if (prev[t.oldId] != null) {
+          next[t.newId] = prev[t.oldId];
+          delete next[t.oldId];
+        }
+      }
+      return next;
+    });
+    for (const t of touched) {
+      const s = tabScrollsRef.current[t.oldId];
+      if (s != null) {
+        tabScrollsRef.current[t.newId] = s;
+        delete tabScrollsRef.current[t.oldId];
+      }
+    }
+    if (activeTabId) {
+      const hit = touched.find((t) => t.oldId === activeTabId);
+      if (hit) {
+        setActiveTabId(hit.newId);
+        setSelectedCategory(hit.newCat);
+        setSelectedFile(hit.newFile);
+      }
+    }
+    // 静默重取受影响标签内容（编辑器按 key 重挂载，不会与自动保存竞争旧路径）
+    for (const t of touched) {
+      fetch(`/api/categories/${encodeURIComponent(t.newCat)}/${encodeURIComponent(t.newFile)}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.success) setTabContents((prev) => ({ ...prev, [t.newId]: j.data }));
+        })
+        .catch(() => {});
+    }
+  };
+
+  const handleMoveQuestion = async (fromCat: string, filename: string, toCat: string, toIndex: number) => {
+    // 客户端 no-op 检测（同分类且落点等于原位；拖拽 hook 已过滤该情况，此处兜底）
+    const srcCat = categories.find((c) => c.slug === fromCat);
+    const originalIndex = srcCat?.questions.findIndex((q) => q.filename === filename) ?? -1;
+    if (originalIndex < 0) return;
+    if (fromCat === toCat && toIndex === originalIndex) {
+      showToast('已在原位，无需移动', 'info');
+      return;
+    }
+
+    // 乐观更新：先移动列表（FLIP 动画基于本次渲染），API 失败时重新加载回滚
+    setCategories((prev) => reorderCategories(prev, fromCat, filename, toCat, toIndex));
+
+    try {
+      const res = await fetch('/api/categories/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromCategory: fromCat, filename, toCategory: toCat, toIndex }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || '移动失败');
+      if (json.noop) {
+        await loadCategories();
+        return;
+      }
+      remapTabsAfterMove(json);
+      await loadCategories();
+      await loadTags();
+      showToast(`已移动到 ${toCat}`, 'success');
+    } catch (e: any) {
+      await loadCategories();
+      showToast('移动失败: ' + (e?.message || '未知错误'), 'error');
     }
   };
 
@@ -253,10 +376,10 @@ export default function Home() {
       });
       const json = await res.json();
       if (json.success) {
-        // Update sidebar title from H1 in content
+        // Update sidebar title from H1 in content（标题可能带颜色等内联 HTML，剥成纯文本）
         const h1Match = content.match(/^#\s+(.+)/m);
         if (h1Match) {
-          const newTitle = h1Match[1].trim();
+          const newTitle = stripMdText(h1Match[1]);
           setCategories((prev) =>
             prev.map((c) => {
               if (c.slug !== cat) return c;
@@ -334,6 +457,7 @@ export default function Home() {
     const tabId = `random:${picked.category}:${picked.filename}`;
     const existing = tabs.find((t) => t.id === tabId);
     if (existing) {
+      addTabToFront(existing);
       activateTab(existing);
       return;
     }
@@ -344,9 +468,10 @@ export default function Home() {
       const json = await res.json();
       if (json.success) {
         const label = categories.find((c) => c.slug === picked.category)?.questions.find((q) => q.filename === picked.filename)?.title || picked.filename;
+        const tab: DocTab = { id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label };
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
-        setTabs((prev) => [...prev, { id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label }]);
-        activateTab({ id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label });
+        addTabToFront(tab);
+        activateTab(tab);
       } else {
         showToast('加载失败', 'error');
       }
@@ -372,12 +497,39 @@ export default function Home() {
     const tabId = `proj:${subdir}:${filename}`;
     const existing = tabs.find((t) => t.id === tabId);
     if (existing) {
+      addTabToFront(existing);
       activateTab(existing);
       return;
     }
     const label = projectSubdirs.find((s) => s.slug === subdir)?.docs.find((d) => d.filename === filename)?.title || filename;
-    setTabs((prev) => [...prev, { id: tabId, kind: 'project', subdir, filename, label }]);
-    activateTab({ id: tabId, kind: 'project', subdir, filename, label });
+    const tab: DocTab = { id: tabId, kind: 'project', subdir, filename, label };
+    addTabToFront(tab);
+    activateTab(tab);
+  };
+
+  // 文档内链接跳转：总是新开一个标签页（同一文档可并存多个标签，id 带序号防冲突）
+  const openDocLinkInNewTab = async (kind: 'category' | 'project', category: string, filename: string) => {
+    const seq = ++linkTabSeqRef.current;
+    const tabId = `${kind === 'category' ? 'cat' : 'proj'}:${category}:${filename}:${seq}`;
+    if (kind === 'category') {
+      try {
+        const res = await fetch(`/api/categories/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`);
+        const json = await res.json();
+        if (!json.success) return;
+        const label = categories.find((c) => c.slug === category)?.questions.find((q) => q.filename === filename)?.title || filename;
+        const tab: DocTab = { id: tabId, kind: 'category', category, filename, label };
+        setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
+        addTabToFront(tab);
+        activateTab(tab);
+      } catch {
+        showToast('加载题目失败', 'error');
+      }
+      return;
+    }
+    const label = projectSubdirs.find((s) => s.slug === category)?.docs.find((d) => d.filename === filename)?.title || filename;
+    const tab: DocTab = { id: tabId, kind: 'project', subdir: category, filename, label };
+    addTabToFront(tab);
+    activateTab(tab);
   };
 
   const openExternalList = () => {
@@ -393,13 +545,15 @@ export default function Home() {
     const tabId = `ext:${id}`;
     const existing = tabs.find((t) => t.id === tabId);
     if (existing) {
+      addTabToFront(existing);
       activateTab(existing);
       return;
     }
     const docInfo = externalDocs.find((d) => d.id === id);
     const label = docInfo?.title || (docInfo?.path || '').split(/[\\/]/).pop() || '外部文档';
-    setTabs((prev) => [...prev, { id: tabId, kind: 'external', extId: id, label }]);
-    activateTab({ id: tabId, kind: 'external', extId: id, label });
+    const tab: DocTab = { id: tabId, kind: 'external', extId: id, label };
+    addTabToFront(tab);
+    activateTab(tab);
   };
 
   // 点击 wiki 链接 → 打开目标文档并滚动到锚点（含逐级回退）
@@ -420,9 +574,9 @@ export default function Home() {
         docs[0];
       if (!target) return;
       if (target.kind === 'category') {
-        await openQuestion(target.category, target.filename);
+        await openDocLinkInNewTab('category', target.category, target.filename);
       } else {
-        openProjectDoc(target.category, target.filename);
+        openDocLinkInNewTab('project', target.category, target.filename);
       }
       setPendingAnchor(anchors.length > 0 ? anchors : null);
     } catch {}
@@ -532,6 +686,7 @@ export default function Home() {
           setBrowsingExternal(false);
           setView('browse');
         }}
+        onMoveQuestion={handleMoveQuestion}
       />
 
       <div className="main">
@@ -543,6 +698,7 @@ export default function Home() {
             if (tab) activateTab(tab);
           }}
           onClose={closeTab}
+          onCloseAll={closeAllTabs}
         />
         <header className="header">
           <div>
@@ -823,6 +979,38 @@ export default function Home() {
       )}
     </div>
   );
+}
+
+/** 拖拽移动的乐观列表更新：把 filename 从 fromCat 移到 toCat 的 toIndex 槽位（移除后列表语义） */
+function reorderCategories(
+  prev: CategoryInfo[],
+  fromCat: string,
+  filename: string,
+  toCat: string,
+  toIndex: number,
+): CategoryInfo[] {
+  const moved = prev.find((c) => c.slug === fromCat)?.questions.find((q) => q.filename === filename);
+  if (!moved) return prev;
+  return prev.map((c) => {
+    if (c.slug === fromCat && c.slug === toCat) {
+      const qs = [...c.questions];
+      const qi = qs.findIndex((q) => q.filename === filename);
+      if (qi < 0) return c;
+      const [q] = qs.splice(qi, 1);
+      qs.splice(Math.max(0, Math.min(toIndex, qs.length)), 0, q);
+      return { ...c, questions: qs };
+    }
+    if (c.slug === fromCat) {
+      const qs = c.questions.filter((q) => q.filename !== filename);
+      return { ...c, questions: qs, questionCount: qs.length };
+    }
+    if (c.slug === toCat) {
+      const qs = [...c.questions];
+      qs.splice(Math.max(0, Math.min(toIndex, qs.length)), 0, moved);
+      return { ...c, questions: qs, questionCount: qs.length };
+    }
+    return c;
+  });
 }
 
 function HomeView({

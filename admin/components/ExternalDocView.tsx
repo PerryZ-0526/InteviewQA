@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import WysiwygEditor from './WysiwygEditor';
 import TocPanel from './TocPanel';
-import { stripMdText } from '@/lib/markdown';
+import { stripMdText } from '@/lib/stripText';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -99,7 +99,8 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
           body = body.trimStart();
           const h1Match = body.match(/^#\s+(.+)/m);
           if (h1Match) {
-            title = h1Match[1].trim();
+            // 标题可能带颜色等内联 HTML（<span style>），显示前统一剥成纯文本
+            title = stripMdText(h1Match[1]);
             body = body.slice(body.indexOf('\n', h1Match.index!) + 1).trimStart();
           }
 

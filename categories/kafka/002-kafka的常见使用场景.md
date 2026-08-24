@@ -16,7 +16,7 @@
 
 消息队列的典型应用场景：
 
-- 1）`系统解耦`：<span style="background-color: #fff3cd">服务间通过消息通信</span>，无需直接依赖。
+- 1）`系统解耦`：<span style="background-color: rgb(255, 243, 205)">服务间通过消息通信</span>，无需直接依赖。
 - 2）`异步处理`：耗时操作异步执行（如发送邮件、生成报表）。
 - 3）`流量削峰`：缓冲突发流量，避免系统过载。
 - 4）`数据同步 / 最终一致性`：通过事件异步传播状态变化，<span style="background-color: rgb(255, 243, 205)">使多个系统最终收敛到一致状态</span>，例如订单创建后异步更新库存、积分和搜索索引。
@@ -153,7 +153,7 @@ user.registered
 订单创建 → 支付 → 发货 → 完成
 ```
 
-这时可以<span style="background-color: #fff3cd">让同一个订单 ID 的消息始终进入同一队列或 Kafka 同一分区</span>，从而保证`局部有序`。
+这时可以<span style="background-color: rgb(255, 243, 205)">让同一个订单 ID 的消息始终进入同一队列或 Kafka 同一分区</span>，从而保证`局部有序`。
 
 需要注意，Kafka 保证的是分区内有序，而不是默认全局有序。
 
@@ -186,7 +186,7 @@ Kafka 更有特点的地方在于：**它不仅是消息队列，更接近一个
 
 #### 1）事件流与事件总线⭐
 
-Kafka 很<span style="background-color: #fff3cd">适合把整个系统中的业务变化统一建模成</span>`事件`：
+Kafka 很<span style="background-color: rgb(255, 243, 205)">适合把整个系统中的业务变化统一建模成</span>`事件`：
 ```
 user.created
 order.paid
@@ -208,7 +208,7 @@ TJ-Edu-Agent 的 `policy.updated` 就属于这种典型场景。
 
 这是 Kafka 和很多传统任务型 MQ 非常重要的区别。
 
-Kafka 中的消息消费以后不会立即删除，而是<span style="background-color: #fff3cd">在一定保留期限内继续保存</span>：
+Kafka 中的消息消费以后不会立即删除，而是<span style="background-color: rgb(255, 243, 205)">在一定保留期限内继续保存</span>：
 ```
 offset 100
 offset 101
@@ -279,7 +279,7 @@ Flink / Spark Streaming
 
 ---
 
-#### 5）<span style="background-color: #fff3cd">基于事件重新构建下游状态</span>
+#### 5）<span style="background-color: rgb(255, 243, 205)">基于事件重新构建下游状态</span>
 
 因为 Kafka 能长期保留并回放事件，所以某些系统可以把 Kafka 中的事件流看成一段变化历史：
 ```
@@ -307,4 +307,4 @@ Replay
 
 > Kafka 和传统 MQ 都能做异步、解耦和削峰，但 Kafka 更核心的定位是`分布式事件日志`。消息被消费以后不会立即删除，而是按照保留策略持久化保存，消费者通过 `offset` 独立维护消费进度，因此天然支持多个消费组、历史事件回放和下游状态重建；再加上`Partition` 带来的`水平扩展`能力，所以 Kafka 特别适合`事件总线`、日志埋点、大规模数据管道和实时流计算。反过来，如果只是普通异步任务、复杂路由或者延迟消息，RabbitMQ、RocketMQ 等往往会更直接。
 <!-- created: 2026-08-13 18:59:54 -->
-<!-- updated: 2026-08-17 02:00:39 -->
+<!-- updated: 2026-08-21 10:43:28 -->

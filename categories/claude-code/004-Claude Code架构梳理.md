@@ -6,11 +6,11 @@
 
 ## 标签
 
-[Claude Code](../../tags/Claude%20Code.md) | [Agent](../../tags/Agent.md) | [Harness](../../tags/Harness.md)
+[Claude Code](../../tags/Claude Code.md) | [Agent](../../tags/Agent.md) | [Harness](../../tags/Harness.md)
 
 ## 题目导航
 
-← [003-Claude Code自定义子智能体与自主派生机制](003-Claude%20Code自定义子智能体与自主派生机制.md) | [005-Hermes、pi-agent与Claude Code的差异](005-Hermes、pi-agent与Claude%20Code的差异.md) →
+← [003-Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制) | [005-Hermes、pi-agent与Claude Code的差异](005-Hermes、pi-agent与Claude Code的差异) →
 
 ## 面试直接答
 
@@ -33,7 +33,6 @@
 > 公开信息核验日期：2026-08-16。内部实现以官方披露为限，不臆断未公开的调度算法。
 
 ### 一、分层结构图
-
 ```text
 ┌────────────────────────────────────────────────┐
 │  入口层：CLI / 桌面应用 / IDE 扩展 / Web         │
@@ -61,17 +60,18 @@
 
 ### 二、扩展点职责对比
 
-| 扩展点 | 职责 | 典型场景 |
-|---|---|---|
-| hooks | 执行流拦截：校验、注入、改写 | PreToolUse 拦截危险命令；PostToolUse 追加产物信息 |
-| MCP | 外部工具与数据源接入 | 连接内部 API、数据库、浏览器自动化 |
-| skills | 领域知识与操作流程注入 | 部署流程、代码审查规范、特定框架约定 |
-| subagents | 隔离上下文的子任务委派 | Explore 调研代码库、Plan 设计、general-purpose 泛化执行 |
-| plugins | 按厂商聚合扩展 | 团队统一分发工具+技能+子智能体组合 |
-| CLAUDE.md | 项目记忆与规则 | 构建命令约定、代码规范、目录导航 |
+
+| 扩展点       | 职责             | 典型场景                                       |
+| --------- | -------------- | ------------------------------------------ |
+| hooks     | 执行流拦截：校验、注入、改写 | PreToolUse 拦截危险命令；PostToolUse 追加产物信息       |
+| MCP       | 外部工具与数据源接入     | 连接内部 API、数据库、浏览器自动化                        |
+| skills    | 领域知识与操作流程注入    | 部署流程、代码审查规范、特定框架约定                         |
+| subagents | 隔离上下文的子任务委派    | Explore 调研代码库、Plan 设计、general-purpose 泛化执行 |
+| plugins   | 按厂商聚合扩展        | 团队统一分发工具+技能+子智能体组合                         |
+| CLAUDE.md | 项目记忆与规则        | 构建命令约定、代码规范、目录导航                           |
+
 
 ### 三、权限配置示例（`.claude/settings.json`）
-
 ```json
 {
   "permissions": {
@@ -94,7 +94,6 @@
 规则按工具、路径、命令模式匹配，粒度到具体命令前缀；未匹配的默认行为取决于权限模式（default / acceptEdits / plan / bypassPermissions）。sandbox 模式启用后，Bash 与文件访问被 OS 级机制约束，网络默认隔离——这是「模型建议与真实执行分离」的确定性兜底，不依赖模型「记得先问」。
 
 ### 四、hooks 拦截示例
-
 ```json
 {
   "hooks": {
@@ -143,5 +142,6 @@ hooks 是「拦截与策略」——不新增能力，而是校验、注入、�
 - [Claude Code 子智能体文档](https://code.claude.com/docs/en/sub-agents)
 - [Anthropic 工程博客：Claude Code 最佳实践](https://www.anthropic.com/engineering/claude-code-best-practices)
 
+
 <!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-16 01:43:31 -->
+<!-- updated: 2026-08-18 07:05:16 -->

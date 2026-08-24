@@ -17,6 +17,30 @@
       "text": "面试直接答"
     },
     {
+      "level": 3,
+      "text": "先厘清一个概念边界"
+    },
+    {
+      "level": 3,
+      "text": "产品内置的学习闭环有四个组件"
+    },
+    {
+      "level": 3,
+      "text": "运行形态是第二个亮点"
+    },
+    {
+      "level": 3,
+      "text": "第三个亮点是模型自由"
+    },
+    {
+      "level": 3,
+      "text": "第四个亮点是 Programmatic Tool Calling"
+    },
+    {
+      "level": 3,
+      "text": "短板同样要讲"
+    },
+    {
       "level": 2,
       "text": "详细解析"
     },
@@ -39,6 +63,10 @@
     {
       "level": 3,
       "text": "五、参考"
+    },
+    {
+      "level": 2,
+      "text": "Hermes记忆提取的触发机制"
     }
   ],
   "renames": {
@@ -51,6 +79,20 @@
     "二、与 Claude Code 逐项对比": "二、与 Claude Code 逐项对比",
     "三、Python RPC 折叠示例（README 所述模式）": "三、Python RPC 折叠示例（README 所述模式）",
     "四、面试追问": "四、面试追问",
-    "五、参考": "五、参考"
+    "五、参考": "五、参考",
+    "先厘清一个概念边界": "先厘清一个概念边界",
+    "产品内置的学习闭环有四个组件": "产品内置的学习闭环有四个组件",
+    "运行形态是第二个亮点": "运行形态是第二个亮点",
+    "第三个亮点是模型自由": "第三个亮点是模型自由",
+    "第四个亮点是工程机制上的两个巧思": "第四个亮点是 Programmatic Tool Calling",
+    "短板同样要讲": "短板同样要讲",
+    "herm": "Hermes记忆提取的触发机制",
+    "Hermes": "Hermes记忆提取的触发机制",
+    "Hermesyi'ji": "Hermes记忆提取的触发机制",
+    "Hermesji'yi": "Hermes记忆提取的触发机制",
+    "Hermes记忆提取": "Hermes记忆提取的触发机制",
+    "Hermes记忆提取的触发机制": "Hermes记忆提取的触发机制",
+    "第四个亮点是Programmatic Tool Calling": "第四个亮点是 Programmatic Tool Calling",
+    "第四个亮点是 Programmatic Tool Calling": "第四个亮点是 Programmatic Tool Calling"
   }
 }

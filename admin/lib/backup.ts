@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { PROJECT_ROOT } from './fileUtils';
+import { PROJECT_ROOT } from './paths';
 
 const BACKUP_ROOT = path.join(PROJECT_ROOT, 'admin', 'backups');
 const MAX_VERSIONS = 5;

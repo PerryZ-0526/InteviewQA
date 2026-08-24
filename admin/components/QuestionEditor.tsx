@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { EDITOR_COLORS, EDITOR_COLOR_DEFAULT } from '@/lib/editorColors';
 
 interface Props {
   initialContent: string;
@@ -93,27 +94,17 @@ export default function QuestionEditor({ initialContent, onSave, onCancel }: Pro
 
         <span className="separator" />
 
-        <button
-          onClick={() => insertMark('<span style="color: #e03131">', '</span>')}
-          title="红色文字"
-          style={{ color: '#e03131', fontWeight: 'bold' }}
-        >
-          A
-        </button>
-        <button
-          onClick={() => insertMark('<span style="color: #2f9e44">', '</span>')}
-          title="绿色文字"
-          style={{ color: '#2f9e44', fontWeight: 'bold' }}
-        >
-          A
-        </button>
-        <button
-          onClick={() => insertMark('<span style="color: #4c6ef5">', '</span>')}
-          title="蓝色文字"
-          style={{ color: '#4c6ef5', fontWeight: 'bold' }}
-        >
-          A
-        </button>
+        {/* 字体颜色：与主编辑器共用统一色板（黑色为默认态，纯文本插入无意义，故排除） */}
+        {EDITOR_COLORS.filter(c => c.v !== EDITOR_COLOR_DEFAULT).map(c => (
+          <button
+            key={c.v}
+            onClick={() => insertMark(`<span style="color: ${c.v}">`, '</span>')}
+            title={`${c.t}色文字`}
+            style={{ color: c.v, fontWeight: 'bold' }}
+          >
+            A
+          </button>
+        ))}
 
         <select
           onChange={(e) => {

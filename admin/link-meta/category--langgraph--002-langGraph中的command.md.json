@@ -1,0 +1,136 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "1. 什么是 Command"
+    },
+    {
+      "level": 3,
+      "text": "2. 为什么需要 Command"
+    },
+    {
+      "level": 3,
+      "text": "3. Command 的核心参数"
+    },
+    {
+      "level": 3,
+      "text": "4. Command 的主要使用场景"
+    },
+    {
+      "level": 4,
+      "text": "1. 多智能体交接（Handoff）"
+    },
+    {
+      "level": 4,
+      "text": "2. 动态路由与状态更新同步进行"
+    },
+    {
+      "level": 4,
+      "text": "3. 中断与恢复（Human-in-the-Loop）"
+    },
+    {
+      "level": 4,
+      "text": "4. 嵌套图导航"
+    },
+    {
+      "level": 3,
+      "text": "5. Command vs 条件边（Conditional Edge）"
+    },
+    {
+      "level": 3,
+      "text": "6. 完整示例"
+    },
+    {
+      "level": 3,
+      "text": "7. 注意事项"
+    },
+    {
+      "level": 2,
+      "text": "根据LLM推理结果来动态决定goto目标"
+    },
+    {
+      "level": 3,
+      "text": "核心机制拆解"
+    },
+    {
+      "level": 3,
+      "text": "实战示例：智能客服路由机器人"
+    },
+    {
+      "level": 4,
+      "text": "1. 定义输出结构（Pydantic 模型）"
+    },
+    {
+      "level": 4,
+      "text": "2. 构建“路由节点”（核心逻辑）"
+    },
+    {
+      "level": 4,
+      "text": "3. 定义具体的业务节点（接收处理）"
+    },
+    {
+      "level": 4,
+      "text": "4. 构建图并运行"
+    },
+    {
+      "level": 3,
+      "text": "进阶技巧：利用 Tool Calling 直接输出节点名"
+    },
+    {
+      "level": 3,
+      "text": "关键注意事项"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "核心机制拆解": "核心机制拆解",
+    "实战示例：智能客服路由机器人": "实战示例：智能客服路由机器人",
+    "1. 定义输出结构（Pydantic 模型）": "1. 定义输出结构（Pydantic 模型）",
+    "2. 构建“路由节点”（核心逻辑）": "2. 构建“路由节点”（核心逻辑）",
+    "3. 定义具体的业务节点（接收处理）": "3. 定义具体的业务节点（接收处理）",
+    "4. 构建图并运行": "4. 构建图并运行",
+    "进阶技巧：利用 Tool Calling 直接输出节点名": "进阶技巧：利用 Tool Calling 直接输出节点名",
+    "关键注意事项": "关键注意事项",
+    "ge'm": "根据LLM推理结果来动态决定goto目标",
+    "根据": "根据LLM推理结果来动态决定goto目标",
+    "根据llm": "根据LLM推理结果来动态决定goto目标",
+    "根据LLM推理结果来动态决定goto目标": "根据LLM推理结果来动态决定goto目标",
+    "详细解析": "详细解析",
+    "什么是 Command": "1. 什么是 Command",
+    "为什么需要 Command": "2. 为什么需要 Command",
+    "Command 的核心参数": "3. Command 的核心参数",
+    "Command 的主要使用场景": "4. Command 的主要使用场景",
+    "1. 多智能体交接（Handoff）": "1. 多智能体交接（Handoff）",
+    "2. 动态路由与状态更新同步进行": "2. 动态路由与状态更新同步进行",
+    "3. 中断与恢复（Human-in-the-Loop）": "3. 中断与恢复（Human-in-the-Loop）",
+    "4. 嵌套图导航": "4. 嵌套图导航",
+    "Command vs 条件边（Conditional Edge）": "5. Command vs 条件边（Conditional Edge）",
+    "完整示例": "6. 完整示例",
+    "注意事项": "7. 注意事项",
+    "1. 什么是 Command": "1. 什么是 Command",
+    "2. 为什么需要 Command": "2. 为什么需要 Command",
+    "3. Command 的核心参数": "3. Command 的核心参数",
+    "4. Command 的主要使用场景": "4. Command 的主要使用场景",
+    "5.Command vs 条件边（Conditional Edge）": "5. Command vs 条件边（Conditional Edge）",
+    "5. Command vs 条件边（Conditional Edge）": "5. Command vs 条件边（Conditional Edge）",
+    "6. 完整示例": "6. 完整示例"
+  }
+}

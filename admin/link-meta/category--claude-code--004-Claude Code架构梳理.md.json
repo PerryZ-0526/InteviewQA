@@ -1,0 +1,49 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、分层结构图"
+    },
+    {
+      "level": 3,
+      "text": "二、扩展点职责对比"
+    },
+    {
+      "level": 3,
+      "text": "三、权限配置示例（`.claude/settings.json`）"
+    },
+    {
+      "level": 3,
+      "text": "四、hooks 拦截示例"
+    },
+    {
+      "level": 3,
+      "text": "五、面试追问"
+    },
+    {
+      "level": 3,
+      "text": "六、参考"
+    }
+  ],
+  "renames": {}
+}

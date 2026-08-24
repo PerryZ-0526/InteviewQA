@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
-import { stripMdText } from '@/lib/markdown';
-import { isVisibleInLayout, scrollDocToTop } from '@/lib/domScroll';
+import { stripMdText } from '@/lib/stripText';
+import { isVisibleInLayout, scrollDocToTop, headingMatch } from '@/lib/domScroll';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -38,8 +38,8 @@ export function scrollToAnchorPath(anchors: string[]): boolean {
     const text = stripMdText(anchors[i]);
     for (const h of Array.from(headings)) {
       if (!isVisibleInLayout(h)) continue;
-      if (stripMdText(h.textContent || '') === text) {
-        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (headingMatch(h, text)) {
+        h.scrollIntoView({ behavior: 'auto', block: 'start' });
         return true;
       }
     }
@@ -137,7 +137,8 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
           body = body.trimStart();
           const h1Match = body.match(/^#\s+(.+)/m);
           if (h1Match) {
-            title = h1Match[1].trim();
+            // 标题可能带颜色等内联 HTML（<span style>），显示前统一剥成纯文本
+            title = stripMdText(h1Match[1]);
             body = body.slice(body.indexOf('\n', h1Match.index!) + 1).trimStart();
           }
 
