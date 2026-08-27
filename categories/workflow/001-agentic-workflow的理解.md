@@ -97,7 +97,7 @@ agentic workflow 的四种基本杠杆：
 
 **Planning（规划）**：模型把复杂任务分解为有序步骤，逐步执行，遇阻时重新规划。典型例子是「生成指定姿势的图片 → 图片转文字 → 文字转语音」这类多阶段流水线由模型自主编排。
 
-**Multi-agent collaboration（多智能体协作）**：多个模型实例扮演不同角色配合。ChatDev 让 LLM 分别扮演 CEO、CTO、程序员、测试员，组成虚拟软件公司；AutoGen 论文的消融实验显示多智能体配置优于单智能体。Ng 在 The Batch 第 245 期中解释其有效性：多智能体让模型「一次只专注一件事」，避免解析超长上下文，同时符合人类熟悉的角色分工实践。协作的终止条件与共享记忆是工程难点，可参考 [002-多agent讨论如何终止](../mutil-agent/002-%E5%A4%9Aagent%E8%AE%A8%E8%AE%BA%E5%A6%82%E4%BD%95%E7%BB%88%E6%AD%A2.md) 与 [001-多agent系统如何实现共享记忆](../mutil-agent/001-%E5%A4%9Aagent%E7%B3%BB%E7%BB%9F%E5%A6%82%E4%BD%95%E5%AE%9E%E7%8E%B0%E5%85%B1%E4%BA%AB%E8%AE%B0%E5%BF%86.md)。
+**Multi-agent collaboration（多智能体协作）**：多个模型实例扮演不同角色配合。ChatDev 让 LLM 分别扮演 CEO、CTO、程序员、测试员，组成虚拟软件公司；AutoGen 论文的消融实验显示多智能体配置优于单智能体。Ng 在 The Batch 第 245 期中解释其有效性：多智能体让模型「一次只专注一件事」，避免解析超长上下文，同时符合人类熟悉的角色分工实践。协作的终止条件与共享记忆是工程难点，可参考 [002-多agent讨论如何终止](../mutil-agent/002-多agent讨论如何终止.md) 与 [001-多agent系统如何实现共享记忆](../mutil-agent/001-多agent系统如何实现共享记忆.md)。
 
 ### 三、Anthropic 的工程化框架：workflow 与 agent 的分界
 
@@ -119,7 +119,7 @@ Anthropic 2024 年 12 月的《Building effective agents》给出了工程落地
 
 文章的核心哲学是 **start simple**：直接 API 调用能解决就不用链；能在模型运行前画出流程图就用 workflow；只有步骤无法提前预测时才用 agent。一个实用的判断测试：**如果流程图能在 LLM 运行之前画出来，用 workflow；如果流程图取决于 LLM 运行时发现了什么，才需要 agent。**
 
-生产系统几乎都是混合体：外层用确定性路由与审批（workflow 式），内层让 agent 在受限域内自主决策。Claude Code 这类 coding agent 整体是 agent——模型动态决定读哪个文件、跑什么命令——但内部嵌入了权限白名单、沙箱、预算等确定性护栏（参见 [007-agent沙箱的理解与实现](../agent/007-agent%E6%B2%99%E7%AE%B1%E7%9A%84%E7%90%86%E8%A7%A3%E4%B8%8E%E5%AE%9E%E7%8E%B0.md)）。
+生产系统几乎都是混合体：外层用确定性路由与审批（workflow 式），内层让 agent 在受限域内自主决策。Claude Code 这类 coding agent 整体是 agent——模型动态决定读哪个文件、跑什么命令——但内部嵌入了权限白名单、沙箱、预算等确定性护栏（参见 [007-agent沙箱的理解与实现](../agent/007-agent沙箱的理解与实现.md)）。
 
 ### 四、五种 workflow 模式及与 Ng 模式的映射
 
@@ -194,11 +194,11 @@ for _ in range(max_rounds):
 
 agentic workflow 不是免费的午餐，面试中主动讲清代价是加分项：
 
-- **成本放大**：每轮迭代都是完整的一次或多次 LLM 调用，token 消耗相比零样本放大数倍到数十倍。缓解手段见 [001-如何降低agent的运营成本](../agent/001-%E5%A6%82%E4%BD%95%E9%99%8D%E4%BD%8Eagent%E7%9A%84%E8%BF%90%E8%90%A5%E6%88%90%E6%9C%AC.md) 与 [002-降低llm调用成本最有效的手段](../agent/002-%E9%99%8D%E4%BD%8Ellm%E8%B0%83%E7%94%A8%E6%88%90%E6%9C%AC%E6%9C%80%E6%9C%89%E6%95%88%E7%9A%84%E6%89%8B%E6%AE%B5.md)：prompt 缓存、上下文压缩、模型分级路由——便宜快速的模型做反思、路由与分类，强模型只用于关键生成步骤。
+- **成本放大**：每轮迭代都是完整的一次或多次 LLM 调用，token 消耗相比零样本放大数倍到数十倍。缓解手段见 [001-如何降低agent的运营成本](../agent/001-如何降低agent的运营成本.md) 与 [002-降低llm调用成本最有效的手段](../agent/002-降低llm调用成本最有效的手段.md)：prompt 缓存、上下文压缩、模型分级路由——便宜快速的模型做反思、路由与分类，强模型只用于关键生成步骤。
 - **错误累积（compound errors）**：长链条中前面步骤的偏差被后续步骤放大。Anthropic 明确指出这是 agent 相对 workflow 的核心劣势：失败模式更难推理。防护手段是每步用客观标准验证（单测、编译、检索校验），以及 evaluator 与 generator 分离。
-- **死循环与上下文膨胀**：模型反复走同一条失败路径、上下文越滚越大，详见 [006-agent长时间循环的注意事项](../agent/006-agent%E9%95%BF%E6%97%B6%E9%97%B4%E5%BE%AA%E7%8E%AF%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9.md)。
+- **死循环与上下文膨胀**：模型反复走同一条失败路径、上下文越滚越大，详见 [006-agent长时间循环的注意事项](../agent/006-agent长时间循环的注意事项.md)。
 - **延迟**：迭代次数 × 单次生成时间。Ng 特别强调 token 生成速度对迭代式工作流的影响可能超过模型能力提升——反思模式下模型要反复生成、阅读、修改大量文本，慢生成直接拉长迭代周期。
-- **评估困难**：与单点 benchmark 不同，agentic workflow 的路径多样性导致同一任务可走不同路径成功，评估需固定任务集多次采样并报告均值与方差，同时跟踪平均轮数、token 消耗与墙钟时间，详见 [003-agent效果的定义](../agent/003-agent%E6%95%88%E6%9E%9C%E7%9A%84%E5%AE%9A%E4%B9%89.md)。
+- **评估困难**：与单点 benchmark 不同，agentic workflow 的路径多样性导致同一任务可走不同路径成功，评估需固定任务集多次采样并报告均值与方差，同时跟踪平均轮数、token 消耗与墙钟时间，详见 [003-agent效果的定义](../agent/003-agent效果的定义.md)。
 
 ### 七、概念演化：从独立范式收敛为 agent loop
 
@@ -218,7 +218,7 @@ workflow 输掉任务编排层的四个工程原因：**边界僵化**——固�
 
 收敛的形态是双层转移。**内化**：plan、execute、verify 成为模型在 loop 里的自发行为，控制流从「代码拥有」变成「模型拥有但受框架约束」。**下沉**：确定性编排退到基础设施层——评测管线、审批链、数据流水线、框架把关链。dsh 的 tools/pre-execute → execute → post-execute 三段流水线、Claude Code 的 hooks 链都是硬编码 workflow，只是不再面向任务本身而面向执行框架。LangGraph 的转型是框架层同构证据：图的抽象从业务流水线变成 agent 状态机，状态、checkpoint 与 human-in-the-loop 这些为 workflow 设计的机制，恰恰成为 agent loop 工程化的运行时能力。
 
-判断标准的演化同样值得注意：「流程图能否提前画出来」被模型能力两头挤压——可提前画图的任务里，简单的用单次调用就够，复杂的图根本画不全，workflow 的自然领地只剩「必须确定性」的少数场景。完整的收敛因果见 [002-为什么agentic workflow收敛成了agent loop](002-%E4%B8%BA%E4%BB%80%E4%B9%88agentic%20workflow%E6%94%B6%E6%95%9B%E6%88%90%E4%BA%86agent%20loop.md)，确定性 workflow 的存活位置见 [003-确定性workflow在agent时代还剩下什么位置](003-%E7%A1%AE%E5%AE%9A%E6%80%A7workflow%E5%9C%A8agent%E6%97%B6%E4%BB%A3%E8%BF%98%E5%89%A9%E4%B8%8B%E4%BB%80%E4%B9%88%E4%BD%8D%E7%BD%AE.md)。
+判断标准的演化同样值得注意：「流程图能否提前画出来」被模型能力两头挤压——可提前画图的任务里，简单的用单次调用就够，复杂的图根本画不全，workflow 的自然领地只剩「必须确定性」的少数场景。完整的收敛因果见 [002-为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop.md)，确定性 workflow 的存活位置见 [003-确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md)。
 
 ### 八、面试追问
 
@@ -240,7 +240,7 @@ Claude Code 属于 agent——模型在运行时动态决定读哪个文件、�
 
 **追问 5：怎么评估一个 agentic workflow 改动的收益？**
 
-按 [003-agent效果的定义](../agent/003-agent%E6%95%88%E6%9E%9C%E7%9A%84%E5%AE%9A%E4%B9%89.md) 的三维框架：端到端任务成功率、执行质量、成本效率。与单点 benchmark 不同，agentic workflow 评估要处理路径多样性——固定任务集上多次采样，报告均值与方差；同时跟踪平均轮数、token 消耗与墙钟时间，因为同样的成功率背后成本可能差一个数量级。A/B 对比的基线必须是「同一模型 + 零样本提示」，而不是换一个模型，否则无法归因于工作流设计本身。
+按 [003-agent效果的定义](../agent/003-agent效果的定义.md) 的三维框架：端到端任务成功率、执行质量、成本效率。与单点 benchmark 不同，agentic workflow 评估要处理路径多样性——固定任务集上多次采样，报告均值与方差；同时跟踪平均轮数、token 消耗与墙钟时间，因为同样的成功率背后成本可能差一个数量级。A/B 对比的基线必须是「同一模型 + 零样本提示」，而不是换一个模型，否则无法归因于工作流设计本身。
 
 ### 参考链接
 

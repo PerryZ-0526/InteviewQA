@@ -13,13 +13,13 @@
 ### Workflow
 
 - [001-agentic-workflow的理解](../categories/workflow/001-agentic-workflow的理解.md)
-- [002-为什么agentic workflow收敛成了agent loop](../categories/workflow/002-为什么agentic%20workflow收敛成了agent%20loop.md)
+- [002-为什么agentic workflow收敛成了agent loop](../categories/workflow/002-为什么agentic workflow收敛成了agent loop.md)
 - [004-Anthropic五种workflow模式的工程化与演进](../categories/workflow/004-Anthropic五种workflow模式的工程化与演进.md)
 - [005-evaluator-optimizer模式的工程实现](../categories/workflow/005-evaluator-optimizer模式的工程实现.md)
 
 ### LangGraph
 
-- [001-LangGraph从workflow编排器到agent runtime的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent%20runtime的转型.md)
+- [001-LangGraph从workflow编排器到agent runtime的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent runtime的转型.md)
 
 
 ### Multi-Agent
@@ -28,7 +28,7 @@
 
 ### LLM Wiki
 
-- [001-llm wiki的理解与实现原理](../categories/llm-wiki/001-llm%20wiki的理解与实现原理.md)
+- [001-llm wiki的理解与实现原理](../categories/llm-wiki/001-llm wiki的理解与实现原理.md)
 
 ### Hermes
 

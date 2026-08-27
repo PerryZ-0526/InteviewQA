@@ -55,7 +55,8 @@ export function parseQuestion(markdown: string, filename: string): Question {
   let notes = '';
   let inNotes = false;
   const customSections: { title: string; content: string }[] = [];
-  let currentCustom = '';
+  // null = 不在自定义章节内；'' = 未命名的自定义章节（真值判断无法区分，必须用 null 判断）
+  let currentCustom: string | null = null;
 
   for (const line of lines) {
     // Track code fences: ``` or ```lang opens/closes
@@ -71,8 +72,8 @@ export function parseQuestion(markdown: string, filename: string): Question {
       } else if (currentSection === '我的作答') {
         notes += line + '\n';
       }
-      // Also accumulate in custom sections
-      if (currentCustom && customSections.length > 0) {
+      // Also accumulate in custom sections（未命名章节标题为 ''，须判 null 而非真值）
+      if (currentCustom !== null && customSections.length > 0) {
         const last = customSections[customSections.length - 1];
         if (last.title === currentCustom) {
           last.content += line + '\n';
@@ -98,7 +99,7 @@ export function parseQuestion(markdown: string, filename: string): Question {
         continue;
       }
       // Known section: stop accumulating custom content
-      currentCustom = '';
+      currentCustom = null;
       currentSection = name;
       continue;
     }
@@ -142,10 +143,15 @@ export function parseQuestion(markdown: string, filename: string): Question {
     }
 
     // Accumulate custom section content (skip time metadata)
-    if (currentCustom && customSections.length > 0) {
-      if (!line.match(/<!--\s*(?:created|updated):/)) {
-        const last = customSections[customSections.length - 1];
-        if (last.title === currentCustom) {
+    // 未命名章节标题为 ''，须判 null 而非真值；纯元数据注释行整行跳过（同旧行为），
+    // 历史格式中粘连在正文末行上的注释则剥离注释、保留正文部分
+    if (currentCustom !== null && customSections.length > 0) {
+      const last = customSections[customSections.length - 1];
+      if (last.title === currentCustom) {
+        if (/<!--\s*(?:created|updated):/.test(line)) {
+          const cleaned = line.replace(/<!--\s*(?:created|updated):[^>]*-->/g, '').replace(/[ \t]+$/, '');
+          if (cleaned.trim()) last.content += cleaned + '\n';
+        } else {
           last.content += line + '\n';
         }
       }
@@ -216,7 +222,11 @@ export function generateMarkdown(q: Question): string {
   const answerBlock = q.answer?.trim() ? `## 面试直接答\n\n${rtrim1(q.answer)}\n\n` : '';
   const analysisBlock = q.analysis?.trim() ? `## 详细解析\n\n${rtrim1(q.analysis)}\n\n` : '';
   const notesBlock = q.notes?.trim() ? `## 我的作答\n\n${rtrim1(q.notes)}\n\n` : '';
-  const customsBlock = (q.customSections || []).map(s => `## ${s.title}\n\n${rtrim1(s.content)}`).join('\n\n');
+  // 自定义章节块结尾补 \n\n，避免时间元数据注释粘连在最后一个章节的正文末行上
+  //（粘连后重新解析时该行会被当元数据跳过，导致最后一行内容丢失）
+  const customsBlock = (q.customSections || []).length > 0
+    ? (q.customSections || []).map(s => `## ${s.title}\n\n${rtrim1(s.content)}`).join('\n\n') + '\n\n'
+    : '';
 
   return `# ${q.title}
 

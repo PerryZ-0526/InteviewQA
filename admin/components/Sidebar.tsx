@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CategoryInfo, TagInfo, ProjectSubdir, ExternalDocInfo } from '@/lib/types';
 import { useSidebarDrag } from './useSidebarDrag';
+import GlobalSearchModal from './GlobalSearchModal';
 
 interface Props {
   categories: CategoryInfo[];
@@ -22,8 +23,12 @@ interface Props {
   onRefresh: () => void;
   onToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onGoHome?: () => void;
+  // 待入库题单入口（分类上方）
+  onOpenInbox?: () => void;
+  inboxActive?: boolean;
   refreshKey?: number;
   onMoveQuestion: (fromCat: string, filename: string, toCat: string, toIndex: number) => void;
+  onMoveProjectDoc: (fromSubdir: string, filename: string, toSubdir: string, toIndex: number) => void;
 }
 
 interface CreateForm {
@@ -52,13 +57,18 @@ export default function Sidebar({
   onRefresh,
   onToast,
   onGoHome,
+  onOpenInbox,
+  inboxActive,
   refreshKey = 0,
   onMoveQuestion,
+  onMoveProjectDoc,
 }: Props) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [expandedProjectSubdirs, setExpandedProjectSubdirs] = useState<Set<string>>(new Set());
   const [projectSubdirs, setProjectSubdirs] = useState<ProjectSubdir[]>([]);
   const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
+  // 待入库题单的未处理题数（入口徽标）
+  const [inboxPending, setInboxPending] = useState(0);
   const [createForm, setCreateForm] = useState<CreateForm | null>(null);
   const [formName, setFormName] = useState('');
   const [formSlug, setFormSlug] = useState('');
@@ -73,6 +83,17 @@ export default function Sidebar({
   const [renameText, setRenameText] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [renameError, setRenameError] = useState('');
+  // 全库关键字检索弹窗开关
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
+  // 拉取待入库题单的未处理题数（用于入口徽标）
+  const loadInboxPending = useCallback(async () => {
+    try {
+      const res = await fetch('/api/inbox');
+      const json = await res.json();
+      if (json.success) setInboxPending(json.data?.unchecked ?? 0);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -89,7 +110,14 @@ export default function Sidebar({
         if (json.success) setExternalDocs(json.data || []);
       } catch {}
     })();
-  }, [refreshKey]);
+    loadInboxPending();
+  }, [refreshKey, loadInboxPending]);
+
+  // 题单内容变化（加入新题 / 勾选入库）时刷新待处理徽标
+  useEffect(() => {
+    window.addEventListener('inbox-changed', loadInboxPending);
+    return () => window.removeEventListener('inbox-changed', loadInboxPending);
+  }, [loadInboxPending]);
 
   // 当前题目发生变化时，自动展开它所属的分类
   useEffect(() => {
@@ -116,6 +144,23 @@ export default function Sidebar({
     onMoveQuestion,
     onExpandCategory: (slug) => {
       setExpandedCategories((prev) => {
+        if (prev.has(slug)) return prev;
+        const next = new Set(prev);
+        next.add(slug);
+        return next;
+      });
+    },
+  });
+
+  // ---- 拖拽移动（project/分组文档 → project/分组目录） ----
+  const projectDrag = useSidebarDrag({
+    scope: 'project',
+    onMoveQuestion: (fromSubdir, filename, toSubdir, toIndex) => {
+      setProjectSubdirs((prev) => reorderProjectSubdirs(prev, fromSubdir, filename, toSubdir, toIndex));
+      onMoveProjectDoc(fromSubdir, filename, toSubdir, toIndex);
+    },
+    onExpandCategory: (slug) => {
+      setExpandedProjectSubdirs((prev) => {
         if (prev.has(slug)) return prev;
         const next = new Set(prev);
         next.add(slug);
@@ -170,6 +215,50 @@ export default function Sidebar({
     }, 250);
     return () => clearTimeout(t);
   }, [categories, drag.flipBeforeRef]);
+
+  // project/分组拖放后的 FLIP 动画，与分类拖拽使用独立的元素集合。
+  useLayoutEffect(() => {
+    const pending = projectDrag.flipBeforeRef.current;
+    if (!pending || pending.before.size === 0) return;
+    projectDrag.flipBeforeRef.current = null;
+
+    const rows = document.querySelectorAll<HTMLElement>('[data-sidebar-project-draggable]');
+    const shifted: HTMLElement[] = [];
+    for (const el of Array.from(rows)) {
+      const key = `${el.dataset.catSlug}:${el.dataset.filename}`;
+      const before = pending.before.get(key);
+      if (!before) continue;
+      const dy = el.getBoundingClientRect().top - before.top;
+      if (Math.abs(dy) < 1) continue;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${-dy}px)`;
+      shifted.push(el);
+    }
+    const inserted = pending.insertKey
+      ? Array.from(rows).find((el) => `${el.dataset.catSlug}:${el.dataset.filename}` === pending.insertKey)
+      : undefined;
+    if (inserted && !shifted.includes(inserted)) {
+      inserted.style.transition = 'none';
+      inserted.style.opacity = '0';
+      inserted.style.transform = 'translateY(-8px)';
+      shifted.push(inserted);
+    }
+
+    void document.body.offsetHeight;
+    for (const el of shifted) {
+      el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      el.style.transform = '';
+      el.style.opacity = '';
+    }
+    const timer = window.setTimeout(() => {
+      for (const el of shifted) {
+        el.style.transition = '';
+        el.style.transform = '';
+        el.style.opacity = '';
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [projectSubdirs, projectDrag.flipBeforeRef]);
 
   const openForm = (type: CreateForm['type'], parent?: string) => {
     setCreateForm({ type, parent });
@@ -353,12 +442,47 @@ export default function Sidebar({
         >
           面试真题知识库
         </span>
-        <button className="sidebar-home-btn" onClick={onGoHome} title="返回首页" aria-label="返回首页">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 10.5 12 3l9 7.5" />
-            <path d="M5 9.5V21h14V9.5" />
-            <path d="M10 21v-6h4v6" />
-          </svg>
+        {/* 顶部按钮组：返回首页 + 全库检索 */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button className="sidebar-home-btn" onClick={onGoHome} title="返回首页" aria-label="返回首页">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 10.5 12 3l9 7.5" />
+              <path d="M5 9.5V21h14V9.5" />
+              <path d="M10 21v-6h4v6" />
+            </svg>
+          </button>
+          {/* 全库关键字检索入口：与返回首页按钮并排 */}
+          <button
+            className="sidebar-home-btn"
+            onClick={() => setGlobalSearchOpen(true)}
+            title="全文档关键字检索"
+            aria-label="全文档关键字检索"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="20" y1="20" x2="16.5" y2="16.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* 待入库题单：面试题收集入口（位于分类上方） */}
+      <div className="sidebar-section inbox-entry-section">
+        <button
+          className={`sidebar-item inbox-entry${inboxActive ? ' active' : ''}`}
+          onClick={onOpenInbox}
+          title="收集待入库的面试题（持久化为 Markdown）"
+        >
+          <span className="inbox-entry-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+            </svg>
+          </span>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            待入库题单
+          </span>
+          {inboxPending > 0 && <span className="badge">{inboxPending}</span>}
         </button>
       </div>
 
@@ -446,13 +570,18 @@ export default function Sidebar({
 
       {/* project 伞形区块：普通子目录 */}
       {projectSubdirs.filter(s => !s.isGroup).length > 0 && (
-        <div className="sidebar-section">
+        <div className="sidebar-section sidebar-projects">
           <div className="sidebar-section-title">
             <span>project ({projectSubdirs.filter(s => !s.isGroup).length})</span>
             <button className="sidebar-add-btn" onClick={() => openForm('project-subdir')} title="新建 project 子目录" aria-label="新建子目录">+</button>
           </div>
           {projectSubdirs.filter(s => !s.isGroup).map((subdir) => (
-            <div key={subdir.slug}>
+            <div
+              key={subdir.slug}
+              data-sidebar-project-dir={subdir.slug}
+              className={`sidebar-project-dir ${projectDrag.state.drop?.category === subdir.slug ? 'drag-target-cat' : ''}`}
+              onPointerDown={projectDrag.onPointerDown}
+            >
               <button
                 className="sidebar-item"
                 onClick={() => {
@@ -471,12 +600,16 @@ export default function Sidebar({
                 </span>
                 <span className="badge">{subdir.docs.length}</span>
               </button>
-              {expandedProjectSubdirs.has(subdir.slug) && subdir.docs.length > 0 && (
+              {expandedProjectSubdirs.has(subdir.slug) && (
                 <div>
                   {subdir.docs.map((doc) => (
                     <button
                       key={`${subdir.slug}/${doc.filename}`}
-                      className="sidebar-item sidebar-sub"
+                      data-sidebar-project-draggable=""
+                      data-cat-slug={subdir.slug}
+                      data-filename={doc.filename}
+                      data-title={doc.title}
+                      className={`sidebar-item sidebar-sub ${projectDrag.state.item?.filename === doc.filename && projectDrag.state.item?.category === subdir.slug ? 'drag-source' : ''}`}
                       onClick={() => onSelectProgram?.(subdir.slug, doc.filename)}
                       title={doc.title}
                     >
@@ -486,7 +619,20 @@ export default function Sidebar({
                       </span>
                     </button>
                   ))}
+                  <button
+                    className="sidebar-item sidebar-sub sidebar-new-doc"
+                    onClick={() => openForm('project-doc', subdir.slug)}
+                    title="新建文档"
+                  >
+                    <span className="sidebar-question-index">+</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#999' }}>
+                      新建文档...
+                    </span>
+                  </button>
                 </div>
+              )}
+              {projectDrag.state.drop?.category === subdir.slug && (
+                <div className="sidebar-drop-indicator" style={{ top: projectDrag.state.drop.indicatorTop }} />
               )}
             </div>
           ))}
@@ -495,7 +641,12 @@ export default function Sidebar({
 
       {/* 分组：每个分组作为独立区块 */}
       {projectSubdirs.filter(s => s.isGroup).map((subdir) => (
-        <div className="sidebar-section" key={subdir.slug}>
+        <div
+          className={`sidebar-section sidebar-projects sidebar-project-dir ${projectDrag.state.drop?.category === subdir.slug ? 'drag-target-cat' : ''}`}
+          key={subdir.slug}
+          data-sidebar-project-dir={subdir.slug}
+          onPointerDown={projectDrag.onPointerDown}
+        >
           <div className="sidebar-section-title">
             <button
               className="sidebar-group-title"
@@ -515,14 +666,17 @@ export default function Sidebar({
               </span>
               <span className="badge">{subdir.docs.length}</span>
             </button>
-            <button className="sidebar-add-btn" onClick={() => openForm('project-doc', subdir.slug)} title="新建文档" aria-label="新建文档">+</button>
           </div>
-          {expandedProjectSubdirs.has(subdir.slug) && subdir.docs.length > 0 && (
+          {expandedProjectSubdirs.has(subdir.slug) && (
             <div>
               {subdir.docs.map((doc) => (
                 <button
                   key={`${subdir.slug}/${doc.filename}`}
-                  className="sidebar-item sidebar-sub"
+                  data-sidebar-project-draggable=""
+                  data-cat-slug={subdir.slug}
+                  data-filename={doc.filename}
+                  data-title={doc.title}
+                  className={`sidebar-item sidebar-sub ${projectDrag.state.item?.filename === doc.filename && projectDrag.state.item?.category === subdir.slug ? 'drag-source' : ''}`}
                   onClick={() => onSelectProgram?.(subdir.slug, doc.filename)}
                   title={doc.title}
                 >
@@ -532,7 +686,20 @@ export default function Sidebar({
                   </span>
                 </button>
               ))}
+              <button
+                className="sidebar-item sidebar-sub sidebar-new-doc"
+                onClick={() => openForm('project-doc', subdir.slug)}
+                title="新建文档"
+              >
+                <span className="sidebar-question-index">+</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#999' }}>
+                  新建文档...
+                </span>
+              </button>
             </div>
+          )}
+          {projectDrag.state.drop?.category === subdir.slug && (
+            <div className="sidebar-drop-indicator" style={{ top: projectDrag.state.drop.indicatorTop }} />
           )}
         </div>
       ))}
@@ -756,6 +923,16 @@ export default function Sidebar({
         </div>
       )}
 
+      {/* 全库关键字检索弹窗 */}
+      {globalSearchOpen && (
+        <GlobalSearchModal
+          onClose={() => setGlobalSearchOpen(false)}
+          onSelectQuestion={(cat, filename) => { setGlobalSearchOpen(false); onSelectQuestion(cat, filename); }}
+          onSelectProgram={(subdir, filename) => { setGlobalSearchOpen(false); onSelectProgram?.(subdir, filename); }}
+          onSelectExternalDoc={(id) => { setGlobalSearchOpen(false); onSelectExternalDoc?.(id); }}
+        />
+      )}
+
       {/* 拖拽幽灵：portal 到 body，transform 由 hook 每帧直接更新（不走 React 渲染） */}
       {drag.state.phase !== 'idle' && drag.state.item && createPortal(
         <div
@@ -774,6 +951,52 @@ export default function Sidebar({
         </div>,
         document.body,
       )}
+      {projectDrag.state.phase !== 'idle' && projectDrag.state.item && createPortal(
+        <div
+          ref={projectDrag.ghostRef}
+          className="sidebar-drag-ghost"
+          style={{
+            left: -12,
+            top: -18,
+            transform: `translate3d(${projectDrag.state.ghost?.x ?? 0}px, ${projectDrag.state.ghost?.y ?? 0}px, 0) scale(1.04)`,
+          }}
+        >
+          <span className="sidebar-question-index">{projectDrag.state.item.chip}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {projectDrag.state.item.title}
+          </span>
+        </div>,
+        document.body,
+      )}
     </aside>
   );
+}
+
+/** project/分组文档拖拽时的乐观列表更新。 */
+function reorderProjectSubdirs(
+  prev: ProjectSubdir[],
+  fromSubdir: string,
+  filename: string,
+  toSubdir: string,
+  toIndex: number,
+): ProjectSubdir[] {
+  const moved = prev.find((item) => item.slug === fromSubdir)?.docs.find((doc) => doc.filename === filename);
+  if (!moved) return prev;
+  return prev.map((item) => {
+    if (item.slug === fromSubdir && item.slug === toSubdir) {
+      const docs = [...item.docs];
+      const index = docs.findIndex((doc) => doc.filename === filename);
+      if (index < 0) return item;
+      const [doc] = docs.splice(index, 1);
+      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, doc);
+      return { ...item, docs };
+    }
+    if (item.slug === fromSubdir) return { ...item, docs: item.docs.filter((doc) => doc.filename !== filename) };
+    if (item.slug === toSubdir) {
+      const docs = [...item.docs];
+      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, moved);
+      return { ...item, docs };
+    }
+    return item;
+  });
 }

@@ -140,6 +140,7 @@ export default function QuestionEditor({ initialContent, onSave, onCancel }: Pro
       {/* Textarea */}
       <textarea
         ref={textareaRef}
+        spellCheck={false}
         style={{
           width: '100%',
           minHeight: 'calc(100vh - 260px)',

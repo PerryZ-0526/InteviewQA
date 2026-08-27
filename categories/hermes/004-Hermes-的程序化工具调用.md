@@ -1,4 +1,4 @@
-# Hermes 的程序化工具调用
+# ✅Hermes 的程序化工具调用
 
 ## 题目
 
@@ -14,9 +14,9 @@
 
 ## 面试直接答
 
-我理解 Hermes 的 Programmatic Tool Calling，本质上是在解决传统 ReAct Agent 的一个效率问题：很多多工具任务中，真正需要 LLM 做判断的只有开始的任务规划和最后的结果总结，中间大量步骤其实只是循环、过滤、排序、重试、批量抓取这类确定性控制流。如果这些步骤也全部走“LLM 推理一次—调用 Tool—Tool Result 回填上下文—LLM 再推理”的模式，不仅模型调用次数多，而且<u style="text-decoration-color: #e63946">大量中间结果会不断占用上下文</u>。
+我理解 Hermes 的 Programmatic Tool Calling，本质上是在解决传统 ReAct Agent 的一个效率问题：很多多工具任务中，真正需要 LLM 做判断的只有开始的任务规划和最后的结果总结，中间大量步骤其实只是循环、过滤、排序、重试、批量抓取这类确定性控制流。如果这些步骤也全部走“LLM 推理一次—调用 Tool—Tool Result 回填上下文—LLM 再推理”的模式，不仅模型调用次数多，而且<u style="text-decoration-color: rgb(230, 57, 70)">大量中间结果会不断占用上下文</u>。
 
-所以 Hermes 在 `execute_code` 里提供了一种<u style="text-decoration-color: #e63946">代码化的工具编排方式</u>：模型先一次性生成 Python 脚本，把整个多步流程表达成程序，然后由 Python 负责执行循环、条件判断和数据处理，最终只把整理后的结果返回给模型。
+所以 Hermes 在 `execute_code` 里提供了一种<u style="text-decoration-color: rgb(230, 57, 70)">代码化的工具编排方式</u>：模型先一次性生成 Python 脚本，把整个多步流程表达成程序，然后由 Python 负责执行循环、条件判断和数据处理，最终只把整理后的结果返回给模型。
 
 ### 它的实现不是简单让 Python 直接访问各种外部服务，而是做了一层 RPC 工具代理
 
@@ -24,25 +24,27 @@ Hermes 会根据当前会话允许使用的工具动态生成 `hermes_tools.py`�
 
 ### 这个设计最大的收益是上下文和调用成本
 
-> 比如我要搜索 50 个网页、逐个抓取正文、筛选其中符合条件的内容。传统 ReAct 可能需要模型反复参与几十次，每个网页正文都可能进入上下文；而 Programmatic Tool Calling 下，<u style="text-decoration-color: #e63946">50 次抓取的结果只在 Python 进程内部流转，Python 自己完成过滤和聚合，最后</u> `print` <u style="text-decoration-color: #e63946">出 5 条最终结果给 LLM</u>。
+> 比如我要搜索 50 个网页、逐个抓取正文、筛选其中符合条件的内容。传统 ReAct 可能需要模型反复参与几十次，每个网页正文都可能进入上下文；而 Programmatic Tool Calling 下，<u style="text-decoration-color: rgb(230, 57, 70)">50 次抓取的结果只在 Python 进程内部流转，Python 自己完成过滤和聚合，最后</u> `print` <u style="text-decoration-color: rgb(230, 57, 70)">出 5 条最终结果给 LLM</u>。
 
 严格来说不是“完全零上下文成本”，因为生成脚本和最终输出仍然需要 Token，但中间几十次 Tool Result 基本不进入 LLM 上下文。因此它实际上是`把控制流从 LLM 的 Token Space 下沉到了 Python Runtime`：LLM 负责决定“怎么做”，Python 负责稳定地执行“做很多次”。
 
 ### 我认为这里还需要和子 Agent 区分
 
-子 Agent 是把任务交给另一个拥有独立上下文和 LLM Loop 的 Agent，它仍然需要模型持续推理，适合需要判断、探索和复杂分析的任务；`execute_code` 中间<u style="text-decoration-color: #e63946">没有新的 LLM 推理，更适合机械化、确定性的流水线</u>。
+子 Agent 是把任务交给另一个拥有独立上下文和 LLM Loop 的 Agent，它仍然需要模型持续推理，适合需要判断、探索和复杂分析的任务；`execute_code` 中间<u style="text-decoration-color: rgb(230, 57, 70)">没有新的 LLM 推理，更适合机械化、确定性的流水线</u>。
 
-> 所以 Hermes 比较合理的做法是先用 `execute_code` <u style="text-decoration-color: #e63946">完成批量收集、清洗和统计</u>，再把<u style="text-decoration-color: #e63946">真正需要认知判断的部分交给主 Agent 或子 Agent</u>。
+> 所以 Hermes 比较合理的做法是先用 `execute_code` <u style="text-decoration-color: rgb(230, 57, 70)">完成批量收集、清洗和统计</u>，再把<u style="text-decoration-color: rgb(230, 57, 70)">真正需要认知判断的部分交给主 Agent 或子 Agent</u>。
 
 ### 与 dsh 的 code mode 的异同
 
-从方法论上说，我不会把 Hermes 这套机制和 DeepSeek Harness 的 Code Mode 看成两种本质不同的方法，它们属于同一种 `Code-Mediated Tool Use` 思路：都让 LLM 生成代码去组合工具，从而<u style="text-decoration-color: #e63946">减少中间模型往返和上下文膨胀</u>。
+从方法论上说，我不会把 Hermes 这套机制和 DeepSeek Harness 的 Code Mode 看成两种本质不同的方法，它们属于同一种 `Code-Mediated Tool Use` 思路：都让 LLM 生成代码去组合工具，从而<u style="text-decoration-color: rgb(230, 57, 70)">减少中间模型往返和上下文膨胀</u>。
 
-区别主要在工程抽象上，Hermes 是在原有 Tool 系统里增加一个特殊的 `execute_code` 工具，而 dsh 更进一步把 Code Mode 做成 ToolRuntime 的一种<u style="text-decoration-color: #e63946">一等呈现模式</u>。
+区别主要在工程抽象上，Hermes 是在原有 Tool 系统里增加一个特殊的 `execute_code` 工具，而 dsh 更进一步把 Code Mode 做成 ToolRuntime 的一种<u style="text-decoration-color: rgb(230, 57, 70)">一等呈现模式</u>。
+
+> 所以所谓“一等呈现模式”主要说的是`架构地位`：Code Mode 不是一个特殊工具，而是和 Native Tool Calling 平级的工具呈现协议；但从最终解决的问题和运行机制来看，它和 Hermes Programmatic Tool Calling 依然属于同一种思路，没有方法论上的本质差异。
 
 ---
 
-对我来说，Hermes 这部分最核心的一句话就是：**不要让 LLM 充当低效的流程解释器，而是<u style="text-decoration-color: #e63946">让 LLM 写流程，让程序跑流程</u>。**
+对我来说，Hermes 这部分最核心的一句话就是：**不要让 LLM 充当低效的流程解释器，而是<u style="text-decoration-color: rgb(230, 57, 70)">让 LLM 写流程，让程序跑流程</u>。**
 
 ## 详细解析
 
@@ -87,7 +89,7 @@ web_extract
 + 每轮 assistant reasoning
 ```
 
-都会不断撑大上下文。
+都会<u style="text-decoration-color: #e63946">不断撑大上下文</u>。
 
 Hermes 的思路是：如果中间步骤主要是**机械处理，而不是需要模型判断**，那就没必要让 LLM 每一步都参与。
 
@@ -113,7 +115,7 @@ print(最终结果)
 LLM
 ```
 
-官方工具描述甚至直接提示模型：当预计有 **3 次以上工具调用，并且中间存在处理逻辑、循环、条件分支或批量过滤**时优先考虑 `execute_code`。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py?utm_source=chatgpt.com "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
+> 官方工具描述甚至直接提示模型：当预计有 **3 次以上工具调用，并且中间存在处理逻辑、循环、条件分支或批量过滤**时优先考虑 `execute_code`。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py?utm_source=chatgpt.com "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
 
 ---
 
@@ -157,7 +159,7 @@ from hermes_tools import web_search, web_extract
 
 不是普通 Python 包。
 
-`hermes_tools.py` 是 **Hermes 每次执行** `execute_code` **时临时生成的 RPC Stub 模块**。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
+`hermes_tools.py` 是 **Hermes 每次执行** `execute_code` **时<u style="text-decoration-color: #e63946">临时生成的 RPC Stub 模块</u>**。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
 
 ---
 
@@ -168,7 +170,7 @@ from hermes_tools import web_search, web_extract
 generate_hermes_tools_module(...)
 ```
 
-会根据当前 Session 允许使用的工具，动态生成函数。
+会<u style="text-decoration-color: #e63946">根据当前 Session 允许使用的工具，动态生成函数</u>。
 
 例如最终生成出来的逻辑类似：
 ```python
@@ -246,7 +248,7 @@ Hermes 主进程
 真正执行工具
 ```
 
-因此**工具能力仍然属于 Hermes 主进程，Python 只是编排者**。
+因此**<u style="text-decoration-color: #e63946">工具能力仍然属于 Hermes 主进程，Python 只是编排者</u>**。
 
 当前源码还会清理子进程环境变量，特别过滤包含：
 ```text
@@ -330,7 +332,7 @@ RPC 请求非常简单，大致就是：
 handle_function_call(tool_name, tool_args)
 ```
 
-也就是说，最终还是走 Hermes 正常的 Tool Dispatcher，而不是另起一套工具实现。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
+也就是说，<span style="background-color: #fff3cd">最终还是走 Hermes 正常的 Tool Dispatcher，而不是另起一套工具实现</span>。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/code_execution_tool.py "hermes-agent/tools/code_execution_tool.py at main · NousResearch/hermes-agent · GitHub"))
 
 ---
 
@@ -602,13 +604,27 @@ RPC 回到 Hermes 主进程真正执行 Tool
 
 所以它真正解决的问题是：
 
-**不要让 LLM 充当低效的流程解释器；让 LLM 写流程，让 Python 跑流程。**
+> **不要让 LLM 充当低效的流程解释器；让 LLM 写流程，让 Python 跑流程。**
 
-这也是为什么它和 Claude Code 子 Agent 隔离虽然都在“省主上下文”，但机制完全不同：**Claude Code 是把中间推理放到另一个 LLM 上下文，Hermes** `execute_code` **是直接把中间推理中可确定化的部分消掉，变成程序执行。**
+这也是为什么它和 Claude Code 子 Agent 隔离虽然都在“省主上下文”，但机制完全不同：**Claude Code 是把中间推理放到另一个 LLM 上下文，Hermes** `execute_code` **是直接<u style="text-decoration-color: #e63946">把中间推理中可确定化的部分消掉，变成程序执行</u>。**
 
 ## 与dsh Code Mode的差异
 
-你的感觉基本对：**从核心机制看，Hermes 的 Programmatic Tool Calling 和 dsh 的 Code Mode 没有本质区别。差异主要是工程抽象层级和接入方式。**
+
+
+
+
+
+
+
+
+
+
+
+
+你的感觉基本对：**从核心机制看，Hermes 的 Programmatic Tool Calling 和 dsh 的 Code Mode 没有本质区别。**
+
+> **差异主要是**`工程抽象层级`**和**`接入方式`**。**
 
 Hermes 这套机制首次进入主线是在 **2026 年 2 月 20 日**，commit `783acd7`，标题就是 `feat: implement code execution sandbox for programmatic tool calling`。这次提交一次性加入了 `execute_code`、Python 子进程、UDS RPC、`hermes_tools` 工具代理、调用次数/超时限制等，并在 TODO 中把 Programmatic Tool Calling 从“未开始”改成“Implemented (MVP)”。([GitHub](https://github.com/NousResearch/hermes-agent/commit/783acd712d6a382cd66efc5f8e76b1efc13211dc "feat: implement code execution sandbox for programmatic tool calling · NousResearch/hermes-agent@783acd7 · GitHub"))
 
@@ -628,23 +644,23 @@ LLM → TS/Python程序 → 工具SDK/Binding → 多次Tool → 最终输出 �
 
 共同思想都是：
 
-> **让 LLM 写一段程序来编排工具，把循环、分支、过滤等控制流从 LLM 推理循环下沉到代码运行时，中间 Tool Result 不回灌模型上下文。**
+> **让 LLM 写一段程序来编排工具，<u style="text-decoration-color: #e63946">把循环、分支、过滤等控制流从 LLM 推理循环下沉到代码运行时</u>，中间 Tool Result 不回灌模型上下文。**
 
 所以如果问“技术思想有无本质区别”，我的回答是：**没有。**
 
 真正的区别主要有这几个：
 
 
-|            | Hermes PTC                                    | dsh Code Mode                                                          |
-| ---------- | --------------------------------------------- | ---------------------------------------------------------------------- |
-| 定位         | Agent 的一个额外 `execute_code` Tool               | `ToolRuntime` 的一种一等“工具呈现模式”                                            |
-| 模型看到工具     | 原生 Tool 仍然存在，必要时选择 `execute_code`             | `code` 模式下可以只给模型 `run_code + SDK`，直接隐藏全部原生 Tool schema                 |
-| 代码接口       | `from hermes_tools import web_search...`      | `await tools.web_search(...)`                                          |
-| 工具桥接       | Python 子进程 → UDS/RPC → Hermes Tool Dispatcher | Worker → MessagePort Binding → ToolRuntime                             |
-| 默认语言       | Python                                        | 最初 TypeScript，现在运行时接口也支持 Python                                        |
-| Runtime 抽象 | 和 Hermes `execute_code` 实现绑定较深                | 抽成独立 `CodeRuntime` capability seam，可替换 worker/container/Python runtime |
-| 工具范围       | `execute_code` 内有明确白名单                        | 根据当前 Tool Registry 自动生成 SDK                                            |
-| 并发         | Hermes 侧相对直接                                  | dsh 后来做了 bounded parallel subcalls，复用原生工具并发策略                          |
+|            | Hermes PTC                                    | dsh Code Mode                                                             |
+| ---------- | --------------------------------------------- | ------------------------------------------------------------------------- |
+| 定位         | Agent 的一个额外 `execute_code` Tool               | `ToolRuntime` 的一种一等“工具呈现模式”                                               |
+| 模型看到工具     | 原生 Tool 仍然存在，必要时选择 `execute_code`             | `code` 模式下可以只给模型 `run_code + SDK`，直接隐藏全部原生 Tool schema                    |
+| 代码接口       | `from hermes_tools import web_search...`      | `await tools.web_search(...)`                                             |
+| 工具桥接       | Python 子进程 → UDS/RPC → Hermes Tool Dispatcher | Worker → MessagePort Binding → ToolRuntime                                |
+| 默认语言       | Python                                        | 最初 TypeScript，现在运行时接口也支持 Python                                           |
+| Runtime 抽象 | 和 Hermes `execute_code` 实现绑定较深                | 抽成独立 `CodeRuntime` capability seam，可替换 worker/container/Python runtime    |
+| 工具范围       | `execute_code` 内有明确白名单                        | <u style="text-decoration-color: #e63946">根据当前 Tool Registry 自动生成 SDK</u> |
+| 并发         | Hermes 侧相对直接                                  | dsh 后来做了 bounded parallel subcalls，复用原生工具并发策略                             |
 
 
 dsh 源码里最明显的架构差异是：
@@ -661,7 +677,7 @@ mode = both
 → 两套都给
 ```
 
-也就是说，**dsh 把 Code Mode 提升成了 Tool Registry 的“呈现层协议”**，而 Hermes 更像：
+也就是说，**dsh 把 Code Mode 提升成了 <u style="text-decoration-color: #e63946">Tool Registry 的“呈现层协议”</u>**，而 Hermes 更像：
 ```text
 普通工具系统
 +
@@ -679,13 +695,35 @@ worker-thread runtime
     / future container runtime
 ```
 
-Runtime 根本不知道什么叫 `web_search`、`read_file`，只知道“给我程序 + 一组 async bindings，我负责执行”。这一层解耦确实比 Hermes 更彻底。([GitHub](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-06-15-code-mode.md "deepseek-harness/.agents/notes/implemented/feature/2026-06-15-code-mode.md at master · deepseek-ai/deepseek-harness · GitHub"))
+Runtime 根本不知道什么叫 `web_search`、`read_file`，只知道“给我程序 + 一组 `async bindings`，我负责执行”。这一层解耦确实比 Hermes 更彻底。([GitHub](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-06-15-code-mode.md "deepseek-harness/.agents/notes/implemented/feature/2026-06-15-code-mode.md at master · deepseek-ai/deepseek-harness · GitHub"))
 
 但这属于**架构工程差异，不是 Agent 方法论差异**。
 
 所以之前文档里如果把两者写成“两种不同解法”，我现在会收紧成：
 
-> **Hermes Programmatic Tool Calling 与 dsh Code Mode 本质上属于同一种 Code-Mediated Tool Use 范式：都让 LLM 生成程序来组合工具调用，从而消除中间 LLM round-trip 和上下文膨胀。区别在于 Hermes 将它实现为一个 Python** `execute_code` **工具，而 dsh 将 Code Mode进一步抽象为 ToolRuntime 的一等工具呈现模式与可插拔 CodeRuntime。**
+> **Hermes Programmatic Tool Calling 与 dsh Code Mode 本质上属于同一种 Code-Mediated Tool Use 范式：都让 LLM 生成程序来组合工具调用，从而消除中间 LLM round-trip 和上下文膨胀。**
+>
+> **区别在于 Hermes 将它实现为一个 Python** `execute_code` **工具，而 dsh 将 Code Mode进一步抽象为 ToolRuntime 的一等工具呈现模式与**`可插拔 CodeRuntime`**。**
 
-我反而认为你说的“我没看出本质区别”是对的。**之前把它们表述成“三种解法”时，Hermes PTC 和 dsh Code Mode 应该归为同一类；真正不同的是 Claude Code subagent——它仍然用另一个 LLM 做中间推理，而 Code Mode 是把可确定化的中间推理直接变成程序执行。**<!-- created: 2026-08-24 10:28:54 -->
-<!-- updated: 2026-08-24 10:41:01 -->
+我反而认为你说的“我没看出本质区别”是对的。**之前把它们表述成“三种解法”时，Hermes PTC 和 dsh Code Mode 应该归为同一类；真正不同的是 Claude Code subagent——它仍然用另一个 LLM 做中间推理，而 Code Mode 是把可确定化的中间推理直接变成程序执行。**
+
+## dsh 把 Code Mode 做成 ToolRuntime 的“一等呈现模式”
+
+> 这里说 dsh 把 Code Mode 做成 `ToolRuntime` 的“一等呈现模式”，意思是它不是简单地在原有工具列表里额外加一个 `run_code` 工具，而是从<u style="text-decoration-color: rgb(230, 57, 70)">更底层规定“这一组 Tool 到底以什么形式暴露给模型”</u>。
+
+在 dsh 里，`ToolRuntime` 本身就维护一个 `mode` 配置：`native`、`code`、`both`。
+
+- `native` 模式下，模型直接看到每个工具的 JSON Schema，然后像传统 function calling 一样调用；
+- `code` 模式下，这些<u style="text-decoration-color: rgb(230, 57, 70)">原生 Tool Schema 会直接从模型视野里消失，模型只能看到一个统一入口</u> `run_code`，同时 system prompt 里会自动生成当前所有可用工具对应的 TypeScript/Python SDK，模型必须写程序，通过类似 `tools.web_search()` 的方式间接调用工具；
+- `both` 则两种方式同时开放。
+
+也就是说，dsh 把“原生 Tool Calling”和“Code Mode”看成**同一批底层 Tool 的两种模型侧表示协议**，工具本身只注册一次，权限、执行器、超时、重试、并发控制、日志等仍然走同一套 Tool Pipeline，只是给 LLM 的“接口长什么样”可以切换。([GitHub](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/core/tools/README.md?utm_source=chatgpt.com "deepseek-harness/packages/core/tools/README.md at master · deepseek-ai/deepseek-harness · GitHub"))
+
+更进一步，`run_code` 里的程序调用 `tools.xxx()` 时，也不会绕开原来的工具系统，而是重新进入 `pre-execute → guard → execute → post-execute → result` 这条完整执行链，所以 Code Mode 并不是第二套 Tool Runtime，而只是 ToolRuntime 的另一种 presentation。([GitHub](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-06-15-code-mode.md?utm_source=chatgpt.com "deepseek-harness/.agents/notes/implemented/feature/2026-06-15-code-mode.md at master · deepseek-ai/deepseek-harness · GitHub"))
+
+这就是它和 Hermes 最明显的工程差异：
+
+- Hermes 更像“已有一堆普通 Tool，再额外注册一个特殊的 `execute_code` Tool，里面通过 `hermes_tools.py + RPC` 去调用其中一部分工具”；
+- 而 dsh 是“Tool Registry 天生就支持 native/code/both 三种暴露方式”，<u style="text-decoration-color: rgb(230, 57, 70)">Code Mode 被做到</u>`工具系统的架构层`<u style="text-decoration-color: rgb(230, 57, 70)">，而不是一个外挂能力。</u>
+<!-- created: 2026-08-24 10:28:54 -->
+<!-- updated: 2026-08-25 17:09:18 -->

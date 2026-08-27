@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
 import GenerateForm from '@/components/GenerateForm';
 import DocumentEditor from '@/components/DocumentEditor';
@@ -13,16 +13,22 @@ import ExternalDocView from '@/components/ExternalDocView';
 import CreateEmptyModal from '@/components/CreateEmptyModal';
 import AIFloat from '@/components/AIFloat';
 import BackToTop from '@/components/BackToTop';
+import GoToBottom from '@/components/GoToBottom';
 import TocFloat from '@/components/TocFloat';
 import LinkInsertFloat from '@/components/LinkInsertFloat';
+import DocSearchFloat from '@/components/DocSearchFloat';
+import ScopeSearchPanel from '@/components/ScopeSearchPanel';
 import TagViewer from '@/components/TagViewer';
 import TabBar from '@/components/TabBar';
+import InboxView from '@/components/InboxView';
 import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
 import { stripMdText } from '@/lib/stripText';
+import { dueEntries } from '@/lib/fsrsLogic';
+import type { FsrsCardData, FsrsStore } from '@/lib/fsrsStore';
 
 interface DocTab {
   id: string;
-  kind: 'category' | 'random' | 'project' | 'external' | 'form';
+  kind: 'category' | 'random' | 'review' | 'project' | 'external' | 'form';
   category?: string;
   filename?: string;
   subdir?: string;
@@ -36,7 +42,7 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProjectSubdir, setSelectedProjectSubdir] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [view, setView] = useState<'browse' | 'new' | 'edit' | 'random' | 'tag' | 'project-doc' | 'new-empty' | 'external-doc'>('browse');
+  const [view, setView] = useState<'browse' | 'new' | 'edit' | 'random' | 'tag' | 'project-doc' | 'new-empty' | 'external-doc' | 'inbox'>('browse');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [projectSubdir, setProjectSubdir] = useState<string | null>(null);
   const [projectFilename, setProjectFilename] = useState<string | null>(null);
@@ -55,6 +61,10 @@ export default function Home() {
   const [projectSubdirs, setProjectSubdirs] = useState<{ slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[]>([]);
   const [projectStats, setProjectStats] = useState<{ subdirs: number; docs: number; groups: number }>({ subdirs: 0, docs: 0, groups: 0 });
   const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
+  // FSRS 间隔重复卡片状态（评分回写后乐观更新 + PUT 持久化）
+  const [fsrsStore, setFsrsStore] = useState<FsrsStore>({ version: 1, cards: {} });
+  const fsrsStoreRef = useRef<FsrsStore>({ version: 1, cards: {} });
+  const applyFsrsStore = (s: FsrsStore) => { fsrsStoreRef.current = s; setFsrsStore(s); };
 
   // 多标签：已打开文档的工作集（内存态，刷新即清空；文档内容本身已自动保存到磁盘）
   const [tabs, setTabs] = useState<DocTab[]>([]);
@@ -62,6 +72,16 @@ export default function Home() {
   const [tabContents, setTabContents] = useState<Record<string, string>>({});
   const tabScrollsRef = useRef<Record<string, number>>({});
   const contentRef = useRef<HTMLDivElement | null>(null);
+  // 锚点跳转进行中的标签 id：跳转完成前，标签切换的滚动恢复逻辑应跳过，避免先滚到顶部/已存位置再跳到标题
+  const anchorNavTabRef = useRef<string | null>(null);
+  // 用 ref 保存最新的 tabs / activeTabId，供 window 事件监听器读取，避免闭包捕获旧状态导致同文档判断失效
+  const tabsRef = useRef<DocTab[]>([]);
+  const activeTabIdRef = useRef<string | null>(null);
+  tabsRef.current = tabs;
+  activeTabIdRef.current = activeTabId;
+  // handleWikiLinkOpen 引用了 tabs/activeTabId 等状态，而事件监听器只在视图变化时重绑，
+  // 通过 ref 始终调用最新版本，避免监听器持有旧闭包
+  const wikiLinkHandlerRef = useRef<(wiki: string, slugHint?: string) => void>(() => {});
 
   // Track previous state for back navigation from random mode
   const navSeqRef = useRef(0);
@@ -118,12 +138,33 @@ export default function Home() {
     } catch {}
   };
 
+  const loadFsrsStore = async () => {
+    try {
+      const res = await fetch('/api/fsrs');
+      const json = await res.json();
+      if (json.success) applyFsrsStore(json.data);
+    } catch {}
+  };
+
   useEffect(() => {
     loadCategories();
     loadTags();
     loadProjectStats();
     loadExternalDocs();
+    loadFsrsStore();
   }, []);
+
+  // 当前题目 key 集合（`<分类>/<文件名>`），过滤已删题目的幽灵卡片
+  const questionKeySet = () => {
+    const keys = new Set<string>();
+    for (const cat of categories) {
+      for (const q of cat.questions) keys.add(`${cat.slug}/${q.filename}`);
+    }
+    return keys;
+  };
+  // 到期复习队列（按 due 升序）；按钮角标与 openReview 共用
+  const dueReviewList = dueEntries(fsrsStore.cards, questionKeySet());
+  const dueCount = dueReviewList.length;
 
   const showToast = (msg: string, type: string = 'info') => {
     setToast({ msg, type });
@@ -161,7 +202,7 @@ export default function Home() {
     }
   };
 
-  const activateTab = (tab: DocTab) => {
+  const activateTab = (tab: DocTab, pendingAnchorToSet?: string[] | null) => {
     saveActiveTabScroll();
     setActiveTabId(tab.id);
     setSelectedCategory(tab.category ?? null);
@@ -169,7 +210,8 @@ export default function Home() {
     setProjectSubdir(tab.subdir ?? null);
     setProjectFilename(tab.kind === 'project' ? (tab.filename ?? null) : null);
     setExternalDocId(tab.extId ?? null);
-    setPendingAnchor(null);
+    // 锚点跳转场景：保留挂起的锚点，供新标签的编辑器加载后滚动定位
+    setPendingAnchor(pendingAnchorToSet ?? null);
     setView(kindToView(tab.kind));
   };
 
@@ -228,6 +270,8 @@ export default function Home() {
   useLayoutEffect(() => {
     if (!activeTabId || !contentRef.current) return;
     if (!DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number])) return;
+    // 锚点跳转进行中：目标标题定位由编辑器负责，此处不要先恢复/重置滚动位置造成跳动
+    if (anchorNavTabRef.current === activeTabId) return;
     contentRef.current.scrollTop = tabScrollsRef.current[activeTabId] || 0;
   }, [activeTabId, view]);
 
@@ -356,10 +400,94 @@ export default function Home() {
       remapTabsAfterMove(json);
       await loadCategories();
       await loadTags();
+      loadFsrsStore(); // 服务端已改写 fsrs key，静默刷新内存态
       showToast(`已移动到 ${toCat}`, 'success');
     } catch (e: any) {
       await loadCategories();
       showToast('移动失败: ' + (e?.message || '未知错误'), 'error');
+    }
+  };
+
+  // ---- 拖拽移动 project/分组文档（与分类拖拽使用独立接口） ----
+  const handleMoveProjectDoc = async (fromSubdir: string, filename: string, toSubdir: string, toIndex: number) => {
+    const source = projectSubdirs.find((item) => item.slug === fromSubdir);
+    const originalIndex = source?.docs.findIndex((doc) => doc.filename === filename) ?? -1;
+    if (originalIndex < 0) return;
+    if (fromSubdir === toSubdir && toIndex === originalIndex) {
+      showToast('已在原位，无需移动', 'info');
+      return;
+    }
+
+    setProjectSubdirs((prev) => reorderProjectSubdirs(prev, fromSubdir, filename, toSubdir, toIndex));
+    try {
+      const res = await fetch('/api/project/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromSubdir, filename, toSubdir, toIndex }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || '移动失败');
+      if (!json.noop) remapProjectTabsAfterMove(json);
+      await loadProjectStats();
+      setRefreshKey((key) => key + 1);
+      loadFsrsStore();
+      if (!json.noop) showToast(`已移动到 ${toSubdir}`, 'success');
+    } catch (error: any) {
+      await loadProjectStats();
+      setRefreshKey((key) => key + 1);
+      showToast('移动失败: ' + (error?.message || '未知错误'), 'error');
+    }
+  };
+
+  // 移动成功后同步 project 标签页 id 与当前打开文档路径。
+  const remapProjectTabsAfterMove = (json: {
+    moved: { from: { category: string; filename: string }; to: { category: string; filename: string } };
+    sourceRenames: Record<string, string>;
+    targetRenames: Record<string, string>;
+  }) => {
+    const { moved, sourceRenames, targetRenames } = json;
+    const mapping = new Map<string, { subdir: string; filename: string }>();
+    const keyOf = (subdir: string, file: string) => `${subdir}\u0000${file}`;
+    for (const [oldFilename, newFilename] of Object.entries(sourceRenames)) {
+      mapping.set(keyOf(moved.from.category, oldFilename), { subdir: moved.from.category, filename: newFilename });
+    }
+    for (const [oldFilename, newFilename] of Object.entries(targetRenames)) {
+      mapping.set(keyOf(moved.to.category, oldFilename), { subdir: moved.to.category, filename: newFilename });
+    }
+    mapping.set(
+      keyOf(moved.from.category, moved.from.filename),
+      { subdir: moved.to.category, filename: moved.to.filename },
+    );
+
+    const touched: { oldId: string; newId: string; subdir: string; filename: string }[] = [];
+    const nextTabs = tabs.map((tab) => {
+      if (tab.kind !== 'project' || !tab.subdir || !tab.filename) return tab;
+      const destination = mapping.get(keyOf(tab.subdir, tab.filename));
+      if (!destination) return tab;
+      const parts = tab.id.split(':');
+      const suffix = parts.slice(3).join(':');
+      const newId = `proj:${destination.subdir}:${destination.filename}${suffix ? ':' + suffix : ''}`;
+      touched.push({ oldId: tab.id, newId, ...destination });
+      return { ...tab, id: newId, subdir: destination.subdir, filename: destination.filename };
+    });
+    if (touched.length === 0) return;
+
+    setTabs(nextTabs);
+    for (const item of touched) {
+      const scrollTop = tabScrollsRef.current[item.oldId];
+      if (scrollTop != null) {
+        tabScrollsRef.current[item.newId] = scrollTop;
+        delete tabScrollsRef.current[item.oldId];
+      }
+    }
+    if (activeTabId) {
+      const active = touched.find((item) => item.oldId === activeTabId);
+      if (active) {
+        setActiveTabId(active.newId);
+        setProjectSubdir(active.subdir);
+        setSelectedProjectSubdir(active.subdir);
+        setProjectFilename(active.filename);
+      }
     }
   };
 
@@ -426,6 +554,39 @@ export default function Home() {
         showToast('删除成功！', 'success');
         await loadCategories();
         await loadTags();
+        loadFsrsStore(); // 服务端已删除/改移 fsrs key，静默刷新内存态
+      } else {
+        showToast('删除失败: ' + json.error, 'error');
+      }
+    } catch (e: any) {
+      showToast('删除失败: ' + e.message, 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 删除 project/groups 子目录下的文档（后端与分类删除共用同一套序号重排联动逻辑）
+  const deleteProjectDoc = async () => {
+    if (!projectSubdir || !projectFilename) return;
+    if (deleting) return;
+    if (!confirm(`确认删除 "${projectFilename}"？此操作不可撤销。`)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/project/${encodeURIComponent(projectSubdir)}/${encodeURIComponent(projectFilename)}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        if (activeTabId) closeTab(activeTabId);
+        else {
+          setProjectFilename(null);
+          setView('browse');
+        }
+        showToast('删除成功！', 'success');
+        await loadProjectStats(); // 刷新侧边栏 project/分组文档列表
+        setRefreshKey(k => k + 1);
+        loadFsrsStore(); // 服务端已删除/改移 fsrs key，静默刷新内存态
       } else {
         showToast('删除失败: ' + json.error, 'error');
       }
@@ -482,10 +643,81 @@ export default function Home() {
     }
   };
 
+  // ---- FSRS 间隔重复复习 ----
+
+  const openReviewQuestion = async (category: string, filename: string) => {
+    const tabId = `review:${category}:${filename}`;
+    const existing = tabs.find((t) => t.id === tabId);
+    if (existing) {
+      addTabToFront(existing);
+      activateTab(existing);
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/categories/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`);
+      const json = await res.json();
+      if (json.success) {
+        const label = categories.find((c) => c.slug === category)?.questions.find((q) => q.filename === filename)?.title || filename;
+        const tab: DocTab = { id: tabId, kind: 'review', category, filename, label };
+        setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
+        addTabToFront(tab);
+        activateTab(tab);
+      } else {
+        showToast('加载失败', 'error');
+      }
+    } catch {
+      showToast('加载失败', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 打开到期队列中最久未复习的一道
+  const openReview = async () => {
+    const due = dueEntries(fsrsStoreRef.current.cards, questionKeySet());
+    if (due.length === 0) {
+      showToast('没有到期的复习题目 🎉', 'success');
+      return;
+    }
+    const key = due[0].key;
+    const slash = key.indexOf('/');
+    await openReviewQuestion(key.slice(0, slash), key.slice(slash + 1));
+  };
+
+  // 评分后自动进入下一道到期题；队列清空则提示完成并关闭当前标签
+  const openNextReview = async () => {
+    const due = dueEntries(fsrsStoreRef.current.cards, questionKeySet());
+    if (due.length === 0) {
+      showToast('今日复习完成！', 'success');
+      closeActiveTab();
+      return;
+    }
+    const key = due[0].key;
+    const slash = key.indexOf('/');
+    await openReviewQuestion(key.slice(0, slash), key.slice(slash + 1));
+  };
+
+  // 评分回写：乐观更新内存态 → PUT 持久化 → 提示下次复习时间
+  const handleRateQuestion = (category: string, filename: string, rating: number, cardData: FsrsCardData) => {
+    const key = `${category}/${filename}`;
+    const prev = fsrsStoreRef.current;
+    const next: FsrsStore = { ...prev, cards: { ...prev.cards, [key]: cardData } };
+    applyFsrsStore(next);
+    fetch('/api/fsrs', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    }).catch(() => {});
+    const dueDate = new Date(cardData.due);
+    const sameDay = !isNaN(dueDate.getTime()) && dueDate.toDateString() === new Date().toDateString();
+    showToast(`已评分，${sameDay ? '今天稍后' : `${dueDate.getMonth() + 1}月${dueDate.getDate()}日`}复习`, 'success');
+  };
+
   const openTag = (tagName: string) => {
     saveActiveTabScroll();
     prevStateRef.current = {
-      view: (view === 'new' || view === 'new-empty' || view === 'tag') ? 'browse' : view,
+      view: (view === 'new' || view === 'new-empty' || view === 'tag' || view === 'inbox') ? 'browse' : view,
       selectedCategory,
       selectedFile,
     };
@@ -508,9 +740,12 @@ export default function Home() {
   };
 
   // 文档内链接跳转：总是新开一个标签页（同一文档可并存多个标签，id 带序号防冲突）
-  const openDocLinkInNewTab = async (kind: 'category' | 'project', category: string, filename: string) => {
+  const openDocLinkInNewTab = async (kind: 'category' | 'project', category: string, filename: string, anchors?: string[] | null) => {
     const seq = ++linkTabSeqRef.current;
     const tabId = `${kind === 'category' ? 'cat' : 'proj'}:${category}:${filename}:${seq}`;
+    // 锚点随标签激活一并挂起：避免切换标签的布局副作用先把容器滚到顶部再跳到标题，造成视觉跳动
+    const pendingAnchorToSet = anchors && anchors.length > 0 ? anchors : null;
+    if (pendingAnchorToSet) anchorNavTabRef.current = tabId;
     if (kind === 'category') {
       try {
         const res = await fetch(`/api/categories/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`);
@@ -520,7 +755,7 @@ export default function Home() {
         const tab: DocTab = { id: tabId, kind: 'category', category, filename, label };
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
         addTabToFront(tab);
-        activateTab(tab);
+        activateTab(tab, pendingAnchorToSet);
       } catch {
         showToast('加载题目失败', 'error');
       }
@@ -529,7 +764,7 @@ export default function Home() {
     const label = projectSubdirs.find((s) => s.slug === category)?.docs.find((d) => d.filename === filename)?.title || filename;
     const tab: DocTab = { id: tabId, kind: 'project', subdir: category, filename, label };
     addTabToFront(tab);
-    activateTab(tab);
+    activateTab(tab, pendingAnchorToSet);
   };
 
   const openExternalList = () => {
@@ -556,6 +791,16 @@ export default function Home() {
     activateTab(tab);
   };
 
+  // 打开待入库题单（收集面试题的编辑页）
+  const openInbox = () => {
+    deactivateTab();
+    setSelectedCategory(null);
+    setSelectedProjectSubdir(null);
+    setSelectedFile(null);
+    setBrowsingExternal(false);
+    setView('inbox');
+  };
+
   // 点击 wiki 链接 → 打开目标文档并滚动到锚点（含逐级回退）
   const handleWikiLinkOpen = async (wiki: string, slugHint?: string) => {
     const [docKey, ...anchors] = wiki.split('#').map(s => s.trim()).filter(Boolean);
@@ -573,14 +818,32 @@ export default function Home() {
         docs.find(byKey) ||
         docs[0];
       if (!target) return;
-      if (target.kind === 'category') {
-        await openDocLinkInNewTab('category', target.category, target.filename);
-      } else {
-        openDocLinkInNewTab('project', target.category, target.filename);
+      // 同一文档内的锚点链接：直接触发当前编辑器滚动到标题，不新开标签。
+      // 必须从 ref 读取最新的标签/激活状态，事件监听器闭包会捕获旧值导致判断失效。
+      const curTabs = tabsRef.current;
+      const curActiveId = activeTabIdRef.current;
+      const activeTab = curTabs.find((t) => t.id === curActiveId);
+      const isSameDoc = !!activeTab && (
+        (target.kind === 'category' && activeTab.kind === 'category' && activeTab.category === target.category && activeTab.filename === target.filename) ||
+        (target.kind === 'project' && activeTab.kind === 'project' && activeTab.subdir === target.category && activeTab.filename === target.filename)
+      );
+      if (isSameDoc && anchors.length > 0) {
+        console.log('[anchor-nav] 页面层判定为同文档，复用当前标签滚动', { docKey, anchors });
+        // 标记本次锚点跳转，防止标签滚动恢复逻辑干扰
+        if (curActiveId) anchorNavTabRef.current = curActiveId;
+        setPendingAnchor(anchors);
+        return;
       }
-      setPendingAnchor(anchors.length > 0 ? anchors : null);
+      console.log('[anchor-nav] 页面层判定为跨文档，新开标签', { docKey, anchors, isSameDoc });
+      if (target.kind === 'category') {
+        await openDocLinkInNewTab('category', target.category, target.filename, anchors);
+      } else {
+        openDocLinkInNewTab('project', target.category, target.filename, anchors);
+      }
     } catch {}
   };
+  // 始终指向最新实现，供只绑定一次的 window 事件监听器调用
+  wikiLinkHandlerRef.current = handleWikiLinkOpen;
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -608,7 +871,7 @@ export default function Home() {
         setView('browse');
         return;
       }
-      handleWikiLinkOpen(detail.wiki, detail.slugHint);
+      wikiLinkHandlerRef.current(detail.wiki, detail.slugHint);
     };
     window.addEventListener('open-wiki-link', handler);
     return () => window.removeEventListener('open-wiki-link', handler);
@@ -645,6 +908,12 @@ export default function Home() {
     categories.reduce((s, c) => s + c.questions.reduce((w, q) => w + (q.wordCount || 0), 0), 0) +
     projectSubdirs.reduce((s, d) => s + d.docs.reduce((w, doc) => w + (doc.wordCount || 0), 0), 0);
 
+  // 锚点跳转完成：清空挂起锚点与跳转标记，之后标签切换恢复滚动位置的逻辑重新生效
+  const handleAnchorDone = useCallback(() => {
+    anchorNavTabRef.current = null;
+    setPendingAnchor(null);
+  }, []);
+
   return (
     <div id="app-root">
       <Sidebar
@@ -678,6 +947,8 @@ export default function Home() {
         onExternalMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
         onToast={(msg, type) => showToast(msg, type || 'info')}
         onNewQuestion={openFormTab}
+        onOpenInbox={openInbox}
+        inboxActive={view === 'inbox'}
         onGoHome={() => {
           deactivateTab();
           setSelectedCategory(null);
@@ -687,6 +958,7 @@ export default function Home() {
           setView('browse');
         }}
         onMoveQuestion={handleMoveQuestion}
+        onMoveProjectDoc={handleMoveProjectDoc}
       />
 
       <div className="main">
@@ -714,6 +986,8 @@ export default function Home() {
                 : view === 'external-doc'
                 ? (externalDocs.find(d => d.id === externalDocId)?.title ||
                    (externalDocs.find(d => d.id === externalDocId)?.path || '').split(/[\\/]/).pop() || '外部文档')
+                : view === 'inbox'
+                ? '待入库题单'
                 : view === 'browse' && browsingExternal
                 ? '外部文档'
                 : view === 'browse' && selectedProjectSubdir
@@ -743,6 +1017,11 @@ export default function Home() {
                 {externalDocs.find(d => d.id === externalDocId)?.path || ''}
               </span>
             )}
+            {view === 'inbox' && (
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                面试题收集 · 持久化为 Markdown · 勾选标记已入库
+              </span>
+            )}
           </div>
           <div className="header-actions">
             {view === 'edit' && (
@@ -750,8 +1029,22 @@ export default function Home() {
                 删除此题
               </button>
             )}
+            {view === 'project-doc' && projectSubdir && projectFilename && (
+              <button className="btn btn-danger" onClick={deleteProjectDoc}>
+                删除文档
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={() => setShowLogs(true)} title="查看操作日志">
               日志
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={openReview}
+              disabled={dueCount === 0}
+              title={dueCount === 0 ? '暂无到期的复习题目' : `复习 ${dueCount} 道到期的题目（间隔重复）`}
+            >
+              今日复习
+              {dueCount > 0 && <span className="review-count-badge">{dueCount}</span>}
             </button>
             <button
               className="btn btn-secondary"
@@ -817,6 +1110,10 @@ export default function Home() {
             />
           )}
 
+          {view === 'inbox' && (
+            <InboxView onToast={(msg, type) => showToast(msg, type || 'info')} />
+          )}
+
           {/* 已打开文档的标签面板：全部保持挂载（隐藏切换），保留编辑状态；切换时恢复各自滚动位置 */}
           {tabs.map((tab) => {
             const visible = tab.id === activeTabId && DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number]);
@@ -831,10 +1128,10 @@ export default function Home() {
                     onSave={saveEdit}
                     onSaveStatusChange={setEditorSaveStatus}
                     pendingAnchor={visible ? pendingAnchor : null}
-                    onAnchorDone={() => setPendingAnchor(null)}
+                    onAnchorDone={handleAnchorDone}
                   />
                 )}
-                {tab.kind === 'random' && tab.category && tab.filename && tabContents[tab.id] != null && (
+                {(tab.kind === 'random' || tab.kind === 'review') && tab.category && tab.filename && tabContents[tab.id] != null && (
                   <RandomQuestion
                     key={tab.id}
                     markdown={tabContents[tab.id]}
@@ -843,6 +1140,10 @@ export default function Home() {
                     categorySlug={tab.category}
                     onSave={saveEdit}
                     onBack={closeActiveTab}
+                    mode={tab.kind === 'review' ? 'review' : 'random'}
+                    fsrsCard={fsrsStore.cards[`${tab.category}/${tab.filename}`]}
+                    onRate={(rating, cardData) => handleRateQuestion(tab.category!, tab.filename!, rating, cardData)}
+                    onNext={tab.kind === 'review' ? () => openNextReview() : undefined}
                     imageBase={`/api/raw/categories/${encodeURIComponent(tab.category)}`}
                     uploadDir={`categories/${tab.category}`}
                   />
@@ -975,6 +1276,8 @@ export default function Home() {
           <LinkInsertFloat />
           <TocFloat />
           <BackToTop />
+          <DocSearchFloat />
+          <GoToBottom />
         </>
       )}
     </div>
@@ -1010,6 +1313,35 @@ function reorderCategories(
       return { ...c, questions: qs, questionCount: qs.length };
     }
     return c;
+  });
+}
+
+/** project/分组文档拖拽时的乐观列表更新。 */
+function reorderProjectSubdirs(
+  prev: { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[],
+  fromSubdir: string,
+  filename: string,
+  toSubdir: string,
+  toIndex: number,
+) {
+  const moved = prev.find((item) => item.slug === fromSubdir)?.docs.find((doc) => doc.filename === filename);
+  if (!moved) return prev;
+  return prev.map((item) => {
+    if (item.slug === fromSubdir && item.slug === toSubdir) {
+      const docs = [...item.docs];
+      const index = docs.findIndex((doc) => doc.filename === filename);
+      if (index < 0) return item;
+      const [doc] = docs.splice(index, 1);
+      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, doc);
+      return { ...item, docs };
+    }
+    if (item.slug === fromSubdir) return { ...item, docs: item.docs.filter((doc) => doc.filename !== filename) };
+    if (item.slug === toSubdir) {
+      const docs = [...item.docs];
+      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, moved);
+      return { ...item, docs };
+    }
+    return item;
   });
 }
 
@@ -1177,6 +1509,8 @@ function BrowseView({
   loading: boolean;
 }) {
   const category = categories.find((c) => c.slug === selectedCategory);
+  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
+  const [searchActive, setSearchActive] = useState(false);
 
   if (!selectedCategory) {
     return (
@@ -1215,7 +1549,15 @@ function BrowseView({
           <div className="loading-spinner" />
         </div>
       )}
-      {category.questions.map((q) => (
+      {/* 分类内关键字检索：切换分类时重置检索状态 */}
+      <ScopeSearchPanel
+        key={selectedCategory}
+        scope="category"
+        slug={selectedCategory}
+        onOpen={(hit) => hit.filename && onSelectQuestion(selectedCategory, hit.filename)}
+        onActiveChange={setSearchActive}
+      />
+      {!searchActive && category.questions.map((q) => (
         <div
           key={q.filename}
           className="question-list-item"
@@ -1242,6 +1584,8 @@ function ProjectBrowseView({
   onSelectDoc: (subdir: string, filename: string) => void;
 }) {
   const subdir = subdirs.find(s => s.slug === selectedSubdir);
+  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
+  const [searchActive, setSearchActive] = useState(false);
   if (!subdir) return null;
 
   return (
@@ -1249,12 +1593,20 @@ function ProjectBrowseView({
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
         {subdir.name} — {subdir.docs.length} 篇文档
       </div>
-      {subdir.docs.length === 0 && (
+      {/* 分组/子目录内关键字检索：切换目录时重置检索状态 */}
+      <ScopeSearchPanel
+        key={subdir.slug}
+        scope="project"
+        slug={subdir.slug}
+        onOpen={(hit) => hit.filename && onSelectDoc(subdir.slug, hit.filename)}
+        onActiveChange={setSearchActive}
+      />
+      {subdir.docs.length === 0 && !searchActive && (
         <div className="empty-state" style={{ padding: 20 }}>
           <p>暂无文档</p>
         </div>
       )}
-      {subdir.docs.map((doc) => (
+      {!searchActive && subdir.docs.map((doc) => (
         <div
           key={doc.filename}
           className="question-list-item"

@@ -122,21 +122,21 @@ summary = summarize(parsed)
 rpc.call("write_file", path="summary.md", content=summary)
 ```
 
-对比三种「折叠中间态」的路线：Claude Code 用子智能体隔离上下文窗口，dsh 用 Code Mode 在宿主绑定上跑模型写的程序，Hermes 用用户（或模型）写的 Python 脚本经 RPC 调工具——共同点是中间过程不占主上下文，<u style="text-decoration-color: #e63946">差异在谁来写这段编排代码</u>。
+对比三种「折叠中间态」的路线：Claude Code 用子智能体隔离上下文窗口，dsh 用 Code Mode 在宿主绑定上跑模型写的程序，Hermes 用用户（或模型）写的 Python 脚本经 RPC 调工具——共同点是中间过程不占主上下文，<u style="text-decoration-color: rgb(230, 57, 70)">差异在谁来写这段编排代码</u>。
 
 ### 四、面试追问
 
 **追问一：Hermes 的学习闭环和 Claude Code 的 skills 有什么区别？**
 
-Claude Code 的 skills 是<u style="text-decoration-color: #e63946">人工编写的静态资产</u>，加载时机由规则决定，内容不会在使用中变化。Hermes 的技能是 <u style="text-decoration-color: #e63946">agent 从自身经验中生成的，并且声称在使用中自我改进——技能从「输入」变成了「产出物」</u>。但要注意核实度：产品内置的自改进程度与 hermes-agent-self-evolution 项目的评测约束是两个层级，前者是产品行为，后者是有约束门和人工 PR 的搜索流水线，不能把后者的严谨性自动算到前者头上。
+Claude Code 的 skills 是<u style="text-decoration-color: rgb(230, 57, 70)">人工编写的静态资产</u>，加载时机由规则决定，内容不会在使用中变化。Hermes 的技能是 <u style="text-decoration-color: rgb(230, 57, 70)">agent 从自身经验中生成的，并且声称在使用中自我改进——技能从「输入」变成了「产出物」</u>。但要注意核实度：产品内置的自改进程度与 hermes-agent-self-evolution 项目的评测约束是两个层级，前者是产品行为，后者是有约束门和人工 PR 的搜索流水线，不能把后者的严谨性自动算到前者头上。
 
 **追问二：nudge 机制为什么重要？**
 
-长期记忆系统的核心难题不是存储而是触发——什么时候该写、写什么。固定规则（每 N 轮总结一次）要么打断工作要么错过时机。nudge 把沉淀动作变成`系统对 agent 的周期性提示`，<u style="text-decoration-color: #e63946">由 agent 判断当下是否有值得记的内容</u>，把「机械备份」变成「选择性归档」。代价是它依赖模型自身的判断力，判断失误就产生噪音记忆；所以工程上还需要`检索质量`、`去重`与`衰减机制`配套，nudge 不是记忆问题的全部答案。
+长期记忆系统的核心难题不是存储而是触发——什么时候该写、写什么。固定规则（每 N 轮总结一次）要么打断工作要么错过时机。nudge 把沉淀动作变成`系统对 agent 的周期性提示`，<u style="text-decoration-color: rgb(230, 57, 70)">由 agent 判断当下是否有值得记的内容</u>，把「机械备份」变成「选择性归档」。代价是它依赖模型自身的判断力，判断失误就产生噪音记忆；所以工程上还需要`检索质量`、`去重`与`衰减机制`配套，nudge 不是记忆问题的全部答案。
 
 **追问三：多平台 gateway 常驻的架构代价是什么？**
 
-1. 运维负担：一个长期运行的进程需要<u style="text-decoration-color: #e63946">监控、升级与故障恢复</u>，这已经是服务运维而不是工具使用。
+1. 运维负担：一个长期运行的进程需要<u style="text-decoration-color: rgb(230, 57, 70)">监控、升级与故障恢复</u>，这已经是服务运维而不是工具使用。
 2. 安全面扩大：消息平台都是新的攻击面，Telegram bot token 泄露、群组身份冒用、平台侧的内容政策都成为风险，执行后端隔离不能解决消息层的认证与授权问题。
 3. 状态一致性：多端并发操作同一任务时，需要排队与冲突处理。
 
@@ -164,7 +164,7 @@ Claude Code 的 skills 是<u style="text-decoration-color: #e63946">人工编写
 
 ## Hermes记忆提取的触发机制
 
-> **每累计 N 个用户 prompt → 触发一次 memory review，当前默认 N=10。**源码里就是 `_turns_since_memory >= _memory_nudge_interval`。
+> \*\*每累计 N 个用户 prompt → 触发一次 memory review，当前默认 N=10。\*\*源码里就是 `_turns_since_memory >= _memory_nudge_interval`。
 
 触发之后不是直接“把最近 10 轮总结进 memory”，而是：
 ```text
@@ -183,4 +183,4 @@ Claude Code 的 skills 是<u style="text-decoration-color: #e63946">人工编写
 无 → 什么都不写
 ```
 <!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-24 10:27:56 -->
+<!-- updated: 2026-08-25 11:11:34 -->

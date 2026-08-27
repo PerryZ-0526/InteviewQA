@@ -158,10 +158,10 @@ worker 后端模块注释的官方定位原文："This is containment, not a sec
 
 ### 八、与题库已有题目交叉引用
 
-- 架构背景与 Code Mode 简版：见 [001-DeepSeek Harness架构设计](001-DeepSeek%20Harness%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1.md)
+- 架构背景与 Code Mode 简版：见 [001-DeepSeek Harness架构设计](001-DeepSeek Harness架构设计.md)
 - 与 Claude Code 的系统对比：见 \[002-DeepSeek Harness与Claude Code的区别\](002-DeepSeek Harness与Claude Code的区别.md)
-- 上下文压缩的同族手段：见 [agent/004-agent上下文压缩策略](../agent/004-agent%E4%B8%8A%E4%B8%8B%E6%96%87%E5%8E%8B%E7%BC%A9%E7%AD%96%E7%95%A5.md)
-- 成本视角：见 [agent/001-如何降低agent的运营成本](../agent/001-%E5%A6%82%E4%BD%95%E9%99%8D%E4%BD%8Eagent%E7%9A%84%E8%BF%90%E8%90%A5%E6%88%90%E6%9C%AC.md)
+- 上下文压缩的同族手段：见 [agent/004-agent上下文压缩策略](../agent/004-agent上下文压缩策略.md)
+- 成本视角：见 [agent/001-如何降低agent的运营成本](../agent/001-如何降低agent的运营成本.md)
 
 ### 九、参考
 

@@ -1,11 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Rating } from 'ts-fsrs';
 import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
 import type { Question } from '@/lib/types';
+import { previewAllRatings, rateCard, getOrCreateCard, fromCard, type PreviewResult, type RateableRating } from '@/lib/fsrsLogic';
+import type { FsrsCardData, FsrsReviewEntry } from '@/lib/fsrsStore';
 import WysiwygEditor from './WysiwygEditor';
 
 const AUTO_SAVE_DELAY = 2000;
+
+/** 评分按钮的样式后缀（对应 globals.css 的 .rq-rating-*） */
+const RATING_CLASS: Record<number, string> = {
+  [Rating.Again]: 'again',
+  [Rating.Hard]: 'hard',
+  [Rating.Good]: 'good',
+  [Rating.Easy]: 'easy',
+};
 
 interface Props {
   markdown: string;
@@ -17,14 +28,22 @@ interface Props {
   onBack: () => void;
   imageBase?: string;
   uploadDir?: string;
+  /** random=随机练习（可评分，卡片由此诞生）；review=今日复习（评分后自动下一题） */
+  mode?: 'random' | 'review';
+  fsrsCard?: FsrsCardData;
+  onRate?: (rating: number, cardData: FsrsCardData) => void;
+  onNext?: () => void;
 }
 
-export default function RandomQuestion({ markdown, filename, category, categorySlug, onSave, onBack, imageBase = '', uploadDir = '' }: Props) {
+export default function RandomQuestion({ markdown, filename, category, categorySlug, onSave, onBack, imageBase = '', uploadDir = '', mode = 'random', fsrsCard, onRate, onNext }: Props) {
   const [parsed, setParsed] = useState<Question | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [userNotes, setUserNotes] = useState('');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
+  // FSRS 评分行：四个评分档的间隔预告；评分后禁用整行
+  const [previews, setPreviews] = useState<PreviewResult[]>([]);
+  const [rated, setRated] = useState(false);
 
   const answerRef = useRef('');
   const analysisRef = useRef('');
@@ -33,6 +52,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doSaveRef = useRef<() => void>(() => {});
   const lastSavedMdRef = useRef('');
   const mountedRef = useRef(true);
@@ -52,8 +72,15 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
     setShowAnswer(false);
     setShowAnalysis(false);
 
+    // 新题目挂载：重置评分状态并计算四档间隔预告（每个标签页对应一道题，挂载时算一次即可）
+    if (onRate) {
+      setPreviews(previewAllRatings(getOrCreateCard(fsrsCard)));
+      setRated(false);
+    }
+
     // Load notes from file, fall back to localStorage
     setUserNotes(q.notes || localStorage.getItem(`random-notes-${filename}`) || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markdown, filename]);
 
   // Debounced auto-save (for WYSIWYG content changes)
@@ -102,6 +129,21 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
     triggerAutoSave();
   }, [filename, triggerAutoSave]);
 
+  // FSRS 评分：基于当前卡片算出下一状态 → 回传父组件持久化 → 复习模式 1.2s 后自动下一题
+  const handleRating = (rating: RateableRating) => {
+    if (rated || !onRate) return;
+    const now = new Date();
+    const { card: newCard, entry } = rateCard(getOrCreateCard(fsrsCard, now), rating, now);
+    const history = [...((fsrsCard?.history as FsrsReviewEntry[] | undefined) || []), entry].slice(-20);
+    setRated(true);
+    onRate(rating, fromCard(newCard, history));
+    if (onNext) {
+      nextTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) onNext();
+      }, 1200);
+    }
+  };
+
   // Auto-save is primary save mechanism (2s debounce). Ctrl+S now toggles strikethrough.
 
   useEffect(() => {
@@ -109,6 +151,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
     return () => {
       mountedRef.current = false;
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      if (nextTimerRef.current) clearTimeout(nextTimerRef.current);
     };
   }, []);
 
@@ -119,7 +162,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
       <div className="rq-header">
         <div className="rq-header-left">
           <button className="btn btn-secondary btn-small" onClick={onBack}>← 返回</button>
-          <span className="rq-badge">随机一题</span>
+          <span className="rq-badge">{mode === 'review' ? '今日复习' : '随机一题'}</span>
           <span className="rq-category">{category}</span>
           <span className="rq-filename">{filename}</span>
         </div>
@@ -169,6 +212,24 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
         </button>
       </div>
 
+      {onRate && previews.length > 0 && (
+        <div className="rq-rating-row">
+          <span className="rq-rating-label">{rated ? '已评分' : '回忆效果'}</span>
+          {previews.map((p) => (
+            <button
+              key={p.rating}
+              className={`rq-rating-btn rq-rating-${RATING_CLASS[p.rating]}`}
+              disabled={rated}
+              onClick={() => handleRating(p.rating)}
+              title={`评分后下次复习间隔：${p.intervalText}`}
+            >
+              <span className="rq-rating-name">{p.label}</span>
+              <span className="rq-rating-interval">{p.intervalText}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {showAnswer && (
         <div className="doc-section">
           <div className="doc-section-header"><span className="doc-section-label">面试直接答</span></div>
@@ -179,6 +240,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
             placeholder="面试可直接作答的版本..."
             imageBase={imageBase}
             uploadDir={uploadDir}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       )}
@@ -193,6 +255,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
             placeholder="详细解析内容..."
             imageBase={imageBase}
             uploadDir={uploadDir}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       )}

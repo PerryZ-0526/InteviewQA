@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo, useId } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useId } from 'react';
 import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
 import { stripMdText } from '@/lib/stripText';
-import { isVisibleInLayout, scrollDocToTop, headingMatch } from '@/lib/domScroll';
+import { scrollToAnchorPathPolling } from '@/lib/domScroll';
 import type { Question } from '@/lib/types';
 
 const AUTO_SAVE_DELAY = 400;
@@ -201,44 +201,13 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     return map;
   }, [backlinks]);
 
-  // wiki 链接跳转：编辑器加载完成后滚动到锚点
-  useEffect(() => {
-    if (!pendingAnchor || !parsed) return;
-    let attempts = 0;
-    const tryScroll = () => {
-      const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
-      const sectionLabels = document.querySelectorAll<HTMLElement>('.doc-section-label');
-      if (headings.length === 0 && sectionLabels.length === 0 && attempts < 10) {
-        attempts += 1;
-        setTimeout(tryScroll, 300);
-        return;
-      }
-      for (let i = pendingAnchor.length - 1; i >= 0; i--) {
-        const text = stripMdText(pendingAnchor[i]);
-        for (const h of Array.from(headings)) {
-          if (!isVisibleInLayout(h)) continue;
-          if (headingMatch(h, text)) {
-            h.scrollIntoView({ behavior: 'auto', block: 'start' });
-            onAnchorDone?.();
-            return;
-          }
-        }
-        // 章节级锚点（如「面试直接答」）匹配节标签
-        for (const lb of Array.from(sectionLabels)) {
-          if (!isVisibleInLayout(lb)) continue;
-          if (headingMatch(lb, text)) {
-            lb.scrollIntoView({ behavior: 'auto', block: 'start' });
-            onAnchorDone?.();
-            return;
-          }
-        }
-      }
-      scrollDocToTop();
-      onAnchorDone?.();
-    };
-    const timer = setTimeout(tryScroll, 300);
-    return () => clearTimeout(timer);
-  }, [pendingAnchor, parsed]);
+  // wiki 链接跳转：用 useLayoutEffect 在浏览器绘制前发起定位，配合 rAF 轮询，
+  // 尽量在第一帧就把视图放到目标标题，避免"先显示顶部再跳"的闪烁
+  useLayoutEffect(() => {
+    if (!pendingAnchor || !markdown) return;
+    const cancel = scrollToAnchorPathPolling(pendingAnchor, () => onAnchorDone?.());
+    return cancel;
+  }, [pendingAnchor, markdown]);
 
 
 
@@ -251,6 +220,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="题目标题"
+            spellCheck={false}
           />
           <div className="doc-meta">
             <span className="doc-filename">{filename}</span>
@@ -300,6 +270,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
           onChange={(e) => handleQuestionChange(e.target.value)}
           rows={2}
           placeholder="面试题目..."
+          spellCheck={false}
         />
       </div>
 
@@ -325,6 +296,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             imageBase={imageBase}
             uploadDir={uploadDir}
             backlinkMap={backlinkMap}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       )}
@@ -351,6 +323,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             imageBase={imageBase}
             uploadDir={uploadDir}
             backlinkMap={backlinkMap}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       )}
@@ -377,6 +350,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             imageBase={imageBase}
             uploadDir={uploadDir}
             backlinkMap={backlinkMap}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       )}
@@ -416,6 +390,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
                 triggerAutoSave();
               }}
               placeholder="自定义章节标题..."
+              spellCheck={false}
             />
             <button
               className="btn btn-small btn-danger"
@@ -441,6 +416,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             imageBase={imageBase}
             uploadDir={uploadDir}
             backlinkMap={backlinkMap}
+            docKey={filename ? filename.replace(/\.md$/, '') : ''}
           />
         </div>
       ))}

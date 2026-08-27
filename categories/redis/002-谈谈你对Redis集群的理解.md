@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← [001-Redis分布式锁](001-Redis分布式锁) | 无 →
+← [Redis分布式锁](001-Redis分布式锁.md) | [谈谈你对Redis架构的理解](003-谈谈你对Redis架构的理解.md) →
 
 ## 面试直接答
 
@@ -79,7 +79,7 @@ unsigned int keyHashSlot(char *key, int keylen) {
 
 可以用 `CLUSTER KEYSLOT` 命令验证：`CLUSTER KEYSLOT "user:{1001}:name"` 与 `CLUSTER KEYSLOT "user:{1001}:age"` 返回相同的槽号。
 
-**为什么不直接用一致性哈希**：槽是显式的逻辑抽象层，节点增减只需要迁移整段槽，key 与槽的映射永远不变，不需要维护哈希环和虚拟节点；同时槽位图是定长位图，可以直接塞进 gossip 心跳包随拓扑一起传播。这种「先分片、再复制」的思路与 Kafka 的 partition 设计异曲同工（参见 [003-kafka为什么快？](../kafka/003-kafka%E4%B8%BA%E4%BB%80%E4%B9%88%E5%BF%AB%EF%BC%9F.md)）。
+**为什么不直接用一致性哈希**：槽是显式的逻辑抽象层，节点增减只需要迁移整段槽，key 与槽的映射永远不变，不需要维护哈希环和虚拟节点；同时槽位图是定长位图，可以直接塞进 gossip 心跳包随拓扑一起传播。这种「先分片、再复制」的思路与 Kafka 的 partition 设计异曲同工（参见 [003-kafka为什么快？](../kafka/003-kafka为什么快？.md)）。
 
 
 | 维度       | 一致性哈希（如 Twemproxy 的 ketama） | Redis Cluster 哈希槽  |
@@ -174,7 +174,7 @@ currentEpoch 自增，广播 FAILOVER_AUTH_REQUEST 拉票
 
 `WAIT numreplicas timeout` 可以让客户端阻塞到至少 N 个副本确认收到写入（返回实际确认数，客户端应检查返回值）。但它不解决「该提升谁」的问题——被提升的副本可能恰好没收到该写入。官方文档的结论是：WAIT 不能使 Redis 成为强一致存储，只降低丢写概率。
 
-对比 Kafka 的处理方式：Kafka 用 `acks=all` + ISR 机制，限定「同步中的副本」才有资格被选为新 leader，把丢写风险压缩到 ISR 集合内；Redis 集群的选举只看副本新鲜度因子和多数投票，没有 ISR 这种资格集合，丢写窗口更大。详见 [004-kafka如何保证消息不丢失？](../kafka/004-kafka%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%B6%88%E6%81%AF%E4%B8%8D%E4%B8%A2%E5%A4%B1%EF%BC%9F.md)。
+对比 Kafka 的处理方式：Kafka 用 `acks=all` + ISR 机制，限定「同步中的副本」才有资格被选为新 leader，把丢写风险压缩到 ISR 集合内；Redis 集群的选举只看副本新鲜度因子和多数投票，没有 ISR 这种资格集合，丢写窗口更大。详见 [004-kafka如何保证消息不丢失？](../kafka/005-kafka如何保证消息不丢失？.md)。
 
 ### 七、slot 迁移与扩容缩容
 ```

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// 手写 pointer 拖拽（不引入依赖库）：侧边栏分类题目 → 分类区块的拖拽移动。
+// 手写 pointer 拖拽（不引入依赖库）：侧边栏同一拖拽区域内的文档移动。
 // 视觉：幽灵跟随（直接改 DOM，不触发 React 渲染）、落点指示线、目标分类高亮、
 // 折叠分类悬停自动展开、边缘自动滚动、Esc/无效落点取消、释放后 FLIP 列表动画。
 
@@ -62,14 +62,18 @@ const EDGE_MARGIN = 40;
 const MAX_EDGE_SPEED = 12; // px/帧
 const AUTO_EXPAND_DELAY = 500;
 
-const ROW_SELECTOR = '[data-sidebar-draggable]';
-const CAT_SELECTOR = '[data-sidebar-cat]';
-
 export function useSidebarDrag(opts: {
   onMoveQuestion: (fromCat: string, filename: string, toCat: string, toIndex: number) => void;
   onExpandCategory: (slug: string) => void;
+  scope?: 'category' | 'project';
 }): SidebarDragHandlers {
-  const { onMoveQuestion, onExpandCategory } = opts;
+  const { onMoveQuestion, onExpandCategory, scope = 'category' } = opts;
+  const rowSelector = scope === 'category' ? '[data-sidebar-draggable]' : '[data-sidebar-project-draggable]';
+  const containerSelector = scope === 'category' ? '[data-sidebar-cat]' : '[data-sidebar-project-dir]';
+  const draggingClass = scope === 'category' ? 'sidebar-dragging' : 'sidebar-project-dragging';
+  const getContainerSlug = (el: HTMLElement) => scope === 'category'
+    ? el.dataset.sidebarCat
+    : el.dataset.sidebarProjectDir;
   const [state, setState] = useState<SidebarDragState>({ phase: 'idle', item: null, ghost: null, drop: null });
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -91,10 +95,10 @@ export function useSidebarDrag(opts: {
         cancelAnimationFrame(s.raf);
         if (s.expandTimer) clearTimeout(s.expandTimer);
         s.cleanup?.();
-        document.body.classList.remove('sidebar-dragging');
+        document.body.classList.remove(draggingClass);
       }
     };
-  }, []);
+  }, [draggingClass]);
 
   // 拖拽结束后紧随的 click（可能落在任意区域：标签、project 行等）需全局抑制。
   // 常驻挂载：click 在 pointerup 之后才派发，监听器必须比拖拽会话活得久，靠标志位判断。
@@ -111,7 +115,7 @@ export function useSidebarDrag(opts: {
 
   /** 命中测试：指针所在分类 + 插入槽位（排除被拖行 → 语义为「移除后列表」） */
   const computeDrop = (s: DragSession): SidebarDropTarget | null => {
-    const wrappers = Array.from(s.scrollEl.querySelectorAll<HTMLElement>(CAT_SELECTOR));
+    const wrappers = Array.from(s.scrollEl.querySelectorAll<HTMLElement>(containerSelector));
     let target: HTMLElement | null = null;
     let nearest: { el: HTMLElement; dist: number } | null = null;
     for (const w of wrappers) {
@@ -125,7 +129,7 @@ export function useSidebarDrag(opts: {
       else return null;
     }
     const wRect = target.getBoundingClientRect();
-    const rows = Array.from(target.querySelectorAll<HTMLElement>(ROW_SELECTOR)).filter(
+    const rows = Array.from(target.querySelectorAll<HTMLElement>(rowSelector)).filter(
       (r) => !(r.dataset.catSlug === s.item.category && r.dataset.filename === s.item.filename),
     );
     let toIndex = rows.length;
@@ -135,22 +139,23 @@ export function useSidebarDrag(opts: {
       if (s.pointerY < r.top + r.height / 2) { toIndex = i; indicatorTop = r.top - wRect.top; break; }
     }
     // 同分类且落点等于原位 → 视为无效落点（释放时按取消处理，不显示指示线）
-    if (target.dataset.sidebarCat === s.item.category && toIndex === s.item.originalIndex) return null;
-    return { category: target.dataset.sidebarCat!, toIndex, indicatorTop };
+    const targetSlug = getContainerSlug(target);
+    if (targetSlug === s.item.category && toIndex === s.item.originalIndex) return null;
+    return targetSlug ? { category: targetSlug, toIndex, indicatorTop } : null;
   };
 
   /** 悬停折叠分类（无行）500ms 后自动展开 */
   const autoExpand = (s: DragSession) => {
-    const wrappers = Array.from(s.scrollEl.querySelectorAll<HTMLElement>(CAT_SELECTOR));
+    const wrappers = Array.from(s.scrollEl.querySelectorAll<HTMLElement>(containerSelector));
     const hover = wrappers.find((w) => {
       const r = w.getBoundingClientRect();
       return s.pointerY >= r.top && s.pointerY <= r.bottom;
     });
-    const slug = hover?.dataset.sidebarCat ?? null;
+    const slug = hover ? getContainerSlug(hover) ?? null : null;
     if (slug === s.hoverSlug) return;
     s.hoverSlug = slug;
     if (s.expandTimer) { clearTimeout(s.expandTimer); s.expandTimer = null; }
-    if (slug && hover && !hover.querySelector(ROW_SELECTOR)) {
+    if (slug && hover && !hover.querySelector(rowSelector)) {
       s.expandTimer = window.setTimeout(() => {
         onExpandRef.current(slug);
         s.expandTimer = null;
@@ -192,9 +197,10 @@ export function useSidebarDrag(opts: {
   const captureFlipBefore = (s: DragSession, drop: SidebarDropTarget): FlipBefore => {
     const before = new Map<string, DOMRect>();
     for (const slug of new Set([s.item.category, drop.category])) {
-      const w = s.scrollEl.querySelector<HTMLElement>(`${CAT_SELECTOR}[data-sidebar-cat="${CSS.escape(slug)}"]`);
+      const attr = scope === 'category' ? 'data-sidebar-cat' : 'data-sidebar-project-dir';
+      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${attr}="${CSS.escape(slug)}"]`);
       if (!w) continue;
-      for (const r of Array.from(w.querySelectorAll<HTMLElement>(ROW_SELECTOR))) {
+      for (const r of Array.from(w.querySelectorAll<HTMLElement>(rowSelector))) {
         before.set(`${r.dataset.catSlug}:${r.dataset.filename}`, r.getBoundingClientRect());
       }
     }
@@ -208,7 +214,7 @@ export function useSidebarDrag(opts: {
     cancelAnimationFrame(s.raf);
     if (s.expandTimer) { clearTimeout(s.expandTimer); s.expandTimer = null; }
     s.cleanup?.();
-    document.body.classList.remove('sidebar-dragging');
+    document.body.classList.remove(draggingClass);
     // 释放后的 click 事件可能落在拖拽起点的行上：等 click 派发完成后再复位抑制标记
     window.setTimeout(() => { suppressClickRef.current = false; }, 0);
 
@@ -219,7 +225,8 @@ export function useSidebarDrag(opts: {
     }
     if (mode === 'drop' && drop) {
       // 幽灵落进槽位：缩放到 1 并移到指示线位置，淡出
-      const w = s.scrollEl.querySelector<HTMLElement>(`${CAT_SELECTOR}[data-sidebar-cat="${CSS.escape(drop.category)}"]`);
+      const attr = scope === 'category' ? 'data-sidebar-cat' : 'data-sidebar-project-dir';
+      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${attr}="${CSS.escape(drop.category)}"]`);
       const wTop = w?.getBoundingClientRect().top ?? s.pointerY;
       ghost.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
       ghost.style.transform = `translate3d(${s.pointerX}px, ${wTop + drop.indicatorTop - 8}px, 0) scale(1)`;
@@ -232,18 +239,18 @@ export function useSidebarDrag(opts: {
       setState({ phase: 'cancelling', item: stateRef.current.item, ghost: stateRef.current.ghost, drop: null });
       window.setTimeout(() => setState({ phase: 'idle', item: null, ghost: null, drop: null }), 130);
     }
-  }, []);
+  }, [containerSelector, draggingClass, scope]);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    const row = (e.target as Element).closest<HTMLElement>(ROW_SELECTOR);
+    const row = (e.target as Element).closest<HTMLElement>(rowSelector);
     if (!row) return;
     const scrollEl = row.closest('.sidebar') as HTMLElement | null;
     if (!scrollEl || sessionRef.current) return;
 
     const category = row.dataset.catSlug!;
     const filename = row.dataset.filename!;
-    const siblings = Array.from(row.parentElement!.querySelectorAll<HTMLElement>(ROW_SELECTOR));
+    const siblings = Array.from(row.parentElement!.querySelectorAll<HTMLElement>(rowSelector));
     const s: DragSession = {
       item: {
         category,
@@ -276,7 +283,7 @@ export function useSidebarDrag(opts: {
         if (Math.hypot(ev.clientX - s.startX, ev.clientY - s.startY) < THRESHOLD_PX) return;
         s.started = true;
         suppressClickRef.current = true;
-        document.body.classList.add('sidebar-dragging');
+        document.body.classList.add(draggingClass);
         setState({ phase: 'dragging', item: s.item, ghost: { x: ev.clientX, y: ev.clientY }, drop: null });
         startLoop(s);
       }
@@ -305,7 +312,7 @@ export function useSidebarDrag(opts: {
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('keydown', onKey);
     };
-  }, [endDrag]);
+  }, [draggingClass, rowSelector, endDrag]);
 
   return {
     state,

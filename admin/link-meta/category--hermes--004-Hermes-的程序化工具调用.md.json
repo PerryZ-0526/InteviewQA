@@ -79,6 +79,10 @@
     {
       "level": 2,
       "text": "与dsh Code Mode的差异"
+    },
+    {
+      "level": 2,
+      "text": "dsh 把 Code Mode 做成 ToolRuntime 的“一等呈现模式”"
     }
   ],
   "renames": {
@@ -103,6 +107,7 @@
     "这个设计最大的收益是上下文和调用成本": "这个设计最大的收益是上下文和调用成本",
     "它的实现不是简单让 Python 直接访问各种外部服务，而是做了一层 RPC 工具代理": "它的实现不是简单让 Python 直接访问各种外部服务，而是做了一层 RPC 工具代理",
     "我认为这里还需要和子 Agent 区分": "我认为这里还需要和子 Agent 区分",
-    "与 dsh 的 code mode 的异同": "与 dsh 的 code mode 的异同"
+    "与 dsh 的 code mode 的异同": "与 dsh 的 code mode 的异同",
+    "dsh 把 Code Mode 做成 ToolRuntime 的“一等呈现模式”": "dsh 把 Code Mode 做成 ToolRuntime 的“一等呈现模式”"
   }
 }

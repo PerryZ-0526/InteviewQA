@@ -4,11 +4,11 @@
 
 ### 工程实践
 
-- [002-审查AI生成代码的方法](../categories/engineering-practice/002-审查AI生成代码的方法.md)
+- [002-审查AI生成代码的方法](../categories/engineering-practice/002-代码可读性的判断标准.md)
 
 ### Claude Code
 
-- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude%20Code子智能体类型与vibe-coding场景.md)
+- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude Code子智能体类型与vibe-coding场景.md)
 
 ### Vibe Coding
 

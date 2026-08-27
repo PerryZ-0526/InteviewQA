@@ -4,7 +4,6 @@ import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper, NodeV
 import type { NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { common, createLowlight } from 'lowlight';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { ListItem } from '@tiptap/extension-list-item';
@@ -30,50 +29,46 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { setActiveEditor } from '@/lib/activeEditor';
 import { mdToHtml } from '@/lib/markdown';
 import { stripMdText } from '@/lib/stripText';
-import { headingMatch } from '@/lib/domScroll';
+import { headingMatch, scrollElementIntoView, isVisibleInLayout, scrollToAnchorPathNow, scrollToAnchorPathPolling } from '@/lib/domScroll';
 import { ResizableImage, setImageBase } from '@/lib/resizableImage';
 import { getEditorColor, toColorAttr } from '@/lib/editorColors';
+import { AutoDetectLowlightPlugin, lowlight } from '@/lib/codeBlockHighlight';
 
-// 代码块语法高亮：lowlight（highlight.js 内核）+ 常用语言集。
-// token 配色由 globals.css 的 CSS 变量驱动（浅灰/深灰/纯黑三主题可切换）
-const lowlight = createLowlight(common);
-// mermaid 是图表源码不是代码语法，按纯文本处理，避免自动猜测染色误导
-// （registerAlias 参数顺序：语言在前、别名在后）
-lowlight.registerAlias('plaintext', 'mermaid');
-
-// 语言下拉选项：已注册语言 + 常用别名（text 是 plaintext 的别名，历史文档在用）
-const CODE_LANGUAGES = Array.from(
-  new Set([...lowlight.listLanguages(), 'text', 'plaintext', 'mermaid']),
-).sort();
+// 代码块人工标注只保留两类：text（纯文本，不染色）/ code（自动识别语言染色）
+const CODE_ANNOTATIONS = ['text', 'code'];
 
 /**
- * 代码块节点视图：顶部显示语言标注，编辑态可下拉切换（未标注的块可在此补标注）。
- * 切换 language 属性后 lowlight 自动按新语言重新染色，保存时写回 ```语言 围栏。
+ * 代码块节点视图：顶部显示标注，编辑态下拉切换 text / code 两类。
+ * 历史文档里带明确语言标注的块（如 ```python）在下拉里兜底显示原语言，
+ * 不切换则保持原样保存，避免编辑旧文档时被误降级。
+ * 切换 language 属性后自动按新标注重新染色，保存时写回 ```语言 围栏。
  */
 function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   const language = (node.attrs.language as string | null) || '';
   const editable = editor.isEditable;
   const options = (() => {
-    const set = new Set<string>(CODE_LANGUAGES);
-    if (language) set.add(language); // 兜底：未在常用集里的历史标注仍显示在下拉里
-    return Array.from(set).sort();
+    const set = new Set<string>(CODE_ANNOTATIONS);
+    // 兜底：历史明确标注的语言（python/java 等）仍显示在下拉里，防止误降级
+    if (language && !CODE_ANNOTATIONS.includes(language)) set.add(language);
+    return Array.from(set);
   })();
+  // read 模式标签：text 是默认常态不显示（降噪）；code 与历史语言标注显示
+  const showLabel = language && language !== 'text';
   return (
     <NodeViewWrapper className="code-block-view">
-      {(editable || language) && (
+      {(editable || showLabel) && (
         <div className="code-block-head" contentEditable={false}>
           {editable ? (
             <select
               className="code-block-lang"
-              value={language}
-              onChange={e => updateAttributes({ language: e.target.value || null })}
+              value={language || 'text'}
+              onChange={e => updateAttributes({ language: e.target.value })}
               // 事件隔离：避免 ProseMirror 抢焦点/拦截按键，保证下拉能正常打开
               onMouseDown={e => e.stopPropagation()}
               onKeyDown={e => e.stopPropagation()}
-              title="代码块语言（切换后按该语言染色）"
-              aria-label="代码块语言"
+              title="代码块类型：text 纯文本 / code 自动识别语言并染色（识别不把握时不染色）"
+              aria-label="代码块类型"
             >
-              <option value="">未标注</option>
               {options.map(l => (
                 <option key={l} value={l}>{l}</option>
               ))}
@@ -90,10 +85,17 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   );
 }
 
-// 语法高亮代码块 + 语言标注节点视图
+// 语法高亮代码块 + text/code 两类标注节点视图
 const HighlightedCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView);
+  },
+  addProseMirrorPlugins() {
+    // 过滤内置 lowlight 染色插件（PluginKey 'lowlight' 在运行时生成 key 'lowlight$'，
+    // 类型定义未暴露 key 属性，故用 any 取），替换为带置信度阈值的自定义版本；
+    // 其余父类插件（Tab 缩进等）保持不变
+    const parentPlugins = this.parent?.() || [];
+    return [...parentPlugins.filter(p => (p as any).key !== 'lowlight$'), AutoDetectLowlightPlugin({ name: this.name })];
   },
 });
 
@@ -635,9 +637,12 @@ interface Props {
   imageBase?: string;
   /** 文档所在仓库内目录，用于图片上传定位，如 categories/agent */
   uploadDir?: string;
+  /** 当前编辑器所属文档的 key（文件名去掉 .md）。用于在点击 [[docKey#...]] 链接时
+   *  识别出"本文档锚点链接"并同步滚动定位，绕开事件/搜索/setState 的异步链 */
+  docKey?: string;
 }
 
-export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', onChange, readOnly = false, documentTitle = '', sectionName = '', backlinkMap, imageBase = '', uploadDir = '' }: Props) {
+export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', onChange, readOnly = false, documentTitle = '', sectionName = '', backlinkMap, imageBase = '', uploadDir = '', docKey = '' }: Props) {
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
   const initializedRef = useRef(false);
 
@@ -667,7 +672,7 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         listItem: false,
         hardBreak: false,
       }),
-      // 代码块：lowlight 语法高亮 + 语言标注下拉（CodeBlockView）。
+      // 代码块：text/code 两类标注 + 置信度阈值染色（CodeBlockView + AutoDetectLowlightPlugin）。
       // 节点名仍为 codeBlock，Tab 四空格缩进行为保持不变
       HighlightedCodeBlock.configure({
         lowlight,
@@ -716,6 +721,8 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
+        // 关闭浏览器拼写检查：避免正文出现红色波浪线
+        spellcheck: 'false',
       },
       handlePaste: (view, event) => {
         // 剪贴板数据必须在事件回调内同步读取
@@ -800,6 +807,10 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         return true;
       },
     },
+    // 编辑器只随标签页在客户端动态挂载（SSR 首屏不含编辑器），可安全同步渲染：
+    // 首次渲染即产生标题 DOM，锚点跳转的 useLayoutEffect 能在浏览器绘制前定位到标题，
+    // 消除"新标签先显示顶部、等编辑器异步挂载后才跳到标题"的闪烁与卡顿
+    immediatelyRender: true,
   });
 
   // Only set initial content once on mount. After that, the editor owns the state.
@@ -853,6 +864,13 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
           const display = r.resolvedPath && r.resolvedPath.length > 0
             ? `[[${wiki.split('#')[0]}#${r.resolvedPath.join('#')}]]`
             : `[[${wiki.split('#')[0]}]]`;
+          // data-wiki 属性必须同步为当前有效锚点路径：否则标题改名后链接显示文本已是新标题，
+          // 但点击跳转仍按属性里的旧标题查找，导致本文档锚点定位静默失败
+          if (r.found) {
+            newAttrs.wiki = r.resolvedPath && r.resolvedPath.length > 0
+              ? `${wiki.split('#')[0]}#${r.resolvedPath.join('#')}`
+              : wiki.split('#')[0];
+          }
           const otherMarks = node.marks.filter((m) => m.type.name !== 'wikiLink');
           const newMarks = [editor.schema.marks.wikiLink.create(newAttrs), ...otherMarks];
           tr.replaceWith(pos, pos + node.nodeSize, editor.schema.text(display, newMarks));
@@ -993,27 +1011,39 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
           if (wikiAttr) {
             e.preventDefault();
             e.stopPropagation();
+            const [linkDocKey, ...linkAnchors] = wikiAttr.split('#').map(s => s.trim()).filter(Boolean);
+            console.log('[anchor-nav] 点击 wiki 链接', { wikiAttr, 本文档docKey: docKey, 目标docKey: linkDocKey, 是否同文档: linkDocKey === docKey });
+            // 本文档内的锚点链接：在点击处同步滚动定位，绕开 fetch/事件/setState 的异步链，
+            // 避免"先跳到文档顶部、稍后才滚到标题"的问题
+            if (docKey && linkDocKey === docKey && linkAnchors.length > 0) {
+              // 同步匹配失败（目标章节可能还在异步挂载，如随机模式的展开章节）时降级为轮询重试
+              if (!scrollToAnchorPathNow(linkAnchors)) {
+                scrollToAnchorPathPolling(linkAnchors);
+              }
+              return;
+            }
             window.dispatchEvent(new CustomEvent('open-wiki-link', { detail: { wiki: wikiAttr } }));
             return;
           }
 
-          // 页内锚点链接（#标题）：滚动到对应标题，不开新窗口
+          // 页内锚点链接（#标题）：在当前可见文档范围内查找对应标题并直接滚动定位
           const rawHref = anchorEl.getAttribute('href') || '';
           if (rawHref.startsWith('#')) {
             e.preventDefault();
             e.stopPropagation();
             let anchorText = '';
             try { anchorText = decodeURIComponent(rawHref.slice(1)); } catch { anchorText = rawHref.slice(1); }
-            const heads = editor.view.dom.querySelectorAll<HTMLElement>('h1, h2, h3, h4');
-            let matched = false;
+            const target = stripMdText(anchorText);
+            // 同一文档可能由多个编辑器实例（各章节）组成，且隐藏标签 display:none，
+            // 故在全文档范围查找参与可见布局的标题与章节标签，避免作用域局限导致误判为未命中而滚到顶部
+            const heads = document.querySelectorAll<HTMLElement>('.tiptap-editor h1, .tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4, .doc-section-label, .doc-custom-title');
             for (const h of Array.from(heads)) {
-              if (headingMatch(h, stripMdText(anchorText))) {
-                h.scrollIntoView({ behavior: 'auto', block: 'start' });
-                matched = true;
+              if (!isVisibleInLayout(h)) continue;
+              if (headingMatch(h, target)) {
+                scrollElementIntoView(h);
                 break;
               }
             }
-            if (!matched) editor.view.dom.scrollIntoView({ behavior: 'auto', block: 'start' });
             return;
           }
 
@@ -1021,6 +1051,15 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
           if (!parsed) return;
           e.preventDefault();
           e.stopPropagation();
+          // 本文档内的锚点（标准 markdown 相对链接形式）：同步滚动定位
+          if (parsed.kind === 'doc' && docKey && parsed.key === docKey && parsed.anchor) {
+            console.log('[anchor-nav] 点击 markdown 同文档链接，同步滚动', { href: parsed.key, anchor: parsed.anchor });
+            const anchors = parsed.anchor.split('#').map(s => s.trim()).filter(Boolean);
+            if (!scrollToAnchorPathNow(anchors)) {
+              scrollToAnchorPathPolling(anchors);
+            }
+            return;
+          }
           if (parsed.kind === 'doc') {
             window.dispatchEvent(new CustomEvent('open-wiki-link', {
               detail: { wiki: [parsed.key, parsed.anchor].filter(Boolean).join('#'), slugHint: parsed.slugHint },

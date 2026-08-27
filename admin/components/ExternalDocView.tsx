@@ -220,6 +220,7 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
             value={displayTitle}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="文档标题"
+            spellCheck={false}
           />
           <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: '#999', wordBreak: 'break-all' }}>{path}</span>

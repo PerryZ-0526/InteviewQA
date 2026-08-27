@@ -12,11 +12,11 @@
 
 ### Claude Code
 
-- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude%20Code子智能体类型与vibe-coding场景.md)
-- [002-Claude Code与Codex架构区别](../categories/claude-code/002-Claude%20Code与Codex架构区别.md)
-- [003-Claude Code自定义子智能体与自主派生机制](../categories/claude-code/003-Claude%20Code自定义子智能体与自主派生机制.md)
-- [004-Claude Code架构梳理](../categories/claude-code/004-Claude%20Code架构梳理.md)
-- [005-Hermes、pi-agent与Claude Code的差异](../categories/claude-code/005-Hermes、pi-agent与Claude%20Code的差异.md)
+- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude Code子智能体类型与vibe-coding场景.md)
+- [002-Claude Code与Codex架构区别](../categories/claude-code/002-Claude Code与Codex架构区别.md)
+- [003-Claude Code自定义子智能体与自主派生机制](../categories/claude-code/003-Claude Code自定义子智能体与自主派生机制.md)
+- [004-Claude Code架构梳理](../categories/claude-code/004-Claude Code架构梳理.md)
+- [005-Hermes、pi-agent与Claude Code的差异](../categories/claude-code/005-Hermes、pi-agent与Claude Code的差异.md)
 
 ### Hermes
 
@@ -24,8 +24,8 @@
 
 ### DeepSeek Harness
 
-- [001-DeepSeek Harness架构设计](../categories/dsh/001-DeepSeek%20Harness架构设计.md)
-- [002-DeepSeek Harness与Claude Code的区别](../categories/dsh/002-DeepSeek%20Harness与Claude%20Code的区别.md)
+- [001-DeepSeek Harness架构设计](../categories/dsh/001-DeepSeek Harness架构设计.md)
+- [002-DeepSeek Harness与Claude Code的区别](../categories/dsh/002-DeepSeek Harness与Claude Code的区别.md)
 - [003-详述dsh的PTC](../categories/dsh/003-详述dsh的PTC.md)
 
 ### pi-agent
@@ -35,13 +35,13 @@
 ### Workflow
 
 - [001-agentic-workflow的理解](../categories/workflow/001-agentic-workflow的理解.md)
-- [002-为什么agentic workflow收敛成了agent loop](../categories/workflow/002-为什么agentic%20workflow收敛成了agent%20loop.md)
+- [002-为什么agentic workflow收敛成了agent loop](../categories/workflow/002-为什么agentic workflow收敛成了agent loop.md)
 - [003-确定性workflow在agent时代还剩下什么位置](../categories/workflow/003-确定性workflow在agent时代还剩下什么位置.md)
 - [004-Anthropic五种workflow模式的工程化与演进](../categories/workflow/004-Anthropic五种workflow模式的工程化与演进.md)
 
 ### LangGraph
 
-- [001-LangGraph从workflow编排器到agent runtime的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent%20runtime的转型.md)
+- [001-LangGraph从workflow编排器到agent runtime的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent runtime的转型.md)
 
 ### Multi-Agent
 

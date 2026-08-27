@@ -32,7 +32,8 @@
     "react-dom": "^18.3.0",
     "react-markdown": "^9.0.0",
     "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "ts-fsrs": "^5.4.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

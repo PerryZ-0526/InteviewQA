@@ -259,8 +259,8 @@ IoC 容器通常只解决依赖注入，插件生命周期和事件通信要另�
 
 ### 六、与题库已有题目交叉引用
 
-- Harness 通用概念与评测视角：见 [harness/001-harness工程的理解](../harness/001-harness%E5%B7%A5%E7%A8%8B%E7%9A%84%E7%90%86%E8%A7%A3.md)
-- 与 Claude Code 的逐项对比：见 [dsh/002-DeepSeek Harness与Claude Code的区别](002-DeepSeek%20Harness%E4%B8%8EClaude%20Code%E7%9A%84%E5%8C%BA%E5%88%AB.md)
+- Harness 通用概念与评测视角：见 [harness/001-harness工程的理解](../harness/001-harness工程的理解.md)
+- 与 Claude Code 的逐项对比：见 [dsh/002-DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别.md)
 
 ### 七、参考
 

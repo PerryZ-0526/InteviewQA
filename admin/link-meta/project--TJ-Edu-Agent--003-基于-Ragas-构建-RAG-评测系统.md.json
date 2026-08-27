@@ -1,4 +1,41 @@
 {
-  "headings": [],
+  "headings": [
+    {
+      "level": 2,
+      "text": "1. 你为什么这么设计，而不是另一种架构？"
+    },
+    {
+      "level": 2,
+      "text": "2. 你的 Agent 到底是真 Agent，还是 Workflow？"
+    },
+    {
+      "level": 2,
+      "text": "3. Orchestrator 为什么这么设计？为什么不是一个 ReAct？"
+    },
+    {
+      "level": 2,
+      "text": "4. 多 Agent 的收益到底在哪里？有没有量化？"
+    },
+    {
+      "level": 2,
+      "text": "5. 线上如果出现 Agent 无限循环、错误工具调用、上下文膨胀怎么办？"
+    },
+    {
+      "level": 2,
+      "text": "6. Agent 的效果怎么评估？"
+    },
+    {
+      "level": 2,
+      "text": "7. 如何控制 Agent 的成本和延迟？"
+    },
+    {
+      "level": 2,
+      "text": "8. 如果把你的方案应用到推荐系统，Agent 应该放在哪一层？"
+    },
+    {
+      "level": 2,
+      "text": "9. 传统推荐是召回→粗排→精排→重排，Agent 到底能改变哪一个环节？"
+    }
+  ],
   "renames": {}
 }

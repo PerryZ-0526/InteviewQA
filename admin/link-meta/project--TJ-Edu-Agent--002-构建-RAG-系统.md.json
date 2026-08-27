@@ -1,4 +1,56 @@
 {
-  "headings": [],
-  "renames": {}
+  "headings": [
+    {
+      "level": 2,
+      "text": "离线流程"
+    },
+    {
+      "level": 3,
+      "text": "文档清洗"
+    },
+    {
+      "level": 3,
+      "text": "政策结构识别"
+    },
+    {
+      "level": 3,
+      "text": "表格处理"
+    },
+    {
+      "level": 3,
+      "text": "文档切块"
+    },
+    {
+      "level": 3,
+      "text": "元数据标注"
+    },
+    {
+      "level": 3,
+      "text": "向量化"
+    },
+    {
+      "level": 3,
+      "text": "HNSW，分层可导航小世界网络"
+    },
+    {
+      "level": 2,
+      "text": "在线流程"
+    },
+    {
+      "level": 2,
+      "text": "Evidence ReAct RAG"
+    }
+  ],
+  "renames": {
+    "离线流程": "离线流程",
+    "文档清洗": "文档清洗",
+    "政策结构识别": "政策结构识别",
+    "表格处理": "表格处理",
+    "文档切块": "文档切块",
+    "元数据标注": "元数据标注",
+    "向量化": "向量化",
+    "HNSW，分层可导航小世界网络": "HNSW，分层可导航小世界网络",
+    "在线流程": "在线流程",
+    "Evidence ReAct RAG": "Evidence ReAct RAG"
+  }
 }

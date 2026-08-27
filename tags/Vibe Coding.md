@@ -8,4 +8,4 @@
 
 ### Claude Code
 
-- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude%20Code子智能体类型与vibe-coding场景.md)
+- [001-Claude Code子智能体类型与vibe-coding场景](../categories/claude-code/001-Claude Code子智能体类型与vibe-coding场景.md)

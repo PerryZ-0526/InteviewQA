@@ -304,3 +304,22 @@ export async function logUpdateProjectDoc(subdir: string, filename: string) {
     filename,
   });
 }
+
+export async function logDeleteProjectDoc(subdir: string, filename: string) {
+  await appendLog({
+    action: 'delete_project_doc',
+    status: 'success',
+    category: subdir,
+    filename,
+  });
+}
+
+export async function logMoveProjectDoc(subdir: string, filename: string, detail: string) {
+  await appendLog({
+    action: 'move_project_doc',
+    status: 'success',
+    category: subdir,
+    filename,
+    detail: detail.slice(0, 200),
+  });
+}

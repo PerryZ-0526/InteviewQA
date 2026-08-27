@@ -164,13 +164,53 @@ export async function getMaxSequence(category: string): Promise<number> {
  * 返回旧文件名 → 新文件名的映射。
  */
 export async function renumberCategoryAfterDelete(category: string, deletedFilename: string): Promise<Map<string, string>> {
+  return renumberDirAfterDelete(
+    path.join(CATEGORIES_DIR, category),
+    path.join('categories', category),
+    'category',
+    category,
+    deletedFilename,
+    () => rebuildCategoryIndex(category),
+  );
+}
+
+/**
+ * 删除 project/groups 子目录文档后重新规整序号（联动逻辑与分类一致）：
+ * 后续文件序号 -1，同步更新文件名、文档内部引用、00-index.md、wiki 链接、link-meta、导航链。
+ * 返回旧文件名 -> 新文件名的映射。
+ */
+export async function renumberProjectSubdirAfterDelete(subdir: string, deletedFilename: string): Promise<Map<string, string>> {
+  const base = await resolveSubdirBase(subdir);
+  const relBase = path.relative(PROJECT_ROOT, base); // 'project' 或 'groups'
+  return renumberDirAfterDelete(
+    path.join(base, subdir),
+    path.join(relBase, subdir),
+    'project',
+    subdir,
+    deletedFilename,
+    () => rebuildSubdirIndex(base, subdir),
+  );
+}
+
+/**
+ * 目录级序号重排核心（categories / project / groups 共用）：
+ * 重命名 .md 与 annotations 侧车 -> 改写被重命名文件内部引用 -> 重建 00-index.md ->
+ * 分类场景更新标签引用 -> 全库 wiki 链接改写 -> link-meta 侧车改名 -> 重建导航链。
+ */
+async function renumberDirAfterDelete(
+  dirPath: string,
+  relDir: string,
+  metaKind: 'category' | 'project',
+  metaCategory: string,
+  deletedFilename: string,
+  rebuildIndex: () => Promise<void>,
+): Promise<Map<string, string>> {
   const renameMap = new Map<string, string>();
-  const catDir = path.join(CATEGORIES_DIR, category);
   const seqMatch = deletedFilename.match(/^(\d{3})-/);
   if (!seqMatch) return renameMap;
   const deletedSeq = parseInt(seqMatch[1], 10);
 
-  const files = (await fs.readdir(catDir))
+  const files = (await fs.readdir(dirPath))
     .filter((f) => f.match(/^\d{3}-.+\.md$/) && f !== '00-index.md')
     .sort();
 
@@ -183,12 +223,11 @@ export async function renumberCategoryAfterDelete(category: string, deletedFilen
     const newSeq = String(seq - 1).padStart(3, '0');
     renameMap.set(f, f.replace(/^\d{3}/, newSeq));
   }
-  if (renameMap.size === 0) return renameMap;
 
   // 1. 重命名 .md 文件（序号从大到小，避免覆盖冲突）
   const sorted = [...renameMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   for (const [oldName, newName] of sorted) {
-    await fs.rename(path.join(catDir, oldName), path.join(catDir, newName));
+    await fs.rename(path.join(dirPath, oldName), path.join(dirPath, newName));
   }
 
   // 2. 重命名 annotations 文件。实际命名为 <seq>-annotations.json（如 004-annotations.json），
@@ -201,50 +240,54 @@ export async function renumberCategoryAfterDelete(category: string, deletedFilen
       [oldName.replace(/\.md$/, '-annotations.json'), newName.replace(/\.md$/, '-annotations.json')],
     ]) {
       if (o === n) continue;
-      try { await fs.rename(path.join(catDir, o), path.join(catDir, n)); } catch {}
+      try { await fs.rename(path.join(dirPath, o), path.join(dirPath, n)); } catch {}
     }
   }
 
   // 3. 更新被重命名文件内部的引用（导航链接、正文交叉引用、wiki 链接）
   for (const [oldName, newName] of renameMap.entries()) {
-    const filePath = path.join(catDir, newName);
+    const filePath = path.join(dirPath, newName);
     const content = await fs.readFile(filePath, 'utf-8');
     const next = applyRenameMapsToContent(content, renameMap);
-    if (next !== content) await writeFileWithBackup(path.join('categories', category), newName, next);
+    if (next !== content) await writeFileWithBackup(relDir, newName, next);
   }
 
-  // 4. 重建 00-index.md
-  await rebuildCategoryIndex(category);
+  // 4. 重建 00-index.md（无论是否有重命名都执行：删除末位文档时无重排，但仍需移除索引条目）
+  await rebuildIndex();
 
-  // 5. 更新标签文件中的引用
-  await updateTagReferences(renameMap);
+  // 5. 更新标签文件中的引用（project/groups 文档不出现在 tags/*.md 中，仅分类需要）
+  if (metaKind === 'category') await updateTagReferences(renameMap);
 
   // 6. 更新所有文档中的 wiki 链接引用
-  await updateWikiLinkReferences(category, renameMap);
+  await updateWikiLinkReferences(metaCategory, renameMap);
 
   // 7. 重命名 link-meta sidecar
   for (const [oldName, newName] of renameMap.entries()) {
-    const oldMeta = path.join(LINK_META_DIR, `category--${category}--${oldName}.json`);
-    const newMeta = path.join(LINK_META_DIR, `category--${category}--${newName}.json`);
+    const oldMeta = path.join(LINK_META_DIR, `${metaKind}--${metaCategory}--${oldName}.json`);
+    const newMeta = path.join(LINK_META_DIR, `${metaKind}--${metaCategory}--${newName}.json`);
     try { await fs.rename(oldMeta, newMeta); } catch {}
   }
 
-  // 8. 重建整个分类的导航链（prev/next 双向链接）
-  await fixNavigationChain(category);
+  // 8. 重建整个目录的导航链（prev/next 双向链接）
+  await fixNavigationChainInDir(dirPath, relDir);
 
   return renameMap;
 }
 
 /** 按当前磁盘文件顺序重建分类下所有文档的题目导航链接 */
 export async function fixNavigationChain(category: string): Promise<void> {
-  const catDir = path.join(CATEGORIES_DIR, category);
-  const files = (await fs.readdir(catDir))
+  await fixNavigationChainInDir(path.join(CATEGORIES_DIR, category), path.join('categories', category));
+}
+
+/** 按当前磁盘文件顺序重建指定目录（categories/project/groups）下所有文档的题目导航链接 */
+async function fixNavigationChainInDir(dirPath: string, relDir: string): Promise<void> {
+  const files = (await fs.readdir(dirPath))
     .filter((f) => f.match(/^\d{3}-.+\.md$/) && f !== '00-index.md')
     .sort();
 
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
-    const filePath = path.join(catDir, f);
+    const filePath = path.join(dirPath, f);
     let content = await fs.readFile(filePath, 'utf-8');
 
     const prev = i > 0 ? files[i - 1] : null;
@@ -256,11 +299,11 @@ export async function fixNavigationChain(category: string): Promise<void> {
     // 替换题目导航行
     const navLine = `${prevPart} | ${nextPart}`;
     if (content.includes('## 题目导航')) {
-      const next = content.replace(
+      const updated = content.replace(
         /## 题目导航\n\n[\s\S]*?(?=\n## |\n<!-- )/,
         `## 题目导航\n\n${navLine}\n`
       );
-      if (next !== content) await writeFileWithBackup(path.join('categories', category), f, next);
+      if (updated !== content) await writeFileWithBackup(relDir, f, updated);
     }
   }
 }
@@ -301,6 +344,48 @@ export async function rebuildCategoryIndex(category: string): Promise<void> {
 
   const indexContent = `# ${displayName} - 题目索引\n\n## 题目列表\n\n${lines.join('\n')}\n`;
   await writeFileWithBackup(path.join('categories', category), '00-index.md', indexContent);
+}
+
+/**
+ * 从磁盘文件重建 project/groups 子目录 00-index.md（删除文档后移除条目用）。
+ * 保留原索引头部第一行与各条目说明（brief），条目按磁盘文件顺序重建。
+ */
+async function rebuildSubdirIndex(base: string, subdir: string): Promise<void> {
+  const dirPath = path.join(base, subdir);
+  const indexPath = path.join(dirPath, '00-index.md');
+  const relDir = path.join(path.relative(PROJECT_ROOT, base), subdir);
+
+  // 解析旧索引：保留头部第一行和 brief
+  let header = projectIndexHeader(base, subdir);
+  const oldBriefs = new Map<string, string>();
+  try {
+    const old = await fs.readFile(indexPath, 'utf-8');
+    const firstLine = old.split('\n').find((l) => l.trim().length > 0);
+    if (firstLine?.startsWith('#')) header = firstLine.trim();
+    for (const line of old.split('\n')) {
+      const m = line.match(/\[([^\]]+)\]\(([^)]+)\)\s*-\s*(.+)/);
+      if (m) oldBriefs.set(m[2], m[3]);
+    }
+  } catch {}
+
+  const files = (await fs.readdir(dirPath))
+    .filter((f) => f.match(/^\d{3}-.+\.md$/) && f !== '00-index.md')
+    .sort();
+
+  const lines: string[] = [];
+  for (const f of files) {
+    let title = f.replace(/^\d{3}-/, '').replace(/\.md$/, '');
+    try {
+      const content = await fs.readFile(path.join(dirPath, f), 'utf-8');
+      const h1 = content.match(/^#\s+(.+)/m);
+      if (h1) title = stripMdText(h1[1]);
+    } catch {}
+    const brief = oldBriefs.get(f) || title.slice(0, 30);
+    lines.push(`- [${title}](${f}) - ${brief}`);
+  }
+
+  const indexContent = `${header}\n\n## 文档列表\n\n${lines.join('\n')}\n`;
+  await writeFileWithBackup(relDir, '00-index.md', indexContent);
 }
 
 /** 更新标签文件中的文件名引用 */
@@ -853,6 +938,194 @@ export async function moveCategoryQuestion(
     // 尽力回滚被移文档；源目录已完成的重排内部自洽，不回退
     await rollback();
     throw e;
+  }
+}
+
+/** project/groups 子目录下按文件名排序的文档列表（不含 00-index.md）。 */
+async function listProjectSubdirFiles(subdir: string): Promise<{ base: string; files: string[] }> {
+  if (!subdir || path.basename(subdir) !== subdir || subdir === '.' || subdir === '..') {
+    throw new Error('子目录名称不合法');
+  }
+  const base = await resolveSubdirBase(subdir);
+  const files = (await fs.readdir(path.join(base, subdir)))
+    .filter((file) => file.match(/^\d{3}-.+\.md$/) && file !== '00-index.md')
+    .sort();
+  return { base, files };
+}
+
+/** 全库改写指向被移动 project/分组文档的普通 Markdown 相对链接。 */
+async function rewriteMovedProjectDocReferences(oldFilePath: string, newFilePath: string): Promise<void> {
+  const normalizedOldPath = path.normalize(oldFilePath).toLowerCase();
+  for (const root of [CATEGORIES_DIR, PROJECT_DIR, GROUPS_DIR]) {
+    const directories = await fs.readdir(root, { withFileTypes: true }).catch(() => []);
+    for (const directory of directories) {
+      if (!directory.isDirectory()) continue;
+      const directoryPath = path.join(root, directory.name);
+      const files = await fs.readdir(directoryPath).catch(() => []);
+      for (const file of files) {
+        if (!file.match(/^\d{3}-.+\.md$/) || file === '00-index.md') continue;
+        const currentFilePath = path.join(directoryPath, file);
+        const content = await fs.readFile(currentFilePath, 'utf-8');
+        let changed = false;
+        const updated = content.replace(/\]\(([^)#]+)(#[^)]*)?\)/g, (match, rawTarget: string, anchor = '') => {
+          if (/^[a-z]+:/i.test(rawTarget) || rawTarget.startsWith('/')) return match;
+          let decodedTarget = rawTarget;
+          try { decodedTarget = decodeURI(rawTarget); } catch {}
+          const resolvedTarget = path.normalize(path.resolve(directoryPath, decodedTarget)).toLowerCase();
+          if (resolvedTarget !== normalizedOldPath) return match;
+          const relativeTarget = path.relative(directoryPath, newFilePath).replace(/\\/g, '/');
+          changed = true;
+          return `](${rawTarget.includes('%') ? encodeURI(relativeTarget) : relativeTarget}${anchor})`;
+        });
+        if (changed) {
+          await writeFileWithBackup(path.join(path.relative(PROJECT_ROOT, root), directory.name), file, updated);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * 在 project 与 groups 的子目录之间移动文档；该移动域与分类文档完全隔离。
+ * 序号、索引、导航、annotations、link-meta 和 wiki 引用随移动结果同步更新。
+ */
+export async function moveProjectDoc(
+  from: string,
+  filename: string,
+  to: string,
+  toIndex: number,
+): Promise<MoveResult> {
+  const source = await listProjectSubdirFiles(from);
+  const originalIndex = source.files.indexOf(filename);
+  if (originalIndex < 0) throw new Error(`源文档不存在: ${from}/${filename}`);
+
+  const target = await listProjectSubdirFiles(to);
+  if (from === to && Math.round(toIndex) === originalIndex) {
+    return {
+      noop: true,
+      moved: { from: { category: from, filename }, to: { category: to, filename } },
+      sourceRenames: {},
+      targetRenames: {},
+    };
+  }
+
+  const fromDir = path.join(source.base, from);
+  const toDir = path.join(target.base, to);
+  const sourceRelDir = path.join(path.relative(PROJECT_ROOT, source.base), from);
+  const targetRelDir = path.join(path.relative(PROJECT_ROOT, target.base), to);
+  const slug = filename.replace(/^\d{3}-/, '').replace(/\.md$/, '');
+  let content = await fs.readFile(path.join(fromDir, filename), 'utf-8');
+
+  // 移动前备份原文，便于恢复误操作。
+  await backupBeforeWrite(sourceRelDir, filename, '');
+  const stamp = Date.now();
+  const tempFile = `.pending-project-move-${stamp}.md`;
+  const tempAnnotations = `.pending-project-move-${stamp}-annotations.json`;
+  const tempLinkMeta = `.pending-project-move-${stamp}-link-meta.json`;
+  await fs.rename(path.join(fromDir, filename), path.join(fromDir, tempFile));
+  await fs.rename(
+    path.join(fromDir, `${filename.slice(0, 3)}-annotations.json`),
+    path.join(fromDir, tempAnnotations),
+  ).catch(() => {});
+  await fs.rename(
+    path.join(LINK_META_DIR, `project--${from}--${filename}.json`),
+    path.join(LINK_META_DIR, tempLinkMeta),
+  ).catch(() => {});
+
+  const rollback = async () => {
+    await fs.rename(path.join(fromDir, tempFile), path.join(fromDir, filename)).catch(() => {});
+    await fs.rename(
+      path.join(fromDir, tempAnnotations),
+      path.join(fromDir, `${filename.slice(0, 3)}-annotations.json`),
+    ).catch(() => {});
+    await fs.rename(
+      path.join(LINK_META_DIR, tempLinkMeta),
+      path.join(LINK_META_DIR, `project--${from}--${filename}.json`),
+    ).catch(() => {});
+  };
+
+  try {
+    // 源目录先收紧序号，再按目标落点为已有文档腾出序号。
+    const sourceMap = await renumberProjectSubdirAfterDelete(from, filename);
+    const targetFiles = (await listProjectSubdirFiles(to)).files;
+    const index = Math.max(0, Math.min(Math.round(toIndex), targetFiles.length));
+    const targetSequence = index < targetFiles.length
+      ? parseInt(targetFiles[index].slice(0, 3), 10)
+      : (targetFiles.length > 0 ? Math.max(...targetFiles.map((file) => parseInt(file.slice(0, 3), 10))) + 1 : 1);
+    const shiftMap = new Map<string, string>();
+    for (const file of targetFiles) {
+      const sequence = parseInt(file.slice(0, 3), 10);
+      if (sequence >= targetSequence) {
+        shiftMap.set(file, file.replace(/^\d{3}/, String(sequence + 1).padStart(3, '0')));
+      }
+    }
+    const newFilename = `${String(targetSequence).padStart(3, '0')}-${slug}.md`;
+
+    content = applyRenameMapsToContent(content, sourceMap);
+    content = applyRenameMapsToContent(content, shiftMap);
+    content = applyRenameMapsToContent(content, new Map([[filename, newFilename]]));
+
+    // 跨目录后，把原同目录相对链接和 images 路径改成从目标目录出发的相对路径。
+    if (from !== to || source.base !== target.base) {
+      for (const sourceFile of (await listProjectSubdirFiles(from)).files) {
+        const relativeFile = path.relative(toDir, path.join(fromDir, sourceFile)).replace(/\\/g, '/');
+        for (const [oldPath, newPath] of [[sourceFile, relativeFile], [encodeURI(sourceFile), encodeURI(relativeFile)]]) {
+          if (content.includes(`](${oldPath}`)) content = content.split(`](${oldPath}`).join(`](${newPath}`);
+        }
+      }
+      const relativeImages = path.relative(toDir, path.join(fromDir, 'images')).replace(/\\/g, '/');
+      content = content.split('](images/').join(`](${relativeImages}/`);
+      content = content.split('src="images/').join(`src="${relativeImages}/`);
+    }
+
+    const sortedShift = [...shiftMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    for (const [oldName, newName] of sortedShift) {
+      await fs.rename(path.join(toDir, oldName), path.join(toDir, newName));
+    }
+    for (const [oldName, newName] of shiftMap.entries()) {
+      await fs.rename(
+        path.join(toDir, `${oldName.slice(0, 3)}-annotations.json`),
+        path.join(toDir, `${newName.slice(0, 3)}-annotations.json`),
+      ).catch(() => {});
+      await fs.rename(
+        path.join(LINK_META_DIR, `project--${to}--${oldName}.json`),
+        path.join(LINK_META_DIR, `project--${to}--${newName}.json`),
+      ).catch(() => {});
+    }
+    for (const [, newName] of shiftMap.entries()) {
+      const filePath = path.join(toDir, newName);
+      const oldContent = await fs.readFile(filePath, 'utf-8');
+      const updatedContent = applyRenameMapsToContent(oldContent, shiftMap);
+      if (updatedContent !== oldContent) await writeFileWithBackup(targetRelDir, newName, updatedContent);
+    }
+
+    await fs.writeFile(path.join(toDir, newFilename), content, 'utf-8');
+    await fs.unlink(path.join(fromDir, tempFile)).catch(() => {});
+    await fs.rename(
+      path.join(fromDir, tempAnnotations),
+      path.join(toDir, `${newFilename.slice(0, 3)}-annotations.json`),
+    ).catch(() => {});
+    await fs.rename(
+      path.join(LINK_META_DIR, tempLinkMeta),
+      path.join(LINK_META_DIR, `project--${to}--${newFilename}.json`),
+    ).catch(() => {});
+
+    await rebuildSubdirIndex(target.base, to);
+    await fixNavigationChainInDir(toDir, targetRelDir);
+    await updateWikiLinkReferences(from, sourceMap);
+    await updateWikiLinkReferences(to, shiftMap);
+    await updateWikiLinkReferences(to, new Map([[filename, newFilename]]));
+    await rewriteMovedProjectDocReferences(path.join(fromDir, filename), path.join(toDir, newFilename));
+
+    return {
+      noop: false,
+      moved: { from: { category: from, filename }, to: { category: to, filename: newFilename } },
+      sourceRenames: Object.fromEntries(sourceMap),
+      targetRenames: Object.fromEntries(shiftMap),
+    };
+  } catch (error) {
+    await rollback();
+    throw error;
   }
 }
 

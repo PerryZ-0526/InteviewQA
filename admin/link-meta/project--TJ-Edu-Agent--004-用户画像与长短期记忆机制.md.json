@@ -38,7 +38,7 @@
     },
     {
       "level": 3,
-      "text": "**4. 用户画像与长期记忆的抽象层级**"
+      "text": "4. 用户画像与长期记忆的抽象层级"
     },
     {
       "level": 2,
@@ -54,31 +54,31 @@
     },
     {
       "level": 3,
-      "text": "1. `profile_dimension`：画像维度定义"
+      "text": "1. profiledimension：画像维度定义"
     },
     {
       "level": 3,
-      "text": "2. `student_fact`：结构化事实"
+      "text": "2. studentfact：结构化事实"
     },
     {
       "level": 3,
-      "text": "3. `profile_evidence`：统一证据"
+      "text": "3. profileevidence：统一证据"
     },
     {
       "level": 3,
-      "text": "4. `memory_item`：长期记忆"
+      "text": "4. memoryitem：长期记忆"
     },
     {
       "level": 3,
-      "text": "5. `profile_claim`：画像结论"
+      "text": "5. profileclaim：画像结论"
     },
     {
       "level": 3,
-      "text": "6. `claim_evidence`：画像与证据关系"
+      "text": "6. claimevidence：画像与证据关系"
     },
     {
       "level": 3,
-      "text": "7. `feedback_event`：推送反馈"
+      "text": "7. feedbackevent：推送反馈"
     },
     {
       "level": 2,
@@ -191,17 +191,17 @@
     "预算控制策略": "预算控制策略",
     "2. 长期记忆": "2. 长期记忆",
     "3. 用户画像": "3. 用户画像",
-    "**4. 用户画像与长期记忆的抽象层级**": "**4. 用户画像与长期记忆的抽象层级**",
+    "**4. 用户画像与长期记忆的抽象层级**": "4. 用户画像与长期记忆的抽象层级",
     "三、画像信息模型": "三、画像信息模型",
     "四、总体数据分层": "四、总体数据分层",
     "五、核心数据模型": "五、核心数据模型",
-    "1. `profile_dimension`：画像维度定义": "1. `profile_dimension`：画像维度定义",
-    "2. `student_fact`：结构化事实": "2. `student_fact`：结构化事实",
-    "3. `profile_evidence`：统一证据": "3. `profile_evidence`：统一证据",
-    "4. `memory_item`：长期记忆": "4. `memory_item`：长期记忆",
-    "5. `profile_claim`：画像结论": "5. `profile_claim`：画像结论",
-    "6. `claim_evidence`：画像与证据关系": "6. `claim_evidence`：画像与证据关系",
-    "7. `feedback_event`：推送反馈": "7. `feedback_event`：推送反馈",
+    "1. `profile_dimension`：画像维度定义": "1. profiledimension：画像维度定义",
+    "2. `student_fact`：结构化事实": "2. studentfact：结构化事实",
+    "3. `profile_evidence`：统一证据": "3. profileevidence：统一证据",
+    "4. `memory_item`：长期记忆": "4. memoryitem：长期记忆",
+    "5. `profile_claim`：画像结论": "5. profileclaim：画像结论",
+    "6. `claim_evidence`：画像与证据关系": "6. claimevidence：画像与证据关系",
+    "7. `feedback_event`：推送反馈": "7. feedbackevent：推送反馈",
     "六、画像生成与更新机制": "六、画像生成与更新机制",
     "1. LLM 不直接写 Active Profile": "1. LLM 不直接写 Active Profile",
     "2. Candidate Extractor": "2. Candidate Extractor",

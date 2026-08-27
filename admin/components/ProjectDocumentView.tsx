@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { stripMdText } from '@/lib/stripText';
-import { isVisibleInLayout, scrollDocToTop, headingMatch } from '@/lib/domScroll';
+import { scrollToAnchorPathPolling } from '@/lib/domScroll';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -25,27 +25,6 @@ function parseHeadings(md: string): TocHeading[] {
 function fmtTime(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-/** 按锚点路径滚动，逐级回退（最深一级 → 文档顶部） */
-export function scrollToAnchorPath(anchors: string[]): boolean {
-  const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
-  if (anchors.length === 0) {
-    scrollDocToTop();
-    return true;
-  }
-  for (let i = anchors.length - 1; i >= 0; i--) {
-    const text = stripMdText(anchors[i]);
-    for (const h of Array.from(headings)) {
-      if (!isVisibleInLayout(h)) continue;
-      if (headingMatch(h, text)) {
-        h.scrollIntoView({ behavior: 'auto', block: 'start' });
-        return true;
-      }
-    }
-  }
-  scrollDocToTop();
-  return true;
 }
 
 interface Props {
@@ -215,22 +194,11 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
     };
   }, [subdir, filename]);
 
-  // wiki 链接跳转：编辑器加载完成后滚动到锚点
-  useEffect(() => {
+  // wiki 链接跳转：useLayoutEffect 在绘制前发起定位，rAF 轮询直到 Tiptap 标题渲染完成
+  useLayoutEffect(() => {
     if (!pendingAnchor || loading) return;
-    let attempts = 0;
-    const tryScroll = () => {
-      const headings = document.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
-      if (headings.length === 0 && attempts < 10) {
-        attempts += 1;
-        setTimeout(tryScroll, 300);
-        return;
-      }
-      scrollToAnchorPath(pendingAnchor);
-      onAnchorDone?.();
-    };
-    const timer = setTimeout(tryScroll, 300);
-    return () => clearTimeout(timer);
+    const cancel = scrollToAnchorPathPolling(pendingAnchor, () => onAnchorDone?.());
+    return cancel;
   }, [pendingAnchor, loading]);
 
   // 拉取反向引用
@@ -269,6 +237,7 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
             value={displayTitle}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="文档标题"
+            spellCheck={false}
           />
           <div style={{ display: 'flex', gap: 12, marginTop: 4, alignItems: 'center' }}>
             {frontmatter.status && (
@@ -307,6 +276,7 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
           backlinkMap={backlinkMap}
           imageBase={imageBase}
           uploadDir={uploadDir}
+          docKey={filename ? filename.replace(/\.md$/, '') : ''}
         />
       )}
 

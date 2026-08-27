@@ -103,7 +103,7 @@ void ownership_example() {
 
 引用变更带来运行时写流量开销，析构还可能级联执行用户代码（**del**）；对象释放「通常及时」不能用作文件和锁的正确性协议，跨实现更不能依赖。循环 GC 只补充处理环，也不负责发现所有原生资源泄漏。
 
-诊断要把三件事分开：**Python 对象**是否增长（gc 对象数量、tracemalloc 分配栈）、**原生分配器**是否增长（malloc 统计）、**RSS 与工作集**是否匹配。原生扩展（NumPy、图像库、C 扩展）的分配不走 Python 路径，tracemalloc 看不到，这是最常见的「看起来是 Python 泄漏」误判来源。Python 侧更完整的 GC 机制讨论见 [001-谈谈-Python-中的垃圾回收机制](../python/001-%E8%B0%88%E8%B0%88-Python-%E4%B8%AD%E7%9A%84%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6.md)。
+诊断要把三件事分开：**Python 对象**是否增长（gc 对象数量、tracemalloc 分配栈）、**原生分配器**是否增长（malloc 统计）、**RSS 与工作集**是否匹配。原生扩展（NumPy、图像库、C 扩展）的分配不走 Python 路径，tracemalloc 看不到，这是最常见的「看起来是 Python 泄漏」误判来源。Python 侧更完整的 GC 机制讨论见 [001-谈谈-Python-中的垃圾回收机制](../python/001-谈谈-Python-中的垃圾回收机制.md)。
 
 ### 六、面试追问
 

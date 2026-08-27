@@ -5,6 +5,7 @@ import { PROJECT_ROOT, renumberCategoryAfterDelete } from '@/lib/fileUtils';
 import { logDelete, logUpdate } from '@/lib/logger';
 import { updateLinkMeta } from '@/lib/wikiLinks';
 import { backupBeforeWrite } from '@/lib/backup';
+import { remapFsrsKeys } from '@/lib/fsrsStore';
 
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
 
@@ -71,7 +72,18 @@ export async function DELETE(
     } catch {}
 
     // 3. 序号重排：后续文件 -1，同步更新文件名、内部引用、索引、标签、wiki 链接、link-meta、导航链
-    await renumberCategoryAfterDelete(params.slug, params.filename);
+    const renameMap = await renumberCategoryAfterDelete(params.slug, params.filename);
+
+    // 3.5 联动间隔重复卡片：删除被删题的卡，重排改名的题改写 key
+    try {
+      const mapping: { from: string; to: string | null }[] = [
+        { from: `${params.slug}/${params.filename}`, to: null },
+      ];
+      for (const [oldName, newName] of renameMap.entries()) {
+        mapping.push({ from: `${params.slug}/${oldName}`, to: `${params.slug}/${newName}` });
+      }
+      await remapFsrsKeys(mapping);
+    } catch {}
 
     // 4. 清理标签文件中指向已删除文件的条目
     const tagsDir = path.join(PROJECT_ROOT, 'tags');

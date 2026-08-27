@@ -92,7 +92,5 @@ Cross-session Messaging
 - [编排动态工作流](005-workflows.md)：运行捆绑的工作流或让 Claude 编写一个运行许多子代理并相互验证其发现的工作流。
 - [使用 worktrees 运行并行会话](006-worktrees.md)：在隔离的检出中启动 Claude、控制复制的内容并在之后清理。
 
-
-
 <!-- created: 2026-08-13 18:20:10 -->
-<!-- updated: 2026-08-19 14:35:36 -->
+<!-- updated: 2026-08-27 17:07:42 -->

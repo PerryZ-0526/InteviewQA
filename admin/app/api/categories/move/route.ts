@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { moveCategoryQuestion, categoryExists } from '@/lib/fileUtils';
 import { logMove } from '@/lib/logger';
+import { remapFsrsKeys } from '@/lib/fsrsStore';
 
 // POST: 跨分类移动一道题目（拖拽落点触发）。
 // body: { fromCategory, filename, toCategory, toIndex }
@@ -34,6 +35,22 @@ export async function POST(req: NextRequest) {
         filename,
         `${fromCategory}/${filename} → ${toCategory}/${result.moved.to.filename} @${toIndex}`,
       );
+      // 联动改写间隔重复卡片 key：被移动题 + 源/目标分类因重排改名的题
+      try {
+        const mapping: { from: string; to: string | null }[] = [
+          {
+            from: `${result.moved.from.category}/${result.moved.from.filename}`,
+            to: `${result.moved.to.category}/${result.moved.to.filename}`,
+          },
+        ];
+        for (const [oldF, newF] of Object.entries(result.sourceRenames || {})) {
+          mapping.push({ from: `${result.moved.from.category}/${oldF}`, to: `${result.moved.from.category}/${newF}` });
+        }
+        for (const [oldF, newF] of Object.entries(result.targetRenames || {})) {
+          mapping.push({ from: `${result.moved.to.category}/${oldF}`, to: `${result.moved.to.category}/${newF}` });
+        }
+        await remapFsrsKeys(mapping);
+      } catch {}
     }
     return NextResponse.json({ success: true, ...result });
   } catch (e: any) {

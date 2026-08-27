@@ -9,128 +9,224 @@
       "text": "1.1 它试图解决什么问题"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "1.2 整体架构"
     },
     {
       "level": 2,
+      "text": "2. 源码模块地图"
+    },
+    {
+      "level": 2,
+      "text": "3. CodeGraph 到底把代码存成什么"
+    },
+    {
+      "level": 3,
       "text": "3.1 图不是存在 Neo4j，而是存在 SQLite"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "3.2 Node：代码中的“实体”"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "3.3 Edge：真正体现代码结构的信息"
     },
     {
       "level": 2,
+      "text": "4. 最关键的数据结构：unresolved\\refs"
+    },
+    {
+      "level": 3,
       "text": "4.1 为什么 Parser 不能直接建立所有 Edge"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "4.2 为什么这个设计非常重要"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "第一阶段：局部分析"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "第二阶段：全局链接"
     },
     {
       "level": 2,
+      "text": "5. 全量索引的数据管线"
+    },
+    {
+      "level": 3,
       "text": "5.1 第一阶段：文件发现与过滤"
     },
     {
       "level": 2,
+      "text": "6. Extraction：如何从代码产生图节点"
+    },
+    {
+      "level": 3,
       "text": "6.1 并行 Parser Pool"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "6.2 为什么解析和数据库写入也要分离"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "6.3 背压机制"
     },
     {
       "level": 2,
+      "text": "7. Resolution：CodeGraph 最核心的静态分析阶段"
+    },
+    {
+      "level": 3,
       "text": "7.1 ReferenceResolver 的职责"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "7.2 为什么需要多轮 Resolution"
     },
     {
       "level": 2,
+      "text": "8. SQLite 为什么足够支撑代码图"
+    },
+    {
+      "level": 3,
       "text": "8.1 图查询和全文搜索同时存在"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "符号搜索"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "图关系搜索"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "8.2 自然语言和代码命名之间的桥"
     },
     {
       "level": 2,
+      "text": "9. 查询阶段：一个 Agent 问题如何变成上下文"
+    },
+    {
+      "level": 2,
+      "text": "10. ContextBuilder：搜索和图的汇合点"
+    },
+    {
+      "level": 2,
+      "text": "11. GraphTraverser：为什么搜索到一个节点还不够"
+    },
+    {
+      "level": 2,
+      "text": "12. Impact Radius：为什么知识图适合代码修改"
+    },
+    {
+      "level": 2,
+      "text": "13. codegraph\\explore：为什么 MCP 默认只强调一个工具"
+    },
+    {
+      "level": 2,
+      "text": "14. Explore 的上下文预算设计"
+    },
+    {
+      "level": 2,
+      "text": "15. 一个非常 Agent 化的设计：返回源码后要求不要再 Read"
+    },
+    {
+      "level": 2,
+      "text": "16. 增量同步：CodeGraph 最容易被低估的设计"
+    },
+    {
+      "level": 2,
+      "text": "17. 增量更新并不是“重新解析修改文件”"
+    },
+    {
+      "level": 3,
       "text": "17.1 CodeGraph 如何处理这个问题"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "出向影响"
     },
     {
-      "level": 3,
+      "level": 4,
       "text": "入向影响"
     },
     {
       "level": 2,
+      "text": "18. 全量索引与增量索引的统一模型"
+    },
+    {
+      "level": 2,
+      "text": "19. 索引阶段的几个重要工程优化"
+    },
+    {
+      "level": 3,
       "text": "19.1 双层写锁"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "19.2 Bulk Load"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "19.3 WAL Checkpoint 控制"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "19.4 Fresh Index 可以更激进"
     },
     {
       "level": 2,
+      "text": "20. CodeGraph 的完整读写架构"
+    },
+    {
+      "level": 2,
+      "text": "21. 为什么 CodeGraph 不等于传统代码 RAG"
+    },
+    {
+      "level": 2,
+      "text": "22. 从 Agent Harness 角度重新理解 CodeGraph"
+    },
+    {
+      "level": 2,
+      "text": "23. 源码阅读顺序"
+    },
+    {
+      "level": 3,
       "text": "第一阶段：先弄清总架构"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "第二阶段：看数据模型"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "第三阶段：顺着建图管线"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "第四阶段：重点读 Resolution"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "第五阶段：理解查询"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "第六阶段：最后读 Agent 接口"
+    },
+    {
+      "level": 2,
+      "text": "24. 用最小模型重新实现 CodeGraph"
+    },
+    {
+      "level": 2,
+      "text": "25. 最后归纳：CodeGraph 真正值得学习的五个设计"
     },
     {
       "level": 2,
@@ -173,10 +269,33 @@
     "第四阶段：重点读 Resolution": "第四阶段：重点读 Resolution",
     "第五阶段：理解查询": "第五阶段：理解查询",
     "第六阶段：最后读 Agent 接口": "第六阶段：最后读 Agent 接口",
-    "一张图记住整个 CodeGraph": "一张图记住整个 CodeGraph",
     "学完这一部分建议先自检一个问题": "学完这一部分建议先自检一个问题",
     "1. CodeGraph 的核心思想": "1. CodeGraph 的核心思想",
     "1. CodeGraph 的核心思想1.1 它试图解决什么问题": "1. CodeGraph 的核心思想",
-    "1.1 它试图解决什么问题": "1.1 它试图解决什么问题"
+    "1.1 它试图解决什么问题": "1.1 它试图解决什么问题",
+    "4. 最关键的数据结构：unresolved\\refs": "4. 最关键的数据结构：unresolved\\refs",
+    "5. 全量索引的数据管线": "5. 全量索引的数据管线",
+    "6. Extraction：如何从代码产生图节点": "6. Extraction：如何从代码产生图节点",
+    "7. Resolution：CodeGraph 最核心的静态分析阶段": "7. Resolution：CodeGraph 最核心的静态分析阶段",
+    "3. CodeGraph 到底把代码存成什么": "3. CodeGraph 到底把代码存成什么",
+    "2. 源码模块地图": "2. 源码模块地图",
+    "8. SQLite 为什么足够支撑代码图": "8. SQLite 为什么足够支撑代码图",
+    "9. 查询阶段：一个 Agent 问题如何变成上下文": "9. 查询阶段：一个 Agent 问题如何变成上下文",
+    "10. ContextBuilder：搜索和图的汇合点": "10. ContextBuilder：搜索和图的汇合点",
+    "11. GraphTraverser：为什么搜索到一个节点还不够": "11. GraphTraverser：为什么搜索到一个节点还不够",
+    "12. Impact Radius：为什么知识图适合代码修改": "12. Impact Radius：为什么知识图适合代码修改",
+    "13. codegraph\\explore：为什么 MCP 默认只强调一个工具": "13. codegraph\\explore：为什么 MCP 默认只强调一个工具",
+    "14. Explore 的上下文预算设计": "14. Explore 的上下文预算设计",
+    "15. 一个非常 Agent 化的设计：返回源码后要求不要再 Read": "15. 一个非常 Agent 化的设计：返回源码后要求不要再 Read",
+    "16. 增量同步：CodeGraph 最容易被低估的设计": "16. 增量同步：CodeGraph 最容易被低估的设计",
+    "17. 增量更新并不是“重新解析修改文件”": "17. 增量更新并不是“重新解析修改文件”",
+    "18. 全量索引与增量索引的统一模型": "18. 全量索引与增量索引的统一模型",
+    "19. 索引阶段的几个重要工程优化": "19. 索引阶段的几个重要工程优化",
+    "20. CodeGraph 的完整读写架构": "20. CodeGraph 的完整读写架构",
+    "21. 为什么 CodeGraph 不等于传统代码 RAG": "21. 为什么 CodeGraph 不等于传统代码 RAG",
+    "22. 从 Agent Harness 角度重新理解 CodeGraph": "22. 从 Agent Harness 角度重新理解 CodeGraph",
+    "23. 源码阅读顺序": "23. 源码阅读顺序",
+    "24. 用最小模型重新实现 CodeGraph": "24. 用最小模型重新实现 CodeGraph",
+    "25. 最后归纳：CodeGraph 真正值得学习的五个设计": "25. 最后归纳：CodeGraph 真正值得学习的五个设计"
   }
 }

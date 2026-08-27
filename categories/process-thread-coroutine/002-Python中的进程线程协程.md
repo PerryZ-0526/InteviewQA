@@ -24,7 +24,7 @@ GIL 存在的历史原因是 **引用计数**：<span style="background-color: #
 
 ### 接着讲线程
 
-`threading` 模块在 IO 密集场景下是有效的：线程执行 `socket.recv`、`time.sleep`、文件读取等阻塞系统调用时，解释器会**主动释放 GIL**，让其他线程运行，所以"十个线程各自等网络响应"确实能并发推进。`concurrent.futures.ThreadPoolExecutor` 是日常首选，比手管线程更安全。线程的坑在共享状态：除了锁，还有 CPython 特有现象——多线程下垃圾回收的分代收集需要先暂停所有线程（STW），大量小对象高频分配时 GC 可能成为瓶颈，这和引用计数机制直接相关，可参考 [001-谈谈 Python 中的垃圾回收机制](../python/001-%E8%B0%88%E8%B0%88-Python-%E4%B8%AD%E7%9A%84%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6.md)。
+`threading` 模块在 IO 密集场景下是有效的：线程执行 `socket.recv`、`time.sleep`、文件读取等阻塞系统调用时，解释器会**主动释放 GIL**，让其他线程运行，所以"十个线程各自等网络响应"确实能并发推进。`concurrent.futures.ThreadPoolExecutor` 是日常首选，比手管线程更安全。线程的坑在共享状态：除了锁，还有 CPython 特有现象——多线程下垃圾回收的分代收集需要先暂停所有线程（STW），大量小对象高频分配时 GC 可能成为瓶颈，这和引用计数机制直接相关，可参考 [001-谈谈 Python 中的垃圾回收机制](../python/001-谈谈-Python-中的垃圾回收机制.md)。
 
 ### 再讲进程
 

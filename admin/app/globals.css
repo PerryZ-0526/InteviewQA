@@ -261,12 +261,24 @@ body {
   touch-action: none;
   cursor: grab;
 }
+[data-sidebar-project-draggable] {
+  touch-action: none;
+  cursor: grab;
+}
 .sidebar-cat {
   position: relative;
   border-radius: var(--radius);
   transition: background 0.15s;
 }
 .sidebar-cat.drag-target-cat {
+  background: var(--sidebar-hover);
+}
+.sidebar-project-dir {
+  position: relative;
+  border-radius: var(--radius);
+  transition: background 0.15s;
+}
+.sidebar-project-dir.drag-target-cat {
   background: var(--sidebar-hover);
 }
 .sidebar-item.drag-source {
@@ -312,6 +324,21 @@ body.sidebar-dragging .sidebar-cats {
   opacity: 1;
 }
 body.sidebar-dragging [data-sidebar-draggable] {
+  cursor: grabbing;
+}
+/* project 与分组共享拖拽区域，但不与分类拖拽互通。 */
+body.sidebar-project-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+body.sidebar-project-dragging .sidebar-section {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+body.sidebar-project-dragging .sidebar-projects {
+  opacity: 1;
+}
+body.sidebar-project-dragging [data-sidebar-project-draggable] {
   cursor: grabbing;
 }
 /* 标签栏右侧固定操作区：横向滚动时保持可见 */
@@ -2580,7 +2607,7 @@ body.sidebar-dragging [data-sidebar-draggable] {
 
 .back-to-top {
   position: fixed;
-  top: 338px;
+  top: 384px;
   right: 12px;
   z-index: 99;
   display: grid;
@@ -2600,6 +2627,36 @@ body.sidebar-dragging [data-sidebar-draggable] {
   color: var(--primary);
   background: #f0f4ff;
   border-color: #c5d4f8;
+}
+
+/* 去到底部：与回到顶部同列，位于回到顶部按钮（384px）下方 */
+.go-to-bottom {
+  position: fixed;
+  top: 430px;
+  right: 12px;
+  z-index: 99;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #555;
+  background: #fff;
+  border: 1px solid #dedede;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.go-to-bottom:hover {
+  color: var(--primary);
+  background: #f0f4ff;
+  border-color: #c5d4f8;
+}
+
+.go-to-bottom:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .toc-float-wrapper {
@@ -3259,6 +3316,96 @@ body.sidebar-dragging [data-sidebar-draggable] {
   color: #fff;
   border-color: var(--primary);
 }
+
+/* ========== FSRS 间隔重复评分行 ========== */
+
+/* 头部「今日复习」按钮上的到期数量角标 */
+.review-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rq-rating-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fafafa;
+}
+
+.rq-rating-label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.rq-rating-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 84px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rq-rating-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.rq-rating-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.rq-rating-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rq-rating-interval {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* 四档评分用不同主题色区分（顶边 + 悬停描边 + 名称颜色） */
+.rq-rating-again { border-top: 3px solid var(--danger); }
+.rq-rating-again .rq-rating-name { color: var(--danger); }
+.rq-rating-again:hover:not(:disabled) { border-color: var(--danger); }
+
+.rq-rating-hard { border-top: 3px solid var(--warning); }
+.rq-rating-hard .rq-rating-name { color: var(--warning); }
+.rq-rating-hard:hover:not(:disabled) { border-color: var(--warning); }
+
+.rq-rating-good { border-top: 3px solid var(--primary); }
+.rq-rating-good .rq-rating-name { color: var(--primary); }
+.rq-rating-good:hover:not(:disabled) { border-color: var(--primary); }
+
+.rq-rating-easy { border-top: 3px solid var(--success); }
+.rq-rating-easy .rq-rating-name { color: var(--success); }
+.rq-rating-easy:hover:not(:disabled) { border-color: var(--success); }
 
 /* ========== AI 助手弹窗 ========== */
 
@@ -4304,3 +4451,441 @@ body.sidebar-dragging [data-sidebar-draggable] {
   }
 }
 .tag-viewer-header { display: flex; align-items: center; gap: 12px; padding: 8px 0; margin-bottom: 16px; border-bottom: 2px solid #e9ecef; } .tag-viewer-header h2 { font-size: 20px; margin: 0; }
+
+/* ==================== 关键字检索功能 ==================== */
+
+/* 文档内检索：悬浮按钮（位于回到顶部按钮上方，与其它悬浮按钮同列） */
+.doc-search-float-wrapper {
+  position: fixed;
+  top: 338px;
+  right: 12px;
+  z-index: 99;
+}
+
+.doc-search-float {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #555;
+  background: #fff;
+  border: 1px solid #dedede;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.doc-search-float:hover {
+  color: #e8590c;
+  background: #fff4e6;
+  border-color: #ffd8a8;
+}
+
+.doc-search-float:focus-visible {
+  outline: 2px solid #e8590c;
+  outline-offset: 2px;
+}
+
+/* 文档内检索：面板（输入 + 计数 + 上/下/关闭） */
+.doc-search-popover {
+  position: absolute;
+  right: 44px;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 300px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #dedede;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+}
+
+.doc-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: transparent;
+}
+
+.doc-search-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+.doc-search-nav-btn {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid #e2e2e2;
+  border-radius: 5px;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+}
+
+.doc-search-nav-btn:hover:not(:disabled) {
+  background: #f0f4ff;
+  border-color: #c5d4f8;
+  color: var(--primary);
+}
+
+.doc-search-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 文档内检索命中高亮（CSS Custom Highlight API） */
+::highlight(doc-search-hit) {
+  background-color: #ffe58f;
+  color: inherit;
+}
+
+::highlight(doc-search-hit-current) {
+  background-color: #ff9632;
+  color: #fff;
+}
+
+/* 分类/分组列表内检索：输入行 */
+.scope-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 16px;
+  padding: 6px 10px;
+  border: 1px solid #d8d8de;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.scope-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+}
+
+.scope-search-clear {
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.scope-search-clear:hover {
+  color: #e03131;
+}
+
+/* 分类/分组列表内检索：结果列表 */
+.scope-search-results {
+  padding: 0 8px 8px;
+}
+
+.scope-search-empty {
+  padding: 18px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.scope-search-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.scope-search-item:hover {
+  background: #f5f6fa;
+}
+
+.scope-search-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.scope-search-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.scope-search-count-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #e8590c;
+  background: #fff4e6;
+  border-radius: 8px;
+  padding: 1px 7px;
+}
+
+.scope-search-snippet {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #777;
+  word-break: break-all;
+}
+
+.scope-search-snippet mark {
+  background: #ffe58f;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* 全库检索弹窗（复用 sidebar-modal 基础样式） */
+.global-search-modal {
+  width: 640px;
+  max-width: calc(100vw - 48px);
+}
+
+.global-search-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.global-search-results {
+  max-height: 52vh;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.global-search-empty {
+  padding: 22px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.global-search-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.global-search-item:hover {
+  background: #f5f6fa;
+}
+
+.global-search-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.global-search-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.global-search-kind-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #5f3dc4;
+  background: #f3f0ff;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* ---- 待入库题单（InboxView / 侧边栏入口）---- */
+
+/* 侧边栏入口图标 */
+.inbox-entry-icon {
+  display: flex;
+  align-items: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* 编辑页容器 */
+.inbox-view {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+
+/* 输入区 */
+.inbox-input-card {
+  padding: 20px;
+}
+
+.inbox-input-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.inbox-input-title svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.inbox-summary {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.inbox-textarea {
+  min-height: 110px;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.inbox-input-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.inbox-hint {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 批次卡片 */
+.inbox-batch-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.inbox-batch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #f8f7fb;
+  border-bottom: 1px solid var(--border);
+}
+
+.inbox-batch-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-batch-count {
+  font-size: 11px;
+  background: #e6ddf1;
+  color: #756788;
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+
+/* 题目行：序号 + 文本 + 勾选框 + 复制按钮 */
+.inbox-question {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inbox-question:last-child {
+  border-bottom: none;
+}
+
+.inbox-question:hover {
+  background: #f8f9fa;
+}
+
+.inbox-question-index {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.inbox-question-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* 已入库（勾选）状态：弱化显示 */
+.inbox-question.done .inbox-question-text {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.inbox-question.done .inbox-question-index {
+  opacity: 0.6;
+}
+
+.inbox-check {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.inbox-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--success);
+  cursor: pointer;
+}
+
+.inbox-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.inbox-copy-btn:hover {
+  background: #e9ecef;
+  color: var(--primary);
+}
+
+.inbox-copy-btn.copied {
+  color: var(--success);
+}
