@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CategoryInfo, TagInfo, ProjectSubdir, ExternalDocInfo } from '@/lib/types';
 import { useSidebarDrag } from './useSidebarDrag';
 import GlobalSearchModal from './GlobalSearchModal';
+import { getRecent, type RecentEntry } from '@/lib/recent';
 
 interface Props {
   categories: CategoryInfo[];
@@ -23,6 +24,13 @@ interface Props {
   onRefresh: () => void;
   onToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
   onGoHome?: () => void;
+  // 顶部按钮组：查看操作日志
+  onOpenLogs?: () => void;
+  // 顶部按钮组：随机抽取一道题目
+  onOpenRandom?: () => void;
+  // 侧边栏折叠开关（状态由 page.tsx 持有并持久化到 localStorage）
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   // 待入库题单入口（分类上方）
   onOpenInbox?: () => void;
   inboxActive?: boolean;
@@ -38,6 +46,18 @@ interface CreateForm {
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[\/\\:*?"<>|]/g, '').replace(/\s+/g, '-').trim();
+}
+
+// 相对时间格式化：用于最近浏览列表（刚刚 / N 分钟前 / N 小时前 / 昨天 HH:mm / MM-DD HH:mm）
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return '刚刚';
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (diff < 172800_000) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export default function Sidebar({
@@ -57,6 +77,10 @@ export default function Sidebar({
   onRefresh,
   onToast,
   onGoHome,
+  onOpenLogs,
+  onOpenRandom,
+  collapsed = false,
+  onToggleCollapse,
   onOpenInbox,
   inboxActive,
   refreshKey = 0,
@@ -65,6 +89,8 @@ export default function Sidebar({
 }: Props) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [expandedProjectSubdirs, setExpandedProjectSubdirs] = useState<Set<string>>(new Set());
+  // 栏目整体折叠状态：categories=分类栏目，project=project 栏目，tags=标签栏目
+  const [collapsedSections, setCollapsedSections] = useState<Set<'categories' | 'project' | 'tags'>>(new Set());
   const [projectSubdirs, setProjectSubdirs] = useState<ProjectSubdir[]>([]);
   const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
   // 待入库题单的未处理题数（入口徽标）
@@ -85,6 +111,10 @@ export default function Sidebar({
   const [renameError, setRenameError] = useState('');
   // 全库关键字检索弹窗开关
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  // 最近浏览下拉：打开时从 localStorage 读取最近 10 题，点击条目一键跳回
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentList, setRecentList] = useState<RecentEntry[]>([]);
+  const recentMenuRef = useRef<HTMLDivElement>(null);
 
   // 拉取待入库题单的未处理题数（用于入口徽标）
   const loadInboxPending = useCallback(async () => {
@@ -119,6 +149,28 @@ export default function Sidebar({
     return () => window.removeEventListener('inbox-changed', loadInboxPending);
   }, [loadInboxPending]);
 
+  // 最近浏览下拉：点击菜单外部时自动关闭
+  useEffect(() => {
+    if (!recentOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (!(e.target instanceof Node) || !recentMenuRef.current?.contains(e.target)) {
+        setRecentOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [recentOpen]);
+
+  // 打开/关闭最近浏览下拉；每次打开都重新读取 localStorage（题目可能刚被打开过）
+  const toggleRecent = () => {
+    if (recentOpen) {
+      setRecentOpen(false);
+      return;
+    }
+    setRecentList(getRecent());
+    setRecentOpen(true);
+  };
+
   // 当前题目发生变化时，自动展开它所属的分类
   useEffect(() => {
     if (!selectedCategory || !selectedFile) return;
@@ -135,6 +187,16 @@ export default function Sidebar({
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
+      return next;
+    });
+  };
+
+  // 折叠/展开整个栏目（分类、project、标签）
+  const toggleSection = (section: 'categories' | 'project' | 'tags') => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
       return next;
     });
   };
@@ -432,18 +494,10 @@ export default function Sidebar({
   const needsSlug = createForm?.type === 'category' || createForm?.type === 'project-subdir' || createForm?.type === 'group';
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' sidebar-collapsed' : ''}`}>
       <div className="sidebar-header">
-        <span
-          className="sidebar-header-title"
-          onClick={onGoHome}
-          title="返回首页"
-          style={{ cursor: onGoHome ? 'pointer' : 'default' }}
-        >
-          面试真题知识库
-        </span>
-        {/* 顶部按钮组：返回首页 + 全库检索 */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        {/* 顶部按钮组：返回首页 + 全库检索 + 操作日志 + 随机一题 + 最近浏览 */}
+        <div ref={recentMenuRef} style={{ display: 'flex', gap: 4, flexShrink: 0, position: 'relative' }}>
           <button className="sidebar-home-btn" onClick={onGoHome} title="返回首页" aria-label="返回首页">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 10.5 12 3l9 7.5" />
@@ -463,7 +517,88 @@ export default function Sidebar({
               <line x1="20" y1="20" x2="16.5" y2="16.5" />
             </svg>
           </button>
+          {/* 操作日志入口：从右侧 header 迁移到侧边栏顶部 */}
+          <button
+            className="sidebar-home-btn"
+            onClick={onOpenLogs}
+            title="查看操作日志"
+            aria-label="查看操作日志"
+            disabled={!onOpenLogs}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 3" />
+            </svg>
+          </button>
+          {/* 随机一题入口：从右侧 header 迁移到侧边栏顶部 */}
+          <button
+            className="sidebar-home-btn"
+            onClick={onOpenRandom}
+            title="随机抽取一道题目进行练习"
+            aria-label="随机一题"
+            disabled={!onOpenRandom}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="3" />
+              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+          {/* 最近浏览入口：下拉展示最近打开过的题目（localStorage 记录，最多 10 条） */}
+          <button
+            className="sidebar-home-btn"
+            onClick={toggleRecent}
+            title="最近浏览"
+            aria-label="最近浏览"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-7.5 4" />
+              <path d="M3 3v4h4" />
+              <path d="M12 7v5l3 3" />
+            </svg>
+          </button>
+          {/* 最近浏览下拉列表：点击条目一键跳回对应题目 */}
+          {recentOpen && (
+            <div className="sidebar-recent-dropdown">
+              {recentList.length === 0 ? (
+                <div className="sidebar-recent-empty">暂无浏览记录</div>
+              ) : (
+                recentList.map((item) => {
+                  const catName = categories.find((c) => c.slug === item.category)?.name || item.category;
+                  return (
+                    <button
+                      key={`${item.category}/${item.filename}`}
+                      className="sidebar-recent-item"
+                      onClick={() => {
+                        setRecentOpen(false);
+                        onSelectQuestion(item.category, item.filename);
+                      }}
+                      title={`${item.title}（${catName}）`}
+                    >
+                      <span className="sidebar-recent-title">{item.title}</span>
+                      <span className="sidebar-recent-meta">{catName} · {formatRelativeTime(item.ts)}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
+        {/* 折叠侧边栏：阅读长文档时收起腾出全宽，折叠后由悬浮按钮展开 */}
+        <button
+          className="sidebar-home-btn"
+          onClick={onToggleCollapse}
+          title="折叠侧边栏"
+          aria-label="折叠侧边栏"
+          disabled={!onToggleCollapse}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <line x1="9" y1="4" x2="9" y2="20" />
+            <path d="m13 9 3 3-3 3" />
+          </svg>
+        </button>
       </div>
 
       {/* 待入库题单：面试题收集入口（位于分类上方） */}
@@ -489,10 +624,13 @@ export default function Sidebar({
       {/* 分类 */}
       <div className="sidebar-section sidebar-cats">
         <div className="sidebar-section-title">
-          <span>分类 ({categories.length})</span>
+          <button className="sidebar-group-title" onClick={() => toggleSection('categories')} title="Categories">
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Categories</span>
+            <span className="badge">{categories.length}</span>
+          </button>
           <button className="sidebar-add-btn" onClick={() => openForm('category')} title="新建分类" aria-label="新建分类">+</button>
         </div>
-        {categories.map((cat) => (
+        {!collapsedSections.has('categories') && categories.map((cat) => (
           <div
             key={cat.slug}
             data-sidebar-cat={cat.slug}
@@ -507,6 +645,7 @@ export default function Sidebar({
               }}
               title={cat.name}
             >
+              <span className="sidebar-cat-dot" />
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {cat.name}
               </span>
@@ -552,8 +691,13 @@ export default function Sidebar({
 
       {/* 标签 */}
       <div className="sidebar-section">
-        <div className="sidebar-section-title">标签 ({tags.length})</div>
-        {tags.slice(0, 20).map((tag) => (
+        <div className="sidebar-section-title">
+          <button className="sidebar-group-title" onClick={() => toggleSection('tags')} title="Tags">
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Tags</span>
+            <span className="badge">{tags.length}</span>
+          </button>
+        </div>
+        {!collapsedSections.has('tags') && tags.slice(0, 20).map((tag) => (
           <div
             key={tag.name}
             className="sidebar-item" style={{ fontSize: 12, cursor: "pointer" }} onClick={() => onSelectTag?.(tag.name)}
@@ -563,7 +707,7 @@ export default function Sidebar({
             <span className="badge">{tag.questions.length}</span>
           </div>
         ))}
-        {tags.length > 20 && (
+        {!collapsedSections.has('tags') && tags.length > 20 && (
           <div className="sidebar-item sidebar-more">还有 {tags.length - 20} 个标签...</div>
         )}
       </div>
@@ -572,10 +716,13 @@ export default function Sidebar({
       {projectSubdirs.filter(s => !s.isGroup).length > 0 && (
         <div className="sidebar-section sidebar-projects">
           <div className="sidebar-section-title">
-            <span>project ({projectSubdirs.filter(s => !s.isGroup).length})</span>
+            <button className="sidebar-group-title" onClick={() => toggleSection('project')} title="project">
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>project</span>
+              <span className="badge">{projectSubdirs.filter(s => !s.isGroup).length}</span>
+            </button>
             <button className="sidebar-add-btn" onClick={() => openForm('project-subdir')} title="新建 project 子目录" aria-label="新建子目录">+</button>
           </div>
-          {projectSubdirs.filter(s => !s.isGroup).map((subdir) => (
+          {!collapsedSections.has('project') && projectSubdirs.filter(s => !s.isGroup).map((subdir) => (
             <div
               key={subdir.slug}
               data-sidebar-project-dir={subdir.slug}
@@ -595,6 +742,7 @@ export default function Sidebar({
                 }}
                 title={subdir.slug}
               >
+                <span className="sidebar-cat-dot" />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {subdir.slug}
                 </span>

@@ -60,12 +60,6 @@ body {
   letter-spacing: 0.3px;
 }
 
-.sidebar-header-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sidebar-home-btn {
   display: flex;
   align-items: center;
@@ -84,6 +78,91 @@ body {
 .sidebar-home-btn:hover {
   background: #f0ebf7;
   color: #6c5f7d;
+}
+
+/* 侧边栏折叠态：宽度归零隐藏，由 page.tsx 的悬浮按钮展开 */
+.sidebar-collapsed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+/* 侧边栏折叠后的悬浮展开按钮：固定在视口左上角 */
+.sidebar-expand-btn {
+  position: fixed;
+  left: 8px;
+  top: 10px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e7e5ea;
+  border-radius: 6px;
+  background: #fff;
+  color: #8a7f95;
+  cursor: pointer;
+}
+
+.sidebar-expand-btn:hover {
+  background: #f0ebf7;
+  color: #6c5f7d;
+}
+
+/* 最近浏览下拉列表：挂载在顶部按钮组下方 */
+.sidebar-recent-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 228px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e7e5ea;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 300;
+  padding: 4px;
+}
+
+.sidebar-recent-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #433855;
+}
+
+.sidebar-recent-item:hover {
+  background: #f0ebf7;
+}
+
+.sidebar-recent-title {
+  display: block;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-recent-meta {
+  display: block;
+  font-size: 11px;
+  color: #8c7e9d;
+  margin-top: 2px;
+}
+
+.sidebar-recent-empty {
+  padding: 10px;
+  font-size: 12px;
+  color: #8c7e9d;
+  text-align: center;
 }
 
 .sidebar-section {
@@ -371,6 +450,41 @@ body.sidebar-project-dragging [data-sidebar-project-draggable] {
   color: #e03131;
 }
 
+/* 标签会话恢复询问条：浏览器「恢复上次关闭的标签页？」式顶部消息条 */
+.tab-restore-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--sidebar-active);
+  border-bottom: 1px solid #e7e5ea;
+  font-size: 13px;
+  color: var(--text);
+  flex-shrink: 0;
+  animation: tabRestoreIn 0.25s ease-out;
+}
+
+.tab-restore-icon {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.tab-restore-text {
+  flex: 1;
+}
+
+.tab-restore-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@keyframes tabRestoreIn {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -595,9 +709,9 @@ body.sidebar-project-dragging [data-sidebar-project-draggable] {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  margin: 0 2px 4px;
+  margin: 0 2px 10px;
 }
 
 .home-block-name {
@@ -1782,6 +1896,21 @@ body.sidebar-project-dragging [data-sidebar-project-draggable] {
   margin-right: 4px;
   color: #897a9b;
   font-size: 11px;
+}
+
+/* 分类行前的小圆点：与子题目的序号前缀形成层级差；选中时变主题色 */
+.sidebar-cat-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #cfc2e2;
+  transition: background 0.15s;
+}
+.sidebar-item.active .sidebar-cat-dot,
+.sidebar-item.category-current .sidebar-cat-dot {
+  background: var(--primary);
 }
 
 .sidebar-more {
@@ -3318,23 +3447,6 @@ body.sidebar-project-dragging [data-sidebar-project-draggable] {
 }
 
 /* ========== FSRS 间隔重复评分行 ========== */
-
-/* 头部「今日复习」按钮上的到期数量角标 */
-.review-count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  margin-left: 6px;
-  border-radius: 9px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-}
 
 .rq-rating-row {
   display: flex;

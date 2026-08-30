@@ -1,6 +1,7 @@
 {
   "groups": [
     "Claude-Code-Docs",
-    "CodeGraph"
+    "CodeGraph",
+    "interview-record"
   ]
 }

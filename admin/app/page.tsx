@@ -20,11 +20,14 @@ import DocSearchFloat from '@/components/DocSearchFloat';
 import ScopeSearchPanel from '@/components/ScopeSearchPanel';
 import TagViewer from '@/components/TagViewer';
 import TabBar from '@/components/TabBar';
+import TabRestoreBar from '@/components/TabRestoreBar';
 import InboxView from '@/components/InboxView';
 import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
 import { stripMdText } from '@/lib/stripText';
 import { dueEntries } from '@/lib/fsrsLogic';
 import type { FsrsCardData, FsrsStore } from '@/lib/fsrsStore';
+import { loadTabSession, saveTabSession, clearTabSession } from '@/lib/tabSession';
+import { pushRecent } from '@/lib/recent';
 
 interface DocTab {
   id: string;
@@ -58,6 +61,19 @@ export default function Home() {
   const [generatingCount, setGeneratingCount] = useState(0);
   const generating = generatingCount > 0;
   const [showLogs, setShowLogs] = useState(false);
+  // 侧边栏折叠状态：挂载时从 localStorage 恢复，之后任何变化都写回（阅读长文档时收起腾出全宽）
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(window.localStorage.getItem('interviewqa:sidebar-collapsed') === '1');
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('interviewqa:sidebar-collapsed', sidebarCollapsed ? '1' : '0');
+    } catch {}
+  }, [sidebarCollapsed]);
   const [projectSubdirs, setProjectSubdirs] = useState<{ slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[]>([]);
   const [projectStats, setProjectStats] = useState<{ subdirs: number; docs: number; groups: number }>({ subdirs: 0, docs: 0, groups: 0 });
   const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
@@ -66,7 +82,7 @@ export default function Home() {
   const fsrsStoreRef = useRef<FsrsStore>({ version: 1, cards: {} });
   const applyFsrsStore = (s: FsrsStore) => { fsrsStoreRef.current = s; setFsrsStore(s); };
 
-  // 多标签：已打开文档的工作集（内存态，刷新即清空；文档内容本身已自动保存到磁盘）
+  // 多标签：已打开文档的工作集（文档内容自动保存到磁盘；标签集本身持久化到 localStorage，重启后可询问恢复）
   const [tabs, setTabs] = useState<DocTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tabContents, setTabContents] = useState<Record<string, string>>({});
@@ -82,6 +98,14 @@ export default function Home() {
   // handleWikiLinkOpen 引用了 tabs/activeTabId 等状态，而事件监听器只在视图变化时重绑，
   // 通过 ref 始终调用最新版本，避免监听器持有旧闭包
   const wikiLinkHandlerRef = useRef<(wiki: string, slugHint?: string) => void>(() => {});
+
+  // ---- 标签会话持久化（浏览器式「恢复上次关闭的标签页」，存取逻辑见 lib/tabSession）----
+  // 等待用户恢复决策的上次会话记录；null 表示无可恢复记录或用户已决策
+  const [pendingRestore, setPendingRestore] = useState<{ tabs: DocTab[]; activeTabId: string | null } | null>(null);
+  // 恢复决策状态：用户决策前禁止写 localStorage，否则挂载时的空工作集会覆盖上次会话记录
+  const sessionDecisionRef = useRef<'pending' | 'ready'>('pending');
+  // 恢复动作防重入：内容拉取是异步的，期间提示条已卸载但函数仍可能被重复触发
+  const restoringRef = useRef(false);
 
   // Track previous state for back navigation from random mode
   const navSeqRef = useRef(0);
@@ -154,6 +178,28 @@ export default function Home() {
     loadFsrsStore();
   }, []);
 
+  // 启动时读取上次标签会话：存在可恢复记录则在顶部栏弹出恢复询问条；否则放行常规持久化。
+  // 必须定义在持久化 effect 之前——挂载时它先跑，才能在空工作集触发写入前把决策状态置为 pending
+  useEffect(() => {
+    const session = loadTabSession();
+    if (session) {
+      setPendingRestore({ tabs: session.tabs, activeTabId: session.activeTabId });
+    } else {
+      sessionDecisionRef.current = 'ready';
+    }
+  }, []);
+
+  // 持久化当前标签工作集：标签集/激活标签任何变化都写入 localStorage。
+  // 用户未对恢复询问表态就直接打开了新标签时，视为放弃上次会话：清除询问条并以当前工作集覆盖记录
+  useEffect(() => {
+    if (sessionDecisionRef.current !== 'ready') {
+      if (tabs.length === 0) return;
+      sessionDecisionRef.current = 'ready';
+      setPendingRestore(null);
+    }
+    saveTabSession(tabs, activeTabId);
+  }, [tabs, activeTabId]);
+
   // 当前题目 key 集合（`<分类>/<文件名>`），过滤已删题目的幽灵卡片
   const questionKeySet = () => {
     const keys = new Set<string>();
@@ -162,10 +208,6 @@ export default function Home() {
     }
     return keys;
   };
-  // 到期复习队列（按 due 升序）；按钮角标与 openReview 共用
-  const dueReviewList = dueEntries(fsrsStore.cards, questionKeySet());
-  const dueCount = dueReviewList.length;
-
   const showToast = (msg: string, type: string = 'info') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -266,6 +308,81 @@ export default function Home() {
     setView('browse');
   };
 
+  // ---- 标签会话恢复 ----
+
+  // 不恢复：清除上次会话记录，不再询问（此后按当前工作集正常持久化）
+  const dismissRestore = () => {
+    setPendingRestore(null);
+    sessionDecisionRef.current = 'ready';
+    clearTabSession();
+  };
+
+  // 恢复上次会话：并行拉取各标签内容重建工作集，激活上次关闭前的活跃标签
+  const restoreTabs = async () => {
+    const session = pendingRestore;
+    if (!session || restoringRef.current) return;
+    restoringRef.current = true;
+    setPendingRestore(null);
+    sessionDecisionRef.current = 'ready';
+
+    // 恢复序号计数器：文档内链接新开标签的 id 带递增序号后缀（如 cat:<分类>:<文件>:<seq>），
+    // 计数器不回退才能避免与恢复出的带序号标签 id 冲突
+    for (const t of session.tabs) {
+      const parts = t.id.split(':');
+      if (parts.length < 4) continue;
+      const seq = Number(parts[parts.length - 1]);
+      if (!Number.isFinite(seq)) continue;
+      if (parts[0] === 'form') formSeqRef.current = Math.max(formSeqRef.current, seq);
+      else linkTabSeqRef.current = Math.max(linkTabSeqRef.current, seq);
+    }
+
+    try {
+      // 并行加载内容。分类/随机/复习标签的文档若已删除或改名则丢弃该标签；
+      // project / 外部文档由各自视图组件自行加载内容，此处只重建标签
+      const results = await Promise.all(
+        session.tabs.map(async (tab): Promise<{ tab: DocTab; content?: string } | null> => {
+          if (tab.kind === 'category' || tab.kind === 'random' || tab.kind === 'review') {
+            try {
+              const res = await fetch(
+                `/api/categories/${encodeURIComponent(tab.category!)}/${encodeURIComponent(tab.filename!)}`
+              );
+              const json = await res.json();
+              if (json.success) return { tab, content: json.data };
+            } catch {
+              // 网络异常等按失效处理，下方统一丢弃
+            }
+            return null;
+          }
+          return { tab };
+        })
+      );
+
+      // 等待恢复期间用户已另行打开了标签：视为放弃恢复，保留当前工作集
+      if (tabsRef.current.length > 0) return;
+
+      const restored = results.filter((r): r is { tab: DocTab; content?: string } => r !== null);
+      if (restored.length === 0) {
+        clearTabSession();
+        showToast('上次打开的文档均已失效，无可恢复的标签', 'info');
+        return;
+      }
+
+      const contents: Record<string, string> = {};
+      for (const r of restored) {
+        if (r.content != null) contents[r.tab.id] = r.content;
+      }
+      const newTabs = restored.map((r) => r.tab);
+      // 优先激活上次关闭前的活跃标签；它已失效则退回第一个
+      const active = newTabs.find((t) => t.id === session.activeTabId) ?? newTabs[0];
+      setTabs(newTabs);
+      setTabContents(contents);
+      activateTab(active);
+      showToast(`已恢复 ${newTabs.length} 个标签页`, 'success');
+    } finally {
+      restoringRef.current = false;
+    }
+  };
+
   // 切换标签后直接恢复滚动位置（无平滑动画）
   useLayoutEffect(() => {
     if (!activeTabId || !contentRef.current) return;
@@ -296,6 +413,8 @@ export default function Home() {
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
         addTabToFront(tab);
         activateTab(tab);
+        // 记录最近浏览（供侧边栏历史入口一键跳回）
+        pushRecent({ category, filename, title: label });
       }
     } catch (e) {
       if (seq !== navSeqRef.current) return;
@@ -633,6 +752,8 @@ export default function Home() {
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
         addTabToFront(tab);
         activateTab(tab);
+        // 随机打开的题目同样计入最近浏览
+        pushRecent({ category: picked.category, filename: picked.filename, title: label });
       } else {
         showToast('加载失败', 'error');
       }
@@ -671,18 +792,6 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 打开到期队列中最久未复习的一道
-  const openReview = async () => {
-    const due = dueEntries(fsrsStoreRef.current.cards, questionKeySet());
-    if (due.length === 0) {
-      showToast('没有到期的复习题目 🎉', 'success');
-      return;
-    }
-    const key = due[0].key;
-    const slash = key.indexOf('/');
-    await openReviewQuestion(key.slice(0, slash), key.slice(slash + 1));
   };
 
   // 评分后自动进入下一道到期题；队列清空则提示完成并关闭当前标签
@@ -959,9 +1068,36 @@ export default function Home() {
         }}
         onMoveQuestion={handleMoveQuestion}
         onMoveProjectDoc={handleMoveProjectDoc}
+        onOpenLogs={() => setShowLogs(true)}
+        onOpenRandom={openRandom}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
       />
 
+      {/* 侧边栏折叠后的悬浮展开按钮：固定在左上角 */}
+      {sidebarCollapsed && (
+        <button
+          className="sidebar-expand-btn"
+          onClick={() => setSidebarCollapsed(false)}
+          title="展开侧边栏"
+          aria-label="展开侧边栏"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <line x1="9" y1="4" x2="9" y2="20" />
+            <path d="m16 9-3 3 3 3" />
+          </svg>
+        </button>
+      )}
+
       <div className="main">
+        {pendingRestore && (
+          <TabRestoreBar
+            count={pendingRestore.tabs.length}
+            onRestore={restoreTabs}
+            onDismiss={dismissRestore}
+          />
+        )}
         <TabBar
           tabs={tabs.map((t) => ({ id: t.id, label: t.label }))}
           activeId={activeTabId}
@@ -1034,25 +1170,6 @@ export default function Home() {
                 删除文档
               </button>
             )}
-            <button className="btn btn-secondary" onClick={() => setShowLogs(true)} title="查看操作日志">
-              日志
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={openReview}
-              disabled={dueCount === 0}
-              title={dueCount === 0 ? '暂无到期的复习题目' : `复习 ${dueCount} 道到期的题目（间隔重复）`}
-            >
-              今日复习
-              {dueCount > 0 && <span className="review-count-badge">{dueCount}</span>}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={openRandom}
-              title="随机抽取一道题目进行练习"
-            >
-              随机一题
-            </button>
             <button className="btn btn-secondary" onClick={() => setView('new-empty')} title="创建空白的题目文件，不调用 AI 生成">
               新建空文档
             </button>
@@ -1406,6 +1523,7 @@ function HomeView({
           {categories.map((cat) => (
             <div key={cat.slug} className="home-block">
               <div className="home-block-title">
+                <span className="sidebar-cat-dot" />
                 <span className="home-block-name" title={cat.name}>{cat.name}</span>
                 <span className="home-block-count">{cat.questions.length}</span>
               </div>
@@ -1425,6 +1543,7 @@ function HomeView({
           {projectNormal.map((sub) => (
             <div key={sub.slug} className="home-block">
               <div className="home-block-title">
+                <span className="sidebar-cat-dot" />
                 <span className="home-block-name" title={sub.slug}>{sub.name}</span>
                 <span className="home-block-count">{sub.docs.length}</span>
               </div>
@@ -1444,6 +1563,7 @@ function HomeView({
           {groups.map((sub) => (
             <div key={sub.slug} className="home-block">
               <div className="home-block-title">
+                <span className="sidebar-cat-dot" />
                 <span className="home-block-name" title={sub.slug}>{sub.name}</span>
                 <span className="home-block-count">{sub.docs.length}</span>
               </div>

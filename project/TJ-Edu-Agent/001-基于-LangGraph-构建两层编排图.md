@@ -11,7 +11,7 @@ ReAct范式 + tools
 将不同类型的任务，封装成独立的ReAct loop子图，每个子图中定制化prompt
 ```
 
-> <span style="font-size: 12pt">我们最开始考虑过统一 ReAct Loop，让模型在所有 Tool 中自由选择，但<u style="text-decoration-color: #e63946">随着能力增加会出现工具空间过大、Prompt 规则互相干扰、终止条件不统一的问题</u>。所以后来更倾向于做</span><span style="font-size: 12pt; background-color: rgb(255, 243, 205)">分层 Agent</span><span style="font-size: 12pt">：先由轻量 Router 判断执行范式，再进入</span> `Policy`<span style="font-size: 12pt">、</span>`Search`<span style="font-size: 12pt">、</span>`Task`<span style="font-size: 12pt">、</span>`Planning` <span style="font-size: 12pt">等</span>`定制化 Domain subGraph`<span style="font-size: 12pt">。每个</span> `subGraph` <span style="font-size: 12pt">有自己的 Prompt、核心 Tool 集、状态和终止条件，同时保留必要的</span>`跨域工具`<span style="font-size: 12pt">。</span>
+> <span style="font-size: 12pt">我们最开始考虑过统一 ReAct Loop，让模型在所有 Tool 中自由选择，但<u style="text-decoration-color: rgb(230, 57, 70)">随着能力增加会出现工具空间过大、Prompt 规则互相干扰、终止条件不统一的问题</u>。所以后来更倾向于做</span><span style="font-size: 12pt; background-color: rgb(255, 243, 205)">分层 Agent</span><span style="font-size: 12pt">：先由轻量 Router 判断执行范式，再进入</span> `Policy`<span style="font-size: 12pt">、</span>`Search`<span style="font-size: 12pt">、</span>`Task`<span style="font-size: 12pt">、</span>`Planning` <span style="font-size: 12pt">等</span>`定制化 Domain subGraph`<span style="font-size: 12pt">。每个</span> `subGraph` <span style="font-size: 12pt">有自己的 Prompt、核心 Tool 集、状态和终止条件，同时保留必要的</span>`跨域工具`<span style="font-size: 12pt">。</span>
 >
 > <span style="font-size: 12pt">简单任务直接在单个</span> `subGraph` <span style="font-size: 12pt">中完成，</span><span style="font-size: 12pt; background-color: rgb(255, 243, 205)">复杂任务则编排多个领域 Agent</span><span style="font-size: 12pt">。这样本质上是</span><span style="font-size: 12pt; background-color: rgb(255, 243, 205)">用路由降低决策空间</span><span style="font-size: 12pt">，用专业化 Prompt 提高单任务执行质量。</span>
 
@@ -222,17 +222,17 @@ Prompt 很快膨胀，而且大量规则在当前任务中根本无关，会增�
 - `Orchestrator` 负责“拆什么任务、任务之间什么依赖、交给哪个领域 Agent、什么时候继续/重规划”；
 - 具体 Tool 怎么调用，由各`领域 ReAct` 自己决定。
 
-> Orchestrator 可以通过 `Command` 路由到单个 Agent，也可以通过 `Send` 动态派发多个 Agent，<u style="text-decoration-color: rgb(230, 57, 70)">通过</u>`共享 State` <u style="text-decoration-color: rgb(230, 57, 70)">汇总结果</u>。LangGraph 当前就是提供这些机制来实现<u style="text-decoration-color: #e63946">动态控制流</u>和 <u style="text-decoration-color: #e63946">worker fan-out</u>。
+> Orchestrator 可以通过 `Command` 路由到单个 Agent，也可以通过 `Send` 动态派发多个 Agent，<u style="text-decoration-color: rgb(230, 57, 70)">通过</u>`共享 State` <u style="text-decoration-color: rgb(230, 57, 70)">汇总结果</u>。LangGraph 当前就是提供这些机制来实现<u style="text-decoration-color: rgb(230, 57, 70)">动态控制流</u>和 <u style="text-decoration-color: rgb(230, 57, 70)">worker fan-out</u>。
 
 ---
 
 `gen-4.1`的优点是非常灵活。
 
-Orchestrator 可以根据前一个 Agent 的实际执行结果，动态决定下一步调用谁。例如用户问“我能不能保研，如果不行应该找什么工作”，第一次可能先调用 Knowledge 获取学校政策，再根据结果调用 Advisory；如果发现用户信息不足，还能临时调用其他能力。因此 <u style="text-decoration-color: #e63946">gen-4.1 对于**任务路径无法提前确定、执行过程中不断产生新信息的开放式长任务**是有意义的</u>。它实际上把 Orchestrator 当成了整个系统的高层 ReAct Agent，每执行一步都重新观察环境，然后决定下一步动作。
+Orchestrator 可以根据前一个 Agent 的实际执行结果，动态决定下一步调用谁。例如用户问“我能不能保研，如果不行应该找什么工作”，第一次可能先调用 Knowledge 获取学校政策，再根据结果调用 Advisory；如果发现用户信息不足，还能临时调用其他能力。因此 <u style="text-decoration-color: rgb(230, 57, 70)">gen-4.1 对于**任务路径无法提前确定、执行过程中不断产生新信息的开放式长任务**是有意义的</u>。它实际上把 Orchestrator 当成了整个系统的高层 ReAct Agent，每执行一步都重新观察环境，然后决定下一步动作。
 
-但问题也恰恰出现在这里：你下面的四个 Domain Agent 本身已经是 ReAct。如果 Search ReAct 内部已经负责“搜索 → 阅读 → 判断证据够不够 → 不够继续搜索 → 验收退出”，那么它完成之后，外层 Orchestrator 再进行一次“这个结果够不够、还要不要继续”的判断，就容易形成**双层验收机制**。比如 Search Agent 自己判断搜索结果已经充分并退出，Orchestrator 拿到结果以后又觉得“不太够”，再次调用 Search；Search 又重新进入自己的 Loop。这不仅增加 LLM 调用次数和延迟，<u style="text-decoration-color: #e63946">还可能导致职责边界模糊：到底谁负责判断 Search 任务是否完成？Domain Agent 还是 Orchestrator？</u>
+但问题也恰恰出现在这里：你下面的四个 Domain Agent 本身已经是 ReAct。如果 Search ReAct 内部已经负责“搜索 → 阅读 → 判断证据够不够 → 不够继续搜索 → 验收退出”，那么它完成之后，外层 Orchestrator 再进行一次“这个结果够不够、还要不要继续”的判断，就容易形成**双层验收机制**。比如 Search Agent 自己判断搜索结果已经充分并退出，Orchestrator 拿到结果以后又觉得“不太够”，再次调用 Search；Search 又重新进入自己的 Loop。这不仅增加 LLM 调用次数和延迟，<u style="text-decoration-color: rgb(230, 57, 70)">还可能导致职责边界模糊：到底谁负责判断 Search 任务是否完成？Domain Agent 还是 Orchestrator？</u>
 
-更麻烦的是，<span style="background-color: #fff3cd">大循环会让系统行为越来越难预测</span>。假设：
+更麻烦的是，<span style="background-color: rgb(255, 243, 205)">大循环会让系统行为越来越难预测</span>。假设：
 ```
 Orchestrator
    ↓
@@ -283,7 +283,7 @@ Knowledge Search    Task     Advisory
              END
 ```
 
-而 gen-4.2 的职责划分更加清晰。Orchestrator 首次拿到用户任务以后，不负责一步一步“走着看”，而是先产生一个结构化任务计划，例如用户说：
+而 gen-4.2 的职责划分更加清晰。Orchestrator 首次拿到用户任务以后，不负责一步一步“走着看”，而是先产生一个`结构化任务计划`，例如用户说：
 
 > 我想保研，帮我规划未来半年。
 
@@ -320,7 +320,7 @@ T4 Advisory：
                  Answer Generator
 ```
 
-这样 Orchestrator 的职责就变成了真正意义上的“编排”：**拆任务、定义依赖、选择 Domain、定义预期输出**；至于每一个任务内部到底调用几次 Tool、什么时候重试、什么情况下退出，都由对应 Domain ReAct 自己解决。
+<u style="text-decoration-color: #e63946">这样 Orchestrator 的职责就变成了真正意义上的“编排”：**拆任务、定义依赖、选择 Domain、定义预期输出**</u>；至于每一个任务内部到底调用几次 Tool、什么时候重试、什么情况下退出，都由对应 Domain ReAct 自己解决。
 
 我认为这和 Subgraph 的设计也更加一致。父图应该关注：
 ```
@@ -375,7 +375,7 @@ Domain ReAct：
 
 ### 3、`gen-4.3`
 
-> 在 Aggregator 后加一个**轻量级全局验收节点**：正常路径只规划一次，只有计划真正失败或者出现信息缺口时，才触发一次有限的 Replan。
+> 在 Aggregator 后加一个**轻量级全局验收节点**：正常路径只规划一次，只有<u style="text-decoration-color: #e63946">计划真正失败或者出现信息缺口时</u>，才触发一次有限的 Replan。
 ```
 START
   ↓
@@ -416,9 +416,9 @@ Plan → Execute → Validate
 
 这实际上更接近生产系统的设计思想：`正常路径确定化，异常路径智能化`**。**
 
-这会更符合你现在“Orchestrator + 四个 Domain ReAct Subgraph”的架构，因为 **Domain ReAct 已经负责局部自治，<u style="text-decoration-color: #e63946">父层就没有必要再用一个高频大循环重复干预</u>；父层真正应该保留的是跨领域任务规划、依赖管理和异常情况下的全局纠偏。**这也是我认为 gen-4.2 相比 gen-4.1 最实质的架构进步。
+这会更符合你现在“Orchestrator + 四个 Domain ReAct Subgraph”的架构，因为 \*\*Domain ReAct 已经负责局部自治，<u style="text-decoration-color: rgb(230, 57, 70)">父层就没有必要再用一个高频大循环重复干预</u>；父层真正应该保留的是跨领域任务规划、依赖管理和异常情况下的全局纠偏。\*\*这也是我认为 gen-4.2 相比 gen-4.1 最实质的架构进步。
 
 
 
 <!-- created: 2026-08-11 16:54:54 -->
-<!-- updated: 2026-08-27 17:23:44 -->
+<!-- updated: 2026-08-28 09:48:00 -->

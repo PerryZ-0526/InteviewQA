@@ -226,6 +226,14 @@
     "5. Milvus：长期记忆语义索引": "5. Milvus：长期记忆语义索引",
     "6. 部署层面的结论": "6. 部署层面的结论",
     "十一、完整更新链路": "十一、完整更新链路",
-    "十二、面试概述": "十二、面试概述"
+    "十二、面试概述": "十二、面试概述",
+    "4. 用户画像与长期记忆的抽象层级": "4. 用户画像与长期记忆的抽象层级",
+    "1. profiledimension：画像维度定义": "1. profiledimension：画像维度定义",
+    "2. studentfact：结构化事实": "2. studentfact：结构化事实",
+    "3. profileevidence：统一证据": "3. profileevidence：统一证据",
+    "4. memoryitem：长期记忆": "4. memoryitem：长期记忆",
+    "5. profileclaim：画像结论": "5. profileclaim：画像结论",
+    "6. claimevidence：画像与证据关系": "6. claimevidence：画像与证据关系",
+    "7. feedbackevent：推送反馈": "7. feedbackevent：推送反馈"
   }
 }

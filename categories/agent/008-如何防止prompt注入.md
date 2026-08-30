@@ -1,4 +1,4 @@
-# 如何防止prompt注入
+# ✅如何防止prompt注入
 
 ## 题目
 
@@ -16,7 +16,7 @@
 
 > <span style="color: rgb(74, 74, 74)">Prompt 注入的核心问题是</span> <span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">LLM 没有</span>`硬编码`<span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">的机制来<u>区分指令和数据</u></span><span style="color: rgb(74, 74, 74)">。</span>
 
-<span style="color: rgb(74, 74, 74)">传统软件里 SQL 有参数化查询可以做隔离，但 LLM 把 System Prompt、用户输入、外部检索内容全部拼成一段文本处理，</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">模型只能靠</span>`语义`<span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">来猜哪些是指令哪些是数据，这个猜测过程就可以被攻击者操纵。</span>
+<span style="color: rgb(74, 74, 74)">传统软件里 SQL 有参数化查询可以做隔离，但 LLM 把 System Prompt、用户输入、外部检索内容全部拼成一段文本处理，</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">模型只能靠</span>`语义`<span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">来猜哪些是指令哪些是数据，<u style="text-decoration-color: rgb(230, 57, 70)">这个猜测过程就可以被攻击者操纵</u>。</span>
 
 <span style="color: rgb(74, 74, 74)">攻击方式分两大类：</span>
 
@@ -27,15 +27,21 @@
 <span style="color: rgb(74, 74, 74)">防护上没有银弹，工程上的正确思路是</span>`纵深防御`<span style="color: rgb(74, 74, 74)">。</span>
 
 1. <span style="color: rgb(74, 74, 74)">输入层做安全检测，既用关键词匹配做粗筛，也用专门的分类模型做</span>`语义级注入检测`<span style="color: rgb(74, 74, 74)">。</span>
-2. <span style="color: rgb(74, 74, 74)">Prompt 架构上，用</span>`分隔符`<span style="color: rgb(74, 74, 74)"><u>隔开不同来源的内容</u>，强化系统指令的约束，</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">在 Prompt 尾部重申核心规则</span><span style="color: rgb(74, 74, 74)">。</span>
-3. <span style="color: rgb(74, 74, 74)">输出层做校验，检查是否泄露系统指令或执行了未授权操作，<u>Agent 的高危工具调用必须经过</u></span>`白名单检查`<span style="color: rgb(74, 74, 74)">。</span>
+2. <span style="color: rgb(74, 74, 74)">Prompt 架构上，<u style="text-decoration-color: #e63946">用</u></span>`分隔符`<span style="color: rgb(74, 74, 74)"><u style="text-decoration-color: #e63946">隔开不同来源的内容</u>，强化系统指令的约束，</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">在 Prompt 尾部重申核心规则</span><span style="color: rgb(74, 74, 74)">。</span>
+3. <span style="color: rgb(74, 74, 74)">输出层做校验，检查是否泄露系统指令或执行了未授权操作，<u style="text-decoration-color: #e63946">Agent 的高危工具调用必须经过</u></span>`白名单检查`<span style="color: rgb(74, 74, 74)"><u style="text-decoration-color: #e63946">。</u></span>
 4. <span style="color: rgb(74, 74, 74)">架构层面坚持</span>`最小权限原则`<span style="color: rgb(74, 74, 74)">，LLM 应用</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">只给它完成功能所必需的权限</span><span style="color: rgb(74, 74, 74)">。</span>
 5. <span style="color: rgb(74, 74, 74)">实际项目中，我们</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">对 RAG 检索回来的外部内容也会做</span>`注入检测`<span style="color: rgb(74, 74, 74)">，不只防用户输入。</span>
 
-> <span style="color: rgb(74, 74, 74)">最后值得一提的是，Prompt 注入之所以难以根治，是因为</span><span style="color: rgb(74, 74, 74); background-color: rgb(255, 243, 205)">自然语言本身不存在像编程语言那样的转义机制</span><span style="color: rgb(74, 74, 74)">，这是 LLM 架构层面的根本限制，短期内只能靠多层防御把风险控制在可接受范围内。</span>
+---
 
+<span style="color: rgb(74, 74, 74)">最后值得一提的是，Prompt 注入之所以难以根治，是因为</span><span style="color: rgb(74, 74, 74); background-color: rgb(255, 243, 205)">自然语言本身不存在像编程语言那样的转义机制</span><span style="color: rgb(74, 74, 74)">，这是 LLM 架构层面的根本限制，短期内只能靠多层防御把风险控制在可接受范围内。</span>
 
 ## 1.1 问题根源
+
+
+
+
+
 
 [https://mp.weixin.qq.com/s/vbD9SB9Y476Kne-IA7Y0Hg](https://mp.weixin.qq.com/s/vbD9SB9Y476Kne-IA7Y0Hg)
 
@@ -213,6 +219,7 @@
 ## 1.5 为什么这个问题本质上很难解决
 
 
+
 <span style="color: rgb(74, 74, 74)">最后有必要说说这个问题在理论层面的困难性，这也是面试中展示思考深度的好机会。</span>
 
 <span style="color: rgb(74, 74, 74)">Prompt 注入的本质是一个</span><span style="color: rgb(0, 0, 0); background-color: rgba(0, 0, 0, 0)">**不可判定问题**</span><span style="color: rgb(74, 74, 74)">的变种。</span>
@@ -225,6 +232,9 @@
 
 <span style="color: rgb(74, 74, 74)">一些研究者提出了可能的长期解决方向：比如让模型在架构层面区分不同来源的输入（类似于给不同来源的 token 打上权限标签），或者开发专门的"指令遵循层"让模型只遵循特定格式/签名的指令。但这些方案目前都还在研究阶段，短期内我们仍然只能依赖纵深防御的工程策略。</span>
 
-<img src="images/1787013925537-9fpf19.png" alt="" width="1024">
+<img src="images/1787013925537-9fpf19.png" alt="" width="641">
+
+
+
 <!-- created: 2026-08-18 08:42:58 -->
-<!-- updated: 2026-08-21 10:47:15 -->
+<!-- updated: 2026-08-28 10:13:26 -->
