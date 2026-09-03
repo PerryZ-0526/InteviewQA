@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 
-// 分类/分组文档列表内的关键字检索面板：
-// 嵌在 BrowseView / ProjectBrowseView 的列表卡片头部，
+// 分类/分组/外部文档分组列表内的关键字检索面板：
+// 嵌在 BrowseView / ProjectBrowseView / ExternalBrowseView 的列表卡片头部，
 // 有关键词时显示全文命中结果（片段 + 次数），无关键词时不占位、由父级显示完整列表。
 
 export interface ScopeSearchHit {
   kind: 'category' | 'project' | 'external';
   category: string;
   filename?: string;
+  /** 仅外部文档命中：索引用 id（外部文档无站内文件名） */
+  extId?: string;
   title: string;
   count: number;
   snippet: string;
@@ -36,7 +38,8 @@ function HighlightSnippet({ text, q }: { text: string; q: string }) {
 }
 
 interface Props {
-  scope: 'category' | 'project';
+  // external：外部文档分组内检索，slug 为分组名（空串 = 未分组）
+  scope: 'category' | 'project' | 'external';
   slug: string;
   onOpen: (hit: ScopeSearchHit) => void;
   /** 有关键词（检索模式激活）时回调 true，父级据此隐藏完整列表 */
@@ -117,7 +120,8 @@ export default function ScopeSearchPanel({ scope, slug, onOpen, onActiveChange }
               title={hit.filename || hit.title}
             >
               <div className="scope-search-item-head">
-                <span className="filename">{hit.filename}</span>
+                {/* 外部文档命中没有站内文件名，隐藏该列 */}
+                {hit.filename && <span className="filename">{hit.filename}</span>}
                 <span className="scope-search-item-title">{hit.title}</span>
                 <span className="scope-search-count-badge">{hit.count} 处</span>
               </div>

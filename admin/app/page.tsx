@@ -51,6 +51,8 @@ export default function Home() {
   const [projectFilename, setProjectFilename] = useState<string | null>(null);
   const [externalDocId, setExternalDocId] = useState<string | null>(null);
   const [browsingExternal, setBrowsingExternal] = useState(false);
+  // 当前浏览的外部文档分组（'' = 未分组）；null = 浏览全部外部文档列表
+  const [selectedExternalGroup, setSelectedExternalGroup] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -414,7 +416,7 @@ export default function Home() {
         addTabToFront(tab);
         activateTab(tab);
         // 记录最近浏览（供侧边栏历史入口一键跳回）
-        pushRecent({ category, filename, title: label });
+        pushRecent({ kind: 'category', category, filename, title: label });
       }
     } catch (e) {
       if (seq !== navSeqRef.current) return;
@@ -753,7 +755,7 @@ export default function Home() {
         addTabToFront(tab);
         activateTab(tab);
         // 随机打开的题目同样计入最近浏览
-        pushRecent({ category: picked.category, filename: picked.filename, title: label });
+        pushRecent({ kind: 'category', category: picked.category, filename: picked.filename, title: label });
       } else {
         showToast('加载失败', 'error');
       }
@@ -846,6 +848,8 @@ export default function Home() {
     const tab: DocTab = { id: tabId, kind: 'project', subdir, filename, label };
     addTabToFront(tab);
     activateTab(tab);
+    // project 文档同样计入最近浏览
+    pushRecent({ kind: 'project', category: subdir, filename, title: label });
   };
 
   // 文档内链接跳转：总是新开一个标签页（同一文档可并存多个标签，id 带序号防冲突）
@@ -879,6 +883,8 @@ export default function Home() {
   const openExternalList = () => {
     deactivateTab();
     setBrowsingExternal(true);
+    // 回到全部外部文档列表：清除分组选中
+    setSelectedExternalGroup(null);
     setSelectedCategory(null);
     setSelectedProjectSubdir(null);
     setSelectedFile(null);
@@ -898,6 +904,8 @@ export default function Home() {
     const tab: DocTab = { id: tabId, kind: 'external', extId: id, label };
     addTabToFront(tab);
     activateTab(tab);
+    // 外部文档同样计入最近浏览（filename 存外部文档 id）
+    pushRecent({ kind: 'external', category: '', filename: id, title: label });
   };
 
   // 打开待入库题单（收集面试题的编辑页）
@@ -1038,6 +1046,7 @@ export default function Home() {
           setSelectedProjectSubdir(null);
           setSelectedFile(null);
           setBrowsingExternal(false);
+          setSelectedExternalGroup(null);
           setView('browse');
         }}
         onSelectProjectSubdir={(subdir) => {
@@ -1046,12 +1055,23 @@ export default function Home() {
           setSelectedCategory(null);
           setSelectedFile(null);
           setBrowsingExternal(false);
+          setSelectedExternalGroup(null);
           setView('browse');
         }}
         onSelectQuestion={(cat, filename) => openQuestion(cat, filename)}
         onSelectTag={openTag}
         onSelectProgram={openProjectDoc}
         onSelectExternalList={openExternalList}
+        onSelectExternalGroup={(group) => {
+          // 与分类/子目录一致：点击外部文档分组打开该分组的文档列表视图
+          deactivateTab();
+          setBrowsingExternal(true);
+          setSelectedExternalGroup(group);
+          setSelectedCategory(null);
+          setSelectedProjectSubdir(null);
+          setSelectedFile(null);
+          setView('browse');
+        }}
         onSelectExternalDoc={openExternalDoc}
         onExternalMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
         onToast={(msg, type) => showToast(msg, type || 'info')}
@@ -1064,6 +1084,7 @@ export default function Home() {
           setSelectedProjectSubdir(null);
           setSelectedFile(null);
           setBrowsingExternal(false);
+          setSelectedExternalGroup(null);
           setView('browse');
         }}
         onMoveQuestion={handleMoveQuestion}
@@ -1073,22 +1094,6 @@ export default function Home() {
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
       />
-
-      {/* 侧边栏折叠后的悬浮展开按钮：固定在左上角 */}
-      {sidebarCollapsed && (
-        <button
-          className="sidebar-expand-btn"
-          onClick={() => setSidebarCollapsed(false)}
-          title="展开侧边栏"
-          aria-label="展开侧边栏"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <line x1="9" y1="4" x2="9" y2="20" />
-            <path d="m16 9-3 3 3 3" />
-          </svg>
-        </button>
-      )}
 
       <div className="main">
         {pendingRestore && (
@@ -1125,7 +1130,7 @@ export default function Home() {
                 : view === 'inbox'
                 ? '待入库题单'
                 : view === 'browse' && browsingExternal
-                ? '外部文档'
+                ? (selectedExternalGroup != null ? (selectedExternalGroup || '未分组') : '外部文档')
                 : view === 'browse' && selectedProjectSubdir
                 ? selectedProjectSubdir
                 : currentCategoryName || '首页'}
@@ -1144,7 +1149,7 @@ export default function Home() {
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                 {selectedCategory ? `${currentCategoryName} — 题目列表` :
                  selectedProjectSubdir ? `${selectedProjectSubdir} — 文档列表` :
-                 browsingExternal ? '外部文档 — 文档列表' :
+                 browsingExternal ? `${selectedExternalGroup != null ? (selectedExternalGroup || '未分组') : '外部文档'} — 文档列表` :
                  '首页 — 全部文档'}
               </span>
             )}
@@ -1201,7 +1206,10 @@ export default function Home() {
 
           {view === 'browse' && browsingExternal && (
             <ExternalBrowseView
-              docs={externalDocs}
+              docs={selectedExternalGroup != null
+                ? externalDocs.filter((d) => (d.group || '') === selectedExternalGroup)
+                : externalDocs}
+              group={selectedExternalGroup}
               onOpenDoc={openExternalDoc}
               onMissing={(path) => showToast('索引失效：文件已移动、重命名或删除。原位置：' + path, 'error')}
             />
@@ -1277,11 +1285,12 @@ export default function Home() {
                   />
                 )}
                 {tab.kind === 'external' && tab.extId && (
+                  // 保存后除更新页面级外部文档列表（标签页标题）外，递增 refreshKey 让 Sidebar 立即重拉 /api/external，与 project 文档行为对齐
                   <ExternalDocView
                     id={tab.extId}
                     onBack={closeActiveTab}
                     onSaveStatusChange={setEditorSaveStatus}
-                    onSaved={() => loadExternalDocs()}
+                    onSaved={() => { loadExternalDocs(); setRefreshKey(k => k + 1); }}
                   />
                 )}
                 {tab.kind === 'form' && (
@@ -1751,24 +1760,40 @@ function fmtMs(ms: number): string {
 
 function ExternalBrowseView({
   docs,
+  group,
   onOpenDoc,
   onMissing,
 }: {
   docs: ExternalDocInfo[];
+  /** 当前浏览的外部文档分组（'' = 未分组）；null = 浏览全部外部文档 */
+  group?: string | null;
   onOpenDoc: (id: string) => void;
   onMissing: (path: string) => void;
 }) {
+  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
+  const [searchActive, setSearchActive] = useState(false);
+  const inGroup = group != null;
   return (
     <div className="card" style={{ padding: 0 }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
-        外部文档 — {docs.length} 篇（按修改时间倒序）
+        {inGroup ? `${group || '未分组'} — ${docs.length} 篇` : `外部文档 — ${docs.length} 篇（按修改时间倒序）`}
       </div>
-      {docs.length === 0 && (
+      {/* 分组内关键字检索：切换分组时重置检索状态（仅分组视图提供，与分类/子目录列表一致） */}
+      {inGroup && (
+        <ScopeSearchPanel
+          key={group}
+          scope="external"
+          slug={group}
+          onOpen={(hit) => hit.extId && onOpenDoc(hit.extId)}
+          onActiveChange={setSearchActive}
+        />
+      )}
+      {docs.length === 0 && !searchActive && (
         <div className="empty-state" style={{ padding: 20 }}>
-          <p>暂无外部文档，点击侧边栏「外部文档」旁的 + 从资源管理器选择</p>
+          <p>{inGroup ? '该分组下暂无文档' : '暂无外部文档，点击侧边栏「外部文档」旁的 + 从资源管理器选择'}</p>
         </div>
       )}
-      {docs.map((doc) => (
+      {!searchActive && docs.map((doc) => (
         <div
           key={doc.id}
           className="question-list-item"

@@ -1,0 +1,36 @@
+{
+  "headings": [
+    {
+      "level": 3,
+      "text": "1. LangGraph State / Checkpoint：不要把完整大 State 原封不动塞 Redis"
+    },
+    {
+      "level": 3,
+      "text": "2. Checkpoint 到底存 MySQL 还是对象存储？"
+    },
+    {
+      "level": 3,
+      "text": "3. Redis 在这里到底存什么？"
+    },
+    {
+      "level": 3,
+      "text": "4. 长期记忆也不能作为“一大坨文本”存"
+    },
+    {
+      "level": 3,
+      "text": "5. 用户画像和长期记忆也必须分开"
+    },
+    {
+      "level": 3,
+      "text": "6. 最终我会把你项目设计成这样"
+    }
+  ],
+  "renames": {
+    "1. LangGraph State / Checkpoint：不要把完整大 State 原封不动塞 Redis": "1. LangGraph State / Checkpoint：不要把完整大 State 原封不动塞 Redis",
+    "2. Checkpoint 到底存 MySQL 还是对象存储？": "2. Checkpoint 到底存 MySQL 还是对象存储？",
+    "3. Redis 在这里到底存什么？": "3. Redis 在这里到底存什么？",
+    "4. 长期记忆也不能作为“一大坨文本”存": "4. 长期记忆也不能作为“一大坨文本”存",
+    "5. 用户画像和长期记忆也必须分开": "5. 用户画像和长期记忆也必须分开",
+    "6. 最终我会把你项目设计成这样": "6. 最终我会把你项目设计成这样"
+  }
+}

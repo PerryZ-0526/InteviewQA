@@ -4,21 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import WysiwygEditor from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import { stripMdText } from '@/lib/stripText';
+import { useTocPref } from '@/lib/useTocPref';
 
 const AUTO_SAVE_DELAY = 400;
-
-interface TocHeading { label: string; level: number; }
-
-function parseHeadings(md: string): TocHeading[] {
-  const headings: TocHeading[] = [];
-  for (const line of md.split('\n')) {
-    const m = line.match(/^(#{1,4})\s+(.+)/);
-    if (m) {
-      headings.push({ level: m[1].length, label: stripMdText(m[2]) });
-    }
-  }
-  return headings;
-}
 
 function fmtTime(ms: number): string {
   const d = new Date(ms);
@@ -47,7 +35,8 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
   const [displayTitle, setDisplayTitle] = useState('');
   const [mtimeMs, setMtimeMs] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
-  const [showToc, setShowToc] = useState(true);
+  // 目录显隐：按文档独立持久化，下次打开同一文档仍保持上次的状态
+  const { showToc, toggleToc } = useTocPref(`external:${id}`);
   const contentRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef('');
@@ -58,8 +47,6 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
     const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存' };
     onSaveStatusChange?.(labels[saveStatus] || '');
   }, [saveStatus, onSaveStatusChange]);
-
-  const headings = parseHeadings(contentRef.current);
 
   useEffect(() => {
     setLoading(true);
@@ -229,20 +216,20 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
             )}
           </div>
         </div>
+        {/* 目录切换按钮：统一放在头部右上角，与题目视图（DocumentEditor）样式一致 */}
+        <button
+          className="btn btn-small btn-secondary doc-toc-toggle"
+          data-expanded={showToc}
+          aria-expanded={showToc}
+          onClick={toggleToc}
+          title={showToc ? '隐藏目录' : '展开目录'}
+          style={{ alignSelf: 'flex-start', flexShrink: 0 }}
+        >
+          {showToc ? '隐藏目录' : '目录'}
+        </button>
       </div>
 
-      {headings.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <button
-            className="btn btn-small btn-secondary"
-            onClick={() => setShowToc(!showToc)}
-            style={{ marginBottom: showToc ? 8 : 0 }}
-          >
-            {showToc ? '隐藏目录' : '目录'}
-          </button>
-          {showToc && <TocPanel headings={headings} sections={[]} />}
-        </div>
-      )}
+      {showToc && <TocPanel />}
 
       <WysiwygEditor
         key={id}

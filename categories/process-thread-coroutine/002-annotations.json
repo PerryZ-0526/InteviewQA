@@ -1,0 +1,9 @@
+[
+  {
+    "id": "mtigfu6s",
+    "quote": "5 毫秒",
+    "text": "可用 sys.setswitchinterval 调整",
+    "createdAt": "2026-09-01 17:18",
+    "fingerPrint": "每执行约 5 毫秒强制释放一"
+  }
+]

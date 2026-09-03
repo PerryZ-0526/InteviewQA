@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listExternalDocs, addExternalPaths, removeExternalDocById, setExternalDocTitle } from '@/lib/externalDocs';
+import { listExternalDocs, listExternalGroups, addExternalPaths, removeExternalDocById } from '@/lib/externalDocs';
 import { appendLog } from '@/lib/logger';
 
 export async function GET() {
   try {
-    const data = await listExternalDocs();
-    return NextResponse.json({ success: true, data });
+    const [data, groups] = await Promise.all([listExternalDocs(), listExternalGroups()]);
+    return NextResponse.json({ success: true, data, groups });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
@@ -18,7 +18,9 @@ export async function POST(req: NextRequest) {
     if (rawPaths.length === 0) {
       return NextResponse.json({ success: false, error: '请提供至少一个文件或文件夹路径' }, { status:400 });
     }
-    const result = await addExternalPaths(rawPaths);
+    // group 可选：从分组内「新增文档」入口添加时，新条目直接加入该分组
+    const group = typeof body.group === 'string' ? body.group : '';
+    const result = await addExternalPaths(rawPaths, group);
     await appendLog({
       action: 'external_add',
       status: result.failed.length > 0 && result.added.length === 0 ? 'fail' : 'success',
@@ -34,28 +36,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH { id, customTitle } → 设置/清除自命名标题（不改动原文件）
-export async function PATCH(req: NextRequest) {
-  try {
-    const { id, customTitle } = await req.json();
-    if (!id) {
-      return NextResponse.json({ success: false, error: '缺少 id' }, { status: 400 });
-    }
-    const result = await setExternalDocTitle(id, typeof customTitle === 'string' ? customTitle : '');
-    if (result === null) {
-      return NextResponse.json({ success: false, error: '索引条目不存在' }, { status: 404 });
-    }
-    await appendLog({
-      action: 'external_rename',
-      status: 'success',
-      detail: JSON.stringify({ path: result.path, customTitle: result.customTitle || '(清除)' }),
-    });
-    return NextResponse.json({ success: true, data: result });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
-  }
-}
-
+// 分组归属与顺序调整统一走 POST /api/external/move（拖拽落点触发）
 export async function DELETE(req: NextRequest) {
   try {
     let id: string | null = null;

@@ -8,3 +8,4 @@
 - [LangGraph 中的 send](004-LangGraph-中的-send.md) - LangGraph 中的 send
 - [LangGraph搭建agent和直接使用claude code+skill搭建agent相比的优势在哪？](005-LangGraph搭建agent和直接使用claude-code+skill搭建agent相比的优势在哪？.md) - LangGraph搭建agent和直接使用claude co
 - [LangGraph中的subgraph](006-LangGraph中的subgraph.md) - LangGraph中的subgraph
+- [langGraph架构中，tool是作为一个函数，还是作为一个node？](007-langGraph架构中，tool是作为一个函数，还是作为一个node？.md) - langGraph架构中，tool是作为一个函数，还是作为一

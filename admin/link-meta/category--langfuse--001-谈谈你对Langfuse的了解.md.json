@@ -1,0 +1,81 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 2,
+      "text": "一、Langfuse 是解决什么问题的"
+    },
+    {
+      "level": 2,
+      "text": "二、核心能力一：Observability，可观测性"
+    },
+    {
+      "level": 2,
+      "text": "三、为什么 Trace 对 Agent 和 RAG 特别重要"
+    },
+    {
+      "level": 2,
+      "text": "四、Langfuse 还能监控 Token、Cost 和 Latency"
+    },
+    {
+      "level": 2,
+      "text": "五、核心能力二：Prompt Management"
+    },
+    {
+      "level": 2,
+      "text": "六、核心能力三：Evaluation"
+    },
+    {
+      "level": 2,
+      "text": "七、Dataset 和 Experiment 为什么重要"
+    },
+    {
+      "level": 2,
+      "text": "八、它和传统 APM 有什么区别"
+    },
+    {
+      "level": 2,
+      "text": "九、部署和接入方式"
+    },
+    {
+      "level": 2,
+      "text": "十、面试最后怎么收口"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "详细解析": "详细解析",
+    "一、Langfuse 是解决什么问题的": "一、Langfuse 是解决什么问题的",
+    "二、核心能力一：Observability，可观测性": "二、核心能力一：Observability，可观测性",
+    "三、为什么 Trace 对 Agent 和 RAG 特别重要": "三、为什么 Trace 对 Agent 和 RAG 特别重要",
+    "四、Langfuse 还能监控 Token、Cost 和 Latency": "四、Langfuse 还能监控 Token、Cost 和 Latency",
+    "五、核心能力二：Prompt Management": "五、核心能力二：Prompt Management",
+    "六、核心能力三：Evaluation": "六、核心能力三：Evaluation",
+    "七、Dataset 和 Experiment 为什么重要": "七、Dataset 和 Experiment 为什么重要",
+    "八、它和传统 APM 有什么区别": "八、它和传统 APM 有什么区别",
+    "九、部署和接入方式": "九、部署和接入方式",
+    "十、面试最后怎么收口": "十、面试最后怎么收口"
+  }
+}

@@ -84,4 +84,5 @@ export interface ExternalDocInfo {
   mtimeMs: number | null;  // 失效时为 null
   addedAt: string;
   missing: boolean;  // 文件已移动/重命名/删除
+  group: string;     // 所属外部文档分组名（空字符串 = 未分组）
 }

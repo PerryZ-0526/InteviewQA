@@ -320,7 +320,7 @@ T4 Advisory：
                  Answer Generator
 ```
 
-<u style="text-decoration-color: #e63946">这样 Orchestrator 的职责就变成了真正意义上的“编排”：**拆任务、定义依赖、选择 Domain、定义预期输出**</u>；至于每一个任务内部到底调用几次 Tool、什么时候重试、什么情况下退出，都由对应 Domain ReAct 自己解决。
+<u style="text-decoration-color: rgb(230, 57, 70)">这样 Orchestrator 的职责就变成了真正意义上的“编排”：**拆任务、定义依赖、选择 Domain、定义预期输出**</u>；至于每一个任务内部到底调用几次 Tool、什么时候重试、什么情况下退出，都由对应 Domain ReAct 自己解决。
 
 我认为这和 Subgraph 的设计也更加一致。父图应该关注：
 ```
@@ -373,9 +373,9 @@ Domain ReAct：
 
 这时如果直接进入 Answer Generator，可能只能输出一个残缺结果。
 
-### 3、`gen-4.3`
+### 3. `gen-4.3`
 
-> 在 Aggregator 后加一个**轻量级全局验收节点**：正常路径只规划一次，只有<u style="text-decoration-color: #e63946">计划真正失败或者出现信息缺口时</u>，才触发一次有限的 Replan。
+> 在 Aggregator 后加一个**轻量级全局验收节点**：正常路径只规划一次，只有<u style="text-decoration-color: rgb(230, 57, 70)">计划真正失败或者出现信息缺口时</u>，才触发一次有限的 Replan。
 ```
 START
   ↓
@@ -418,7 +418,5 @@ Plan → Execute → Validate
 
 这会更符合你现在“Orchestrator + 四个 Domain ReAct Subgraph”的架构，因为 \*\*Domain ReAct 已经负责局部自治，<u style="text-decoration-color: rgb(230, 57, 70)">父层就没有必要再用一个高频大循环重复干预</u>；父层真正应该保留的是跨领域任务规划、依赖管理和异常情况下的全局纠偏。\*\*这也是我认为 gen-4.2 相比 gen-4.1 最实质的架构进步。
 
-
-
 <!-- created: 2026-08-11 16:54:54 -->
-<!-- updated: 2026-08-28 09:48:00 -->
+<!-- updated: 2026-09-02 14:55:38 -->

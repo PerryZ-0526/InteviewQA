@@ -52,6 +52,8 @@ export default function TabBar({ tabs, activeId, onSelect, onClose, onCloseAll }
           data-tab-id={tab.id}
           className={`tab-item ${tab.id === activeId ? 'active' : ''}`}
           onClick={() => onSelect(tab.id)}
+          // 双击标签页关闭该标签（与点击 ❌ 按钮等效）；双击前的两次单击会先触发 onSelect，属于预期行为
+          onDoubleClick={() => onClose(tab.id)}
           title={tab.label}
         >
           <span className="tab-label">{tab.label}</span>
@@ -61,6 +63,8 @@ export default function TabBar({ tabs, activeId, onSelect, onClose, onCloseAll }
               e.stopPropagation();
               onClose(tab.id);
             }}
+            // 阻止双击事件冒泡到标签容器，避免双击 ❌ 按钮时重复触发关闭逻辑
+            onDoubleClick={(e) => e.stopPropagation()}
             title="关闭标签"
           >
             ×

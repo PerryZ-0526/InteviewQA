@@ -6,21 +6,9 @@ import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { stripMdText } from '@/lib/stripText';
 import { scrollToAnchorPathPolling } from '@/lib/domScroll';
+import { useTocPref } from '@/lib/useTocPref';
 
 const AUTO_SAVE_DELAY = 400;
-
-interface TocHeading { label: string; level: number; }
-
-function parseHeadings(md: string): TocHeading[] {
-  const headings: TocHeading[] = [];
-  for (const line of md.split('\n')) {
-    const m = line.match(/^(#{1,4})\s+(.+)/);
-    if (m) {
-      headings.push({ level: m[1].length, label: stripMdText(m[2]) });
-    }
-  }
-  return headings;
-}
 
 function fmtTime(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -51,7 +39,8 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
     const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存' };
     onSaveStatusChange?.(labels[saveStatus] || '');
   }, [saveStatus, onSaveStatusChange]);
-  const [showToc, setShowToc] = useState(true);
+  // 目录显隐：按文档独立持久化，下次打开同一文档仍保持上次的状态
+  const { showToc, toggleToc } = useTocPref(`project:${subdir}/${filename}`);
   const [createdAt, setCreatedAt] = useState('');
   const [updatedAt, setUpdatedAt] = useState('');
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -62,8 +51,6 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
   const mountedRef = useRef(true);
-
-  const headings = parseHeadings(contentRef.current);
 
   useEffect(() => {
     setDisplayTitle('');
@@ -249,20 +236,20 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
             <span style={{ fontSize: 12, color: '#999' }}>修改：{updatedAt}</span>
           </div>
         </div>
+        {/* 目录切换按钮：统一放在头部右上角，与题目视图（DocumentEditor）样式一致 */}
+        <button
+          className="btn btn-small btn-secondary doc-toc-toggle"
+          data-expanded={showToc}
+          aria-expanded={showToc}
+          onClick={toggleToc}
+          title={showToc ? '隐藏目录' : '展开目录'}
+          style={{ alignSelf: 'flex-start', flexShrink: 0 }}
+        >
+          {showToc ? '隐藏目录' : '目录'}
+        </button>
       </div>
 
-      {headings.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <button
-            className="btn btn-small btn-secondary"
-            onClick={() => setShowToc(!showToc)}
-            style={{ marginBottom: showToc ? 8 : 0 }}
-          >
-            {showToc ? '隐藏目录' : '目录'}
-          </button>
-          {showToc && <TocPanel headings={headings} sections={[]} />}
-        </div>
-      )}
+      {showToc && <TocPanel />}
 
       {loading ? (
         <div className="loading-overlay"><div className="loading-spinner" /></div>

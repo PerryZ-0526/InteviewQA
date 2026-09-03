@@ -7,6 +7,7 @@ import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
 import { stripMdText } from '@/lib/stripText';
 import { scrollToAnchorPathPolling } from '@/lib/domScroll';
+import { useTocPref } from '@/lib/useTocPref';
 import type { Question } from '@/lib/types';
 
 const AUTO_SAVE_DELAY = 400;
@@ -38,7 +39,8 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   const [answerLen, setAnswerLen] = useState(0);
   const [analysisLen, setAnalysisLen] = useState(0);
   const [notesLen, setNotesLen] = useState(0);
-  const [showToc, setShowToc] = useState(true);
+  // 目录显隐：按文档独立持久化，下次打开同一题仍保持上次的状态
+  const { showToc, toggleToc } = useTocPref(`category:${category || ''}/${filename || ''}`);
   const [customSections, setCustomSections] = useState<{ title: string; content: string }[]>([]);
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -238,7 +240,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             className="btn btn-small btn-secondary doc-toc-toggle"
             data-expanded={showToc}
             aria-expanded={showToc}
-            onClick={() => setShowToc(!showToc)}
+            onClick={toggleToc}
             title={showToc ? '隐藏目录' : '展开目录'}
           >
             {showToc ? '隐藏目录' : '目录'}
@@ -250,15 +252,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
         </div>
       </div>
 
-      {showToc && (
-        <TocPanel sections={[
-          { id: `${secIdPrefix}-sec-1`, label: '题目' },
-          ...(hiddenSections.has('面试直接答') ? [] : [{ id: `${secIdPrefix}-sec-2`, label: '面试直接答', markdown: answerRef.current }]),
-          ...(hiddenSections.has('详细解析') ? [] : [{ id: `${secIdPrefix}-sec-3`, label: '详细解析', markdown: analysisRef.current }]),
-          ...(hiddenSections.has('我的作答') ? [] : [{ id: `${secIdPrefix}-sec-4`, label: '我的作答', markdown: notesRef.current }]),
-          ...customSections.map((s: any, i: number) => ({ id: `${secIdPrefix}-sec-c${i}`, label: s.title || '未命名', markdown: customRefs.current[i] || s.content })),
-        ]} />
-      )}
+      {showToc && <TocPanel />}
 
       <div className="doc-section" id={`${secIdPrefix}-sec-1`}>
         <div className="doc-section-header">

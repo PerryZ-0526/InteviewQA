@@ -1,91 +1,50 @@
 'use client';
 
-import { isVisibleInLayout, headingMatch } from '@/lib/domScroll';
-import { stripMdText } from '@/lib/stripText';
+import { useEffect, useState } from 'react';
+import { extractTocItems, jumpToTocItem, tocEquals, type TocItem } from '@/lib/toc';
 
-interface TocItem { id: string; label: string; level: 1 | 2 | 3; num?: string; sectionId?: string; }
+/**
+ * 顶部目录栏。与悬浮目录按钮（TocFloat）共用 lib/toc.ts 的 DOM 提取逻辑，
+ * 不再从 markdown 源文本解析标题，保证两处目录内容完全一致。
+ *
+ * Tiptap 标题是异步渲染的、且会随编辑变化，因此挂载后除了首次扫描，
+ * 还通过 MutationObserver + input 事件（捕获阶段，覆盖 contenteditable
+ * 与 input.value 的变化）防抖刷新；结果未变时不触发重渲染。
+ */
+export default function TocPanel() {
+  const [items, setItems] = useState<TocItem[]>([]);
 
-interface Props {
-  sections: { id: string; label: string; markdown?: string }[];
-  headings?: { label: string; level: number }[];
-}
+  useEffect(() => {
+    const refresh = () => {
+      const next = extractTocItems();
+      setItems(prev => (tocEquals(prev, next) ? prev : next));
+    };
+    refresh();
 
-export default function TocPanel({ sections, headings }: Props) {
-  let groups: TocItem[][] = [];
-  let summary: string;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(refresh, 150);
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    document.addEventListener('input', schedule, true);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('input', schedule, true);
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
-  if (headings) {
-    // Flat headings mode: each heading is its own "group" of 1
-    // h1/h2 → level 1, h3 → level 2, h4+ → level 3
-    // 编号仅对 level 1 递增，level 2/3 用 —
-    let lv1Counter = 0;
-    groups = headings.map(h => {
-      const level = (h.level <= 2 ? 1 : h.level === 3 ? 2 : 3) as 1 | 2 | 3;
-      const num = level === 1 ? String(++lv1Counter).padStart(2, '0') : '—';
-      return [{ id: '', label: h.label, level, num }];
-    });
-    summary = `${headings.length} 个标题`;
+  if (items.length === 0) return null;
 
-    if (groups.length === 0) return null;
-
-    return (
-      <nav className="toc-panel" aria-label="文档目录">
-        <div className="toc-heading">
-          <div>
-            <span className="toc-eyebrow">CONTENTS</span>
-            <div className="toc-title">内容导航</div>
-          </div>
-          <span className="toc-summary">{summary}</span>
-        </div>
-        <div className="toc-list">
-          {groups.map((group, groupIndex) => (
-            <div className="toc-group" key={groupIndex}>
-              {group.map((item, itemIndex) => (
-                <a
-                  key={`${item.label}-${itemIndex}`}
-                  href="#"
-                  className={`toc-item toc-l${item.level}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const allH = document.querySelectorAll<HTMLElement>('.tiptap-editor h1, .tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4');
-                    for (const el of Array.from(allH)) {
-                      if (!isVisibleInLayout(el)) continue;
-                      if (headingMatch(el, item.label)) {
-                        el.scrollIntoView({ behavior: 'auto', block: 'start' });
-                        break;
-                      }
-                    }
-                  }}
-                >
-                  <span className="toc-num">{item.num}</span>
-                  <span className="toc-label" title={item.label}>{item.label}</span>
-                </a>
-              ))}
-            </div>
-          ))}
-        </div>
-      </nav>
-    );
+  // 按 level 1 条目切组，保持「每章节一块」的视觉结构
+  const groups: TocItem[][] = [];
+  for (const item of items) {
+    if (item.level === 1 || groups.length === 0) groups.push([item]);
+    else groups[groups.length - 1].push(item);
   }
-
-  // Sections mode
-  for (const sec of sections) {
-    const group: TocItem[] = [{ id: sec.id, label: sec.label, level: 1 }];
-    if (sec.markdown) {
-      const h3s = sec.markdown.match(/^###\s+(.+)/gm);
-      if (h3s) {
-        for (const h of h3s) {
-          const raw = h.replace(/^###\s+/, '').trim();
-          const label = stripMdText(raw);
-          group.push({ id: '', label, level: 2, sectionId: sec.id });
-        }
-      }
-    }
-    groups.push(group);
-  }
-
-  if (groups.length === 0) return null;
-  summary = `${sections.length} 个章节`;
+  const summary = `${groups.length} 个章节`;
 
   return (
     <nav className="toc-panel" aria-label="文档目录">
@@ -98,7 +57,7 @@ export default function TocPanel({ sections, headings }: Props) {
       </div>
       <div className="toc-list">
         {groups.map((group, groupIndex) => (
-          <div className="toc-group" key={group[0].id}>
+          <div className="toc-group" key={groupIndex}>
             {group.map((item, itemIndex) => (
               <a
                 key={`${item.label}-${itemIndex}`}
@@ -106,29 +65,10 @@ export default function TocPanel({ sections, headings }: Props) {
                 className={`toc-item toc-l${item.level}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  if (item.id) {
-                    const target = document.getElementById(item.id);
-                    if (isVisibleInLayout(target)) {
-                      target.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    }
-                  } else {
-                    // 限定在该章节的编辑器内搜索，避免跨章节同名标题误跳
-                    const sectionEl = item.sectionId
-                      ? document.getElementById(item.sectionId)?.closest('.doc-section')
-                      : null;
-                    const scope: Document | Element = sectionEl || document;
-                    const h3s = scope.querySelectorAll('.tiptap-editor h3');
-                    for (const el of h3s) {
-                      if (!isVisibleInLayout(el)) continue;
-                      if (headingMatch(el, item.label)) {
-                        el.scrollIntoView({ behavior: 'auto', block: 'start' });
-                        break;
-                      }
-                    }
-                  }
+                  jumpToTocItem(item);
                 }}
               >
-                <span className="toc-num">{item.num || (item.level === 1 ? String(groupIndex + 1).padStart(2, '0') : '—')}</span>
+                <span className="toc-num">{item.level === 1 ? String(groupIndex + 1).padStart(2, '0') : '—'}</span>
                 <span className="toc-label" title={item.label}>{item.label}</span>
                 {item.level === 1 && <span className="toc-arrow" aria-hidden="true">↘</span>}
               </a>

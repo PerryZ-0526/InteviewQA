@@ -58,6 +58,11 @@ body {
   color: #433855;
   border-bottom: 1px solid #e7e5ea;
   letter-spacing: 0.3px;
+  /* 侧边栏内容向下滚动时，顶部按钮栏固定在顶部不动 */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--sidebar-bg);
 }
 
 .sidebar-home-btn {
@@ -80,35 +85,37 @@ body {
   color: #6c5f7d;
 }
 
-/* 侧边栏折叠态：宽度归零隐藏，由 page.tsx 的悬浮按钮展开 */
+/* 侧边栏折叠态：收窄为最左侧的图标栏，保留顶部功能按钮从上往下竖排展示 */
 .sidebar-collapsed {
-  width: 0;
-  min-width: 0;
-  border-right: none;
-  overflow: hidden;
+  width: 52px;
+  min-width: 52px;
+  overflow: visible; /* 允许最近浏览下拉向右弹出，不被裁剪 */
 }
 
-/* 侧边栏折叠后的悬浮展开按钮：固定在视口左上角 */
-.sidebar-expand-btn {
-  position: fixed;
-  left: 8px;
-  top: 10px;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid #e7e5ea;
-  border-radius: 6px;
-  background: #fff;
-  color: #8a7f95;
-  cursor: pointer;
+/* 侧边栏折叠态头部：功能按钮竖排居中，从上往下一列 */
+.sidebar-collapsed .sidebar-header {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: none;
 }
 
-.sidebar-expand-btn:hover {
-  background: #f0ebf7;
-  color: #6c5f7d;
+/* 侧边栏折叠态按钮放大：图标栏上按钮与图标整体调大，便于点击 */
+.sidebar-collapsed .sidebar-home-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.sidebar-collapsed .sidebar-home-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* 侧边栏折叠态最近浏览下拉：改为从图标栏右侧弹出 */
+.sidebar-collapsed .sidebar-recent-dropdown {
+  top: 0;
+  left: calc(100% + 8px);
 }
 
 /* 最近浏览下拉列表：挂载在顶部按钮组下方 */
@@ -418,6 +425,21 @@ body.sidebar-project-dragging .sidebar-projects {
   opacity: 1;
 }
 body.sidebar-project-dragging [data-sidebar-project-draggable] {
+  cursor: grabbing;
+}
+/* 外部文档独立拖拽区域：支持分组内排序与跨分组移动，不与其他拖拽域互通。 */
+body.sidebar-external-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+body.sidebar-external-dragging .sidebar-section {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+body.sidebar-external-dragging .sidebar-external {
+  opacity: 1;
+}
+body.sidebar-external-dragging [data-sidebar-external-draggable] {
   cursor: grabbing;
 }
 /* 标签栏右侧固定操作区：横向滚动时保持可见 */

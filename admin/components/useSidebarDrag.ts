@@ -65,15 +65,24 @@ const AUTO_EXPAND_DELAY = 500;
 export function useSidebarDrag(opts: {
   onMoveQuestion: (fromCat: string, filename: string, toCat: string, toIndex: number) => void;
   onExpandCategory: (slug: string) => void;
-  scope?: 'category' | 'project';
+  scope?: 'category' | 'project' | 'external';
 }): SidebarDragHandlers {
   const { onMoveQuestion, onExpandCategory, scope = 'category' } = opts;
-  const rowSelector = scope === 'category' ? '[data-sidebar-draggable]' : '[data-sidebar-project-draggable]';
-  const containerSelector = scope === 'category' ? '[data-sidebar-cat]' : '[data-sidebar-project-dir]';
-  const draggingClass = scope === 'category' ? 'sidebar-dragging' : 'sidebar-project-dragging';
+  const rowSelector = scope === 'category'
+    ? '[data-sidebar-draggable]'
+    : scope === 'project' ? '[data-sidebar-project-draggable]' : '[data-sidebar-external-draggable]';
+  const containerSelector = scope === 'category'
+    ? '[data-sidebar-cat]'
+    : scope === 'project' ? '[data-sidebar-project-dir]' : '[data-sidebar-external-dir]';
+  const containerAttr = scope === 'category'
+    ? 'data-sidebar-cat'
+    : scope === 'project' ? 'data-sidebar-project-dir' : 'data-sidebar-external-dir';
+  const draggingClass = scope === 'category'
+    ? 'sidebar-dragging'
+    : scope === 'project' ? 'sidebar-project-dragging' : 'sidebar-external-dragging';
   const getContainerSlug = (el: HTMLElement) => scope === 'category'
     ? el.dataset.sidebarCat
-    : el.dataset.sidebarProjectDir;
+    : scope === 'project' ? el.dataset.sidebarProjectDir : el.dataset.sidebarExternalDir;
   const [state, setState] = useState<SidebarDragState>({ phase: 'idle', item: null, ghost: null, drop: null });
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -197,8 +206,7 @@ export function useSidebarDrag(opts: {
   const captureFlipBefore = (s: DragSession, drop: SidebarDropTarget): FlipBefore => {
     const before = new Map<string, DOMRect>();
     for (const slug of new Set([s.item.category, drop.category])) {
-      const attr = scope === 'category' ? 'data-sidebar-cat' : 'data-sidebar-project-dir';
-      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${attr}="${CSS.escape(slug)}"]`);
+      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${containerAttr}="${CSS.escape(slug)}"]`);
       if (!w) continue;
       for (const r of Array.from(w.querySelectorAll<HTMLElement>(rowSelector))) {
         before.set(`${r.dataset.catSlug}:${r.dataset.filename}`, r.getBoundingClientRect());
@@ -225,8 +233,7 @@ export function useSidebarDrag(opts: {
     }
     if (mode === 'drop' && drop) {
       // 幽灵落进槽位：缩放到 1 并移到指示线位置，淡出
-      const attr = scope === 'category' ? 'data-sidebar-cat' : 'data-sidebar-project-dir';
-      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${attr}="${CSS.escape(drop.category)}"]`);
+      const w = s.scrollEl.querySelector<HTMLElement>(`${containerSelector}[${containerAttr}="${CSS.escape(drop.category)}"]`);
       const wTop = w?.getBoundingClientRect().top ?? s.pointerY;
       ghost.style.transition = 'transform 0.15s ease, opacity 0.15s ease';
       ghost.style.transform = `translate3d(${s.pointerX}px, ${wTop + drop.indicatorTop - 8}px, 0) scale(1)`;
@@ -239,7 +246,7 @@ export function useSidebarDrag(opts: {
       setState({ phase: 'cancelling', item: stateRef.current.item, ghost: stateRef.current.ghost, drop: null });
       window.setTimeout(() => setState({ phase: 'idle', item: null, ghost: null, drop: null }), 130);
     }
-  }, [containerSelector, draggingClass, scope]);
+  }, [containerSelector, containerAttr, draggingClass]);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -256,7 +263,8 @@ export function useSidebarDrag(opts: {
         category,
         filename,
         title: row.dataset.title || filename,
-        chip: filename.slice(0, 3),
+        // 外部文档没有三位序号文件名，幽灵 chip 用通用符号代替
+        chip: scope === 'external' ? '≡' : filename.slice(0, 3),
         originalIndex: siblings.indexOf(row),
       },
       startX: e.clientX,
@@ -312,7 +320,7 @@ export function useSidebarDrag(opts: {
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('keydown', onKey);
     };
-  }, [draggingClass, rowSelector, endDrag]);
+  }, [draggingClass, rowSelector, scope, endDrag]);
 
   return {
     state,

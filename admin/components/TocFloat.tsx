@@ -1,75 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { isVisibleInLayout, findVisibleHeading, headingPlainText } from '@/lib/domScroll';
+import { extractTocItems, jumpToTocItem, type TocItem } from '@/lib/toc';
 
 export default function TocFloat() {
   const [open, setOpen] = useState(false);
   const [sticky, setSticky] = useState(false);
-  const [items, setItems] = useState<{ id: string; label: string; level: 1 | 2 }[]>([]);
+  const [items, setItems] = useState<TocItem[]>([]);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    // 多标签系统下隐藏标签保持挂载（display:none），其中的 .doc-section 会污染模式判断：
-    // 先按可见性过滤，否则打开过分类题目后，项目文档会被误判为结构化模式、目录收集为空
-    const sections = Array.from(document.querySelectorAll<HTMLElement>('.doc-section')).filter(isVisibleInLayout);
-    const toc: { id: string; label: string; level: 1 | 2 }[] = [];
-
-    if (sections.length > 0) {
-      // Structured interview question editor: doc-section + doc-section-label
-      for (const sec of sections) {
-        const label = sec.querySelector<HTMLElement>('.doc-section-label');
-        const customTitle = sec.querySelector<HTMLInputElement>('.doc-custom-title');
-        const secId = sec.id || label?.id || '';
-        if (label && secId) {
-          toc.push({ id: secId, label: label.textContent || '', level: 1 });
-        } else if (customTitle && secId) {
-          // 自定义章节标题是 input，取 value 作为章节名
-          toc.push({ id: secId, label: customTitle.value || '未命名', level: 1 });
-        }
-        const subs = sec.querySelectorAll<HTMLElement>('.tiptap-editor h2, .tiptap-editor h3');
-        for (const el of Array.from(subs)) {
-          // headingPlainText：排除反向索引 chip 文本，得到与目录标签可比的纯文本
-          const label = headingPlainText(el);
-          if (label) toc.push({ id: '', label, level: 2 });
-        }
-      }
-    } else {
-      // Flat editor (project docs): scan headings directly
-      const editors = Array.from(document.querySelectorAll<HTMLElement>('.tiptap-editor'));
-      for (const editor of editors) {
-        if (!isVisibleInLayout(editor)) continue;
-        const headings = editor.querySelectorAll<HTMLElement>('h1, h2, h3');
-        for (const el of Array.from(headings)) {
-          const label = headingPlainText(el);
-          if (label) {
-            const level = el.tagName === 'H1' ? 1 : el.tagName === 'H2' ? 1 : 2;
-            toc.push({ id: '', label, level: level as 1 | 2 });
-          }
-        }
-      }
-    }
-    setItems(toc);
+    // 与顶部目录栏共用同一套基于 DOM 的目录提取逻辑（见 lib/toc.ts）
+    setItems(extractTocItems());
   }, [open]);
 
-  const jump = useCallback((id: string, label: string) => {
+  const jump = useCallback((item: TocItem) => {
     setOpen(false);
     setSticky(false);
-    if (id) {
-      const target = document.getElementById(id);
-      if (isVisibleInLayout(target)) {
-        target.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
-    } else {
-      // 扁平目录项可能来自 h1/h2（项目文档常见），不能只搜 h3
-      const target = findVisibleHeading(
-        document,
-        '.tiptap-editor h1, .tiptap-editor h2, .tiptap-editor h3, .tiptap-editor h4',
-        label,
-      );
-      target?.scrollIntoView({ behavior: 'auto', block: 'start' });
-    }
+    jumpToTocItem(item);
   }, []);
 
   const enter = () => {
@@ -116,7 +65,7 @@ export default function TocFloat() {
             <button
               key={i}
               className={`toc-float-item toc-float-l${item.level}`}
-              onClick={() => jump(item.id, item.label)}
+              onClick={() => jump(item)}
               title={item.label}
             >
               {item.label}

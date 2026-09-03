@@ -61,11 +61,13 @@ async function scanDir(baseDir: string, kind: 'category' | 'project', slug: stri
   return hits;
 }
 
-/** 检索外部文档索引中的所有文档（文件缺失时静默跳过） */
-async function scanExternal(q: string): Promise<FullTextHit[]> {
+/** 检索外部文档索引中的文档（文件缺失时静默跳过）；传入 group 时仅检索该分组（空串 = 未分组） */
+async function scanExternal(q: string, group?: string): Promise<FullTextHit[]> {
   const hits: FullTextHit[] = [];
   const entries = await loadExternalDocs().catch(() => []);
   for (const entry of entries) {
+    // 指定分组时按分组过滤（条目 group 缺省/空白视为未分组）
+    if (group !== undefined && (entry.group?.trim() || '') !== group) continue;
     const content = await fs.readFile(entry.path, 'utf-8').catch(() => '');
     if (!content) continue;
     const h1 = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '');
@@ -73,9 +75,17 @@ async function scanExternal(q: string): Promise<FullTextHit[]> {
     const count = countOccurrences(content, q);
     const titleMatch = title.toLowerCase().includes(q.toLowerCase());
     if (count === 0 && !titleMatch) continue;
-    hits.push({ kind: 'external', category: '', extId: externalDocId(entry.path), title, count, snippet: makeSnippet(content, q) });
+    // 分组检索时 category 记录分组名，全库检索保持空串
+    hits.push({ kind: 'external', category: group ?? '', extId: externalDocId(entry.path), title, count, snippet: makeSnippet(content, q) });
   }
   return hits;
+}
+
+/** 范围检索外部文档分组（group 为空串 = 未分组） */
+export async function searchFullTextExternalGroup(group: string, q: string): Promise<FullTextHit[]> {
+  // 空关键词直接返回，避免 includes('') 恒真导致全部命中
+  if (!q.trim()) return [];
+  return scanExternal(q, group);
 }
 
 /**

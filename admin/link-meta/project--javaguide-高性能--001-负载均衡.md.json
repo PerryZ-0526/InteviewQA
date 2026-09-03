@@ -1,0 +1,111 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "[什么是负载均衡？](https://javaguide.cn/high-performance/load-balancing.html#%E4%BB%80%E4%B9%88%E6%98%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)"
+    },
+    {
+      "level": 2,
+      "text": "[负载均衡分为哪几种？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%88%86%E4%B8%BA%E5%93%AA%E5%87%A0%E7%A7%8D)"
+    },
+    {
+      "level": 3,
+      "text": "[服务端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%8D%E5%8A%A1%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)"
+    },
+    {
+      "level": 3,
+      "text": "[客户端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)"
+    },
+    {
+      "level": 2,
+      "text": "[负载均衡常见的算法有哪些？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%B8%B8%E8%A7%81%E7%9A%84%E7%AE%97%E6%B3%95%E6%9C%89%E5%93%AA%E4%BA%9B)"
+    },
+    {
+      "level": 3,
+      "text": "[随机法](https://javaguide.cn/high-performance/load-balancing.html#%E9%9A%8F%E6%9C%BA%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[轮询法](https://javaguide.cn/high-performance/load-balancing.html#%E8%BD%AE%E8%AF%A2%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[两次随机法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%A4%E6%AC%A1%E9%9A%8F%E6%9C%BA%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[哈希法](https://javaguide.cn/high-performance/load-balancing.html#%E5%93%88%E5%B8%8C%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[一致性 Hash 法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[最小连接法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%8F%E8%BF%9E%E6%8E%A5%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[最少活跃法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%91%E6%B4%BB%E8%B7%83%E6%B3%95)"
+    },
+    {
+      "level": 3,
+      "text": "[最快响应时间法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%BF%AB%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E6%B3%95)"
+    },
+    {
+      "level": 2,
+      "text": "[七层负载均衡可以怎么做？](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%83%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%8F%AF%E4%BB%A5%E6%80%8E%E4%B9%88%E5%81%9A)"
+    },
+    {
+      "level": 3,
+      "text": "[DNS 解析](https://javaguide.cn/high-performance/load-balancing.html#dns-%E8%A7%A3%E6%9E%90)"
+    },
+    {
+      "level": 3,
+      "text": "[反向代理](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86)"
+    },
+    {
+      "level": 3,
+      "text": "[健康检查和摘流量](https://javaguide.cn/high-performance/load-balancing.html#%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E5%92%8C%E6%91%98%E6%B5%81%E9%87%8F)"
+    },
+    {
+      "level": 2,
+      "text": "[客户端负载均衡通常是怎么做的？](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%80%9A%E5%B8%B8%E6%98%AF%E6%80%8E%E4%B9%88%E5%81%9A%E7%9A%84)"
+    },
+    {
+      "level": 2,
+      "text": "[生产落地建议](https://javaguide.cn/high-performance/load-balancing.html#%E7%94%9F%E4%BA%A7%E8%90%BD%E5%9C%B0%E5%BB%BA%E8%AE%AE)"
+    },
+    {
+      "level": 2,
+      "text": "[参考](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%82%E8%80%83)"
+    },
+    {
+      "level": 2,
+      "text": "[写在最后](https://javaguide.cn/high-performance/load-balancing.html#%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E)"
+    }
+  ],
+  "renames": {
+    "[负载均衡分为哪几种？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%88%86%E4%B8%BA%E5%93%AA%E5%87%A0%E7%A7%8D)": "[负载均衡分为哪几种？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%88%86%E4%B8%BA%E5%93%AA%E5%87%A0%E7%A7%8D)",
+    "[服务端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%8D%E5%8A%A1%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)": "[服务端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%8D%E5%8A%A1%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)",
+    "[客户端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)": "[客户端负载均衡](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)",
+    "[负载均衡常见的算法有哪些？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%B8%B8%E8%A7%81%E7%9A%84%E7%AE%97%E6%B3%95%E6%9C%89%E5%93%AA%E4%BA%9B)": "[负载均衡常见的算法有哪些？](https://javaguide.cn/high-performance/load-balancing.html#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%B8%B8%E8%A7%81%E7%9A%84%E7%AE%97%E6%B3%95%E6%9C%89%E5%93%AA%E4%BA%9B)",
+    "[随机法](https://javaguide.cn/high-performance/load-balancing.html#%E9%9A%8F%E6%9C%BA%E6%B3%95)": "[随机法](https://javaguide.cn/high-performance/load-balancing.html#%E9%9A%8F%E6%9C%BA%E6%B3%95)",
+    "[轮询法](https://javaguide.cn/high-performance/load-balancing.html#%E8%BD%AE%E8%AF%A2%E6%B3%95)": "[轮询法](https://javaguide.cn/high-performance/load-balancing.html#%E8%BD%AE%E8%AF%A2%E6%B3%95)",
+    "[两次随机法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%A4%E6%AC%A1%E9%9A%8F%E6%9C%BA%E6%B3%95)": "[两次随机法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%A4%E6%AC%A1%E9%9A%8F%E6%9C%BA%E6%B3%95)",
+    "[哈希法](https://javaguide.cn/high-performance/load-balancing.html#%E5%93%88%E5%B8%8C%E6%B3%95)": "[哈希法](https://javaguide.cn/high-performance/load-balancing.html#%E5%93%88%E5%B8%8C%E6%B3%95)",
+    "[一致性 Hash 法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E6%B3%95)": "[一致性 Hash 法](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%80%E8%87%B4%E6%80%A7-hash-%E6%B3%95)",
+    "[最小连接法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%8F%E8%BF%9E%E6%8E%A5%E6%B3%95)": "[最小连接法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%8F%E8%BF%9E%E6%8E%A5%E6%B3%95)",
+    "[最少活跃法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%91%E6%B4%BB%E8%B7%83%E6%B3%95)": "[最少活跃法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%B0%91%E6%B4%BB%E8%B7%83%E6%B3%95)",
+    "[最快响应时间法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%BF%AB%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E6%B3%95)": "[最快响应时间法](https://javaguide.cn/high-performance/load-balancing.html#%E6%9C%80%E5%BF%AB%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E6%B3%95)",
+    "[七层负载均衡可以怎么做？](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%83%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%8F%AF%E4%BB%A5%E6%80%8E%E4%B9%88%E5%81%9A)": "[七层负载均衡可以怎么做？](https://javaguide.cn/high-performance/load-balancing.html#%E4%B8%83%E5%B1%82%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%8F%AF%E4%BB%A5%E6%80%8E%E4%B9%88%E5%81%9A)",
+    "[DNS 解析](https://javaguide.cn/high-performance/load-balancing.html#dns-%E8%A7%A3%E6%9E%90)": "[DNS 解析](https://javaguide.cn/high-performance/load-balancing.html#dns-%E8%A7%A3%E6%9E%90)",
+    "[反向代理](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86)": "[反向代理](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86)",
+    "[健康检查和摘流量](https://javaguide.cn/high-performance/load-balancing.html#%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E5%92%8C%E6%91%98%E6%B5%81%E9%87%8F)": "[健康检查和摘流量](https://javaguide.cn/high-performance/load-balancing.html#%E5%81%A5%E5%BA%B7%E6%A3%80%E6%9F%A5%E5%92%8C%E6%91%98%E6%B5%81%E9%87%8F)",
+    "[客户端负载均衡通常是怎么做的？](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%80%9A%E5%B8%B8%E6%98%AF%E6%80%8E%E4%B9%88%E5%81%9A%E7%9A%84)": "[客户端负载均衡通常是怎么做的？](https://javaguide.cn/high-performance/load-balancing.html#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%80%9A%E5%B8%B8%E6%98%AF%E6%80%8E%E4%B9%88%E5%81%9A%E7%9A%84)",
+    "[生产落地建议](https://javaguide.cn/high-performance/load-balancing.html#%E7%94%9F%E4%BA%A7%E8%90%BD%E5%9C%B0%E5%BB%BA%E8%AE%AE)": "[生产落地建议](https://javaguide.cn/high-performance/load-balancing.html#%E7%94%9F%E4%BA%A7%E8%90%BD%E5%9C%B0%E5%BB%BA%E8%AE%AE)",
+    "[参考](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%82%E8%80%83)": "[参考](https://javaguide.cn/high-performance/load-balancing.html#%E5%8F%82%E8%80%83)",
+    "[写在最后](https://javaguide.cn/high-performance/load-balancing.html#%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E)": "[写在最后](https://javaguide.cn/high-performance/load-balancing.html#%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E)",
+    "[什么是负载均衡？](https://javaguide.cn/high-performance/load-balancing.html#%E4%BB%80%E4%B9%88%E6%98%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)": "[什么是负载均衡？](https://javaguide.cn/high-performance/load-balancing.html#%E4%BB%80%E4%B9%88%E6%98%AF%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)"
+  }
+}

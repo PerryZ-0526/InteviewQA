@@ -9,6 +9,7 @@ export interface ExternalDocEntry {
   path: string;      // 规范化后的绝对路径
   addedAt: string;   // 加入索引时间 "YYYY-MM-DD HH:mm:ss"
   customTitle?: string; // 自命名标题：仅本项目的显示名映射，不改动原文件
+  group?: string;    // 所属外部文档分组名（缺省/空 = 未分组）
 }
 
 export interface ExternalDocInfo {
@@ -21,6 +22,7 @@ export interface ExternalDocInfo {
   mtimeMs: number | null;
   addedAt: string;
   missing: boolean;
+  group: string;     // 所属外部文档分组名（空字符串 = 未分组）
 }
 
 function fmtTime(d: Date): string {
@@ -47,9 +49,140 @@ export async function loadExternalDocs(): Promise<ExternalDocEntry[]> {
   }
 }
 
-export async function saveExternalDocs(docs: ExternalDocEntry[]): Promise<void> {
+/** 读取文件中已注册的分组名列表（保持注册顺序） */
+async function loadExternalGroupsRaw(): Promise<string[]> {
+  try {
+    const raw = await fs.readFile(EXTERNAL_DOCS_PATH, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.groups) ? parsed.groups : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 保存外部文档索引。
+ * groups 未传入时沿用文件中现有的分组注册表，避免写 docs 时丢失分组。
+ */
+export async function saveExternalDocs(docs: ExternalDocEntry[], groups?: string[]): Promise<void> {
+  const finalGroups = groups ?? (await loadExternalGroupsRaw());
   await fs.mkdir(path.dirname(EXTERNAL_DOCS_PATH), { recursive: true });
-  await fs.writeFile(EXTERNAL_DOCS_PATH, JSON.stringify({ docs }, null, 2), 'utf-8');
+  await fs.writeFile(EXTERNAL_DOCS_PATH, JSON.stringify({ docs, groups: finalGroups }, null, 2), 'utf-8');
+}
+
+/**
+ * 列出全部分组名（注册表顺序）。
+ * 文档条目中引用了但未注册的分组名会自动合并进来，防止悬空引用丢失。
+ */
+export async function listExternalGroups(): Promise<string[]> {
+  const [registered, docs] = await Promise.all([loadExternalGroupsRaw(), loadExternalDocs()]);
+  const seen = new Set(registered);
+  const merged = [...registered];
+  for (const d of docs) {
+    if (d.group && !seen.has(d.group)) {
+      seen.add(d.group);
+      merged.push(d.group);
+    }
+  }
+  return merged;
+}
+
+/** 新建分组。返回更新后的分组名列表。 */
+export async function createExternalGroup(name: string): Promise<string[]> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('分组名不能为空');
+  const groups = await listExternalGroups();
+  if (groups.includes(trimmed)) throw new Error('分组已存在');
+  groups.push(trimmed);
+  await saveExternalDocs(await loadExternalDocs(), groups);
+  return groups;
+}
+
+/** 重命名分组：同步更新注册表和所有条目的 group 字段。返回更新后的分组名列表。 */
+export async function renameExternalGroup(oldName: string, newName: string): Promise<string[]> {
+  const oldTrimmed = oldName.trim();
+  const newTrimmed = newName.trim();
+  if (!newTrimmed) throw new Error('分组名不能为空');
+  const groups = await listExternalGroups();
+  if (!groups.includes(oldTrimmed)) throw new Error('分组不存在');
+  if (oldTrimmed === newTrimmed) return groups;
+  if (groups.includes(newTrimmed)) throw new Error('目标分组名已存在');
+  const docs = await loadExternalDocs();
+  for (const d of docs) {
+    if (d.group === oldTrimmed) d.group = newTrimmed;
+  }
+  const nextGroups = groups.map((g) => (g === oldTrimmed ? newTrimmed : g));
+  await saveExternalDocs(docs, nextGroups);
+  return nextGroups;
+}
+
+/**
+ * 删除分组：条目回到未分组（不删除任何文档索引）。
+ * 返回更新后的分组名列表和被移回未分组的条目数。
+ */
+export async function deleteExternalGroup(name: string): Promise<{ groups: string[]; movedCount: number }> {
+  const trimmed = name.trim();
+  const groups = await listExternalGroups();
+  if (!groups.includes(trimmed)) throw new Error('分组不存在');
+  const docs = await loadExternalDocs();
+  let movedCount = 0;
+  for (const d of docs) {
+    if (d.group === trimmed) {
+      delete d.group;
+      movedCount++;
+    }
+  }
+  const nextGroups = groups.filter((g) => g !== trimmed);
+  await saveExternalDocs(docs, nextGroups);
+  return { groups: nextGroups, movedCount };
+}
+
+/**
+ * 在外部文档分组之间/内部移动条目并指定组内位置（docs 数组顺序即显示顺序）。
+ * toGroup 为空字符串表示移回未分组；toIndex 为「移除被移条目后」目标分组中的
+ * 0-based 插入下标（= 分组内条目数表示追加到末尾），由前端按拖拽落点计算。
+ * 返回 noop 表示原位释放，未发生任何变化。
+ */
+export async function moveExternalDoc(
+  id: string,
+  toGroup: string,
+  toIndex: number
+): Promise<{ noop: boolean }> {
+  const docs = await loadExternalDocs();
+  const idx = docs.findIndex((e) => externalDocId(normalizePath(e.path)) === id);
+  if (idx < 0) throw new Error('索引条目不存在');
+  const target = toGroup.trim();
+  const fromGroup = docs[idx].group?.trim() || '';
+
+  // no-op 判定：同分组且落点等于原位
+  const fromPositions = docs
+    .map((_, i) => i)
+    .filter((i) => (docs[i].group?.trim() || '') === fromGroup);
+  const curPos = fromPositions.indexOf(idx);
+  if (fromGroup === target && Math.round(toIndex) === curPos) return { noop: true };
+
+  const [entry] = docs.splice(idx, 1);
+  if (target) entry.group = target;
+  else delete entry.group;
+
+  // 计算插入位置：目标分组剩余条目中第 toIndex 个之前；追加则放同分组最后一条之后
+  const remaining = docs
+    .map((_, i) => i)
+    .filter((i) => (docs[i].group?.trim() || '') === target);
+  const clamped = Math.max(0, Math.min(Math.round(toIndex), remaining.length));
+  const insertAt = clamped < remaining.length
+    ? remaining[clamped]
+    : remaining.length > 0 ? remaining[remaining.length - 1] + 1 : docs.length;
+  docs.splice(insertAt, 0, entry);
+
+  // 分组未注册时自动补注册，防止悬空引用
+  const groups = await listExternalGroups();
+  if (target && !groups.includes(target)) {
+    await saveExternalDocs(docs, [...groups, target]);
+  } else {
+    await saveExternalDocs(docs);
+  }
+  return { noop: false };
 }
 
 /** 去引号、resolve 为规范化绝对路径（平台分隔符） */
@@ -83,9 +216,11 @@ async function collectMdFiles(target: string): Promise<string[]> {
 /**
  * 添加外部文档路径（单个 .md 文件或目录，目录递归扫描）。
  * 按 resolve 后的路径去重，返回新增/跳过/失败明细。
+ * group 非空时新增条目直接加入该分组（未注册的分组自动补注册）。
  */
 export async function addExternalPaths(
-  inputs: string[]
+  inputs: string[],
+  group?: string
 ): Promise<{ added: string[]; skipped: string[]; failed: { path: string; reason: string }[] }> {
   const existing = new Set((await loadExternalDocs()).map((e) => normalizePath(e.path)));
   const added: string[] = [];
@@ -135,8 +270,17 @@ export async function addExternalPaths(
   if (added.length > 0) {
     const docs = await loadExternalDocs();
     const now = fmtTime(new Date());
+    const targetGroup = group?.trim() || '';
     for (const f of added) {
-      docs.push({ path: f, addedAt: now });
+      docs.push(targetGroup ? { path: f, addedAt: now, group: targetGroup } : { path: f, addedAt: now });
+    }
+    // 目标分组未注册时自动补注册，防止悬空引用
+    if (targetGroup) {
+      const groups = await listExternalGroups();
+      if (!groups.includes(targetGroup)) {
+        await saveExternalDocs(docs, [...groups, targetGroup]);
+        return { added, skipped, failed };
+      }
     }
     await saveExternalDocs(docs);
   }
@@ -175,12 +319,11 @@ function countWordsExternal(md: string): number {
 
 /**
  * 列出全部外部文档（带实时有效性检查）。
- * 排序：有效条目按文件修改时间倒序（最新在上），失效条目排最后（按加入时间倒序）。
+ * 排序：按索引文件中的条目顺序（docs 数组顺序即显示顺序，分组内拖拽排序的结果持久化于此）。
  */
 export async function listExternalDocs(): Promise<ExternalDocInfo[]> {
   const entries = await loadExternalDocs();
-  const valid: ExternalDocInfo[] = [];
-  const missing: ExternalDocInfo[] = [];
+  const infos: ExternalDocInfo[] = [];
 
   for (const entry of entries) {
     const norm = normalizePath(entry.path);
@@ -208,13 +351,12 @@ export async function listExternalDocs(): Promise<ExternalDocInfo[]> {
       mtimeMs,
       addedAt: entry.addedAt,
       missing: isMissing,
+      group: entry.group?.trim() || '',
     };
-    (isMissing ? missing : valid).push(info);
+    infos.push(info);
   }
 
-  valid.sort((a, b) => (b.mtimeMs || 0) - (a.mtimeMs || 0));
-  missing.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
-  return [...valid, ...missing];
+  return infos;
 }
 
 export interface ExternalDocReadResult {
@@ -270,25 +412,4 @@ export async function removeExternalDocById(id: string): Promise<string | null> 
   entries.splice(idx, 1);
   await saveExternalDocs(entries);
   return removed;
-}
-
-/**
- * 设置/清除自命名标题（仅改索引映射，不改动原文件）。
- * customTitle 为空字符串时清除。返回更新后的条目信息或 null（条目不存在）。
- */
-export async function setExternalDocTitle(
-  id: string,
-  customTitle: string
-): Promise<{ path: string; customTitle: string } | null> {
-  const entries = await loadExternalDocs();
-  const entry = entries.find((e) => externalDocId(normalizePath(e.path)) === id);
-  if (!entry) return null;
-  const trimmed = customTitle.trim();
-  if (trimmed) {
-    entry.customTitle = trimmed;
-  } else {
-    delete entry.customTitle;
-  }
-  await saveExternalDocs(entries);
-  return { path: normalizePath(entry.path), customTitle: trimmed };
 }
