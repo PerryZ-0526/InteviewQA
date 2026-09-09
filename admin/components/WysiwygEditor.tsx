@@ -671,6 +671,11 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         orderedList: false,
         listItem: false,
         hardBreak: false,
+        // 关闭 StarterKit v3 内置的 TrailingNode 扩展：当文档末尾不是段落时
+        // （引用、代码块、列表等），它会自动补一个空段落且删除后立刻被重新插入，
+        // 表现为章节末尾"删不掉的空行"；该空段落序列化后还会给保存的 md 文件
+        // 追加多余空行。关闭后点击正文空白处仍有 Gapcursor 兜底，不影响输入。
+        trailingNode: false,
       }),
       // 代码块：text/code 两类标注 + 置信度阈值染色（CodeBlockView + AutoDetectLowlightPlugin）。
       // 节点名仍为 codeBlock，Tab 四空格缩进行为保持不变
@@ -1044,6 +1049,15 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
                 break;
               }
             }
+            return;
+          }
+
+          // 外部链接（http/https）：编辑态下正文是 contenteditable 区域，浏览器点击 <a>
+          // 默认只定位光标不导航，这里显式拦截并新开标签页跳转（与 wiki 链接"点击即跳转"一致）
+          if (/^https?:\/\//i.test(rawHref)) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(rawHref, '_blank', 'noopener,noreferrer');
             return;
           }
 

@@ -4974,6 +4974,13 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
   font-size: 14px;
   line-height: 1.5;
   word-break: break-all;
+  /* 点击文本即可进入行内编辑：用文本光标 + 虚线下划线提示可编辑 */
+  cursor: text;
+}
+
+.inbox-question:hover .inbox-question-text {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 
 /* 已入库（勾选）状态：弱化显示 */
@@ -5022,4 +5029,23 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 
 .inbox-copy-btn.copied {
   color: var(--success);
+}
+
+/* 删除按钮：hover 时红色警示，与复制/编辑按钮同尺寸 */
+.inbox-copy-btn.inbox-del-btn:hover {
+  background: #fdecea;
+  color: var(--danger);
+}
+
+/* 行内编辑输入框：替换题目文本，视觉与行高保持一致 */
+.inbox-edit-input {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
 }

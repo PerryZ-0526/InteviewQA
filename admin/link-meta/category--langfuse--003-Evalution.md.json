@@ -1,0 +1,112 @@
+{
+  "headings": [
+    {
+      "level": 2,
+      "text": "题目"
+    },
+    {
+      "level": 2,
+      "text": "标签"
+    },
+    {
+      "level": 2,
+      "text": "题目导航"
+    },
+    {
+      "level": 2,
+      "text": "面试直接答"
+    },
+    {
+      "level": 3,
+      "text": "在开发阶段，我主要使用 Dataset 和 Experiment 做离线回归测试"
+    },
+    {
+      "level": 3,
+      "text": "评测方法上，我会区分确定性评测和语义评测"
+    },
+    {
+      "level": 3,
+      "text": "对于 Agent，我认为 Langfuse Evaluation 最大的价值是可以从最终结果继续向内部轨迹下钻"
+    },
+    {
+      "level": 2,
+      "text": "详细解析"
+    },
+    {
+      "level": 3,
+      "text": "一、先把 Langfuse Evaluation 的几个核心对象搞清楚"
+    },
+    {
+      "level": 3,
+      "text": "附-解析：”Score 可以挂到 Trace、Observation、Session 或 DatasetRun 上“"
+    },
+    {
+      "level": 3,
+      "text": "二、Langfuse 实际上有哪几种 Evaluation"
+    },
+    {
+      "level": 3,
+      "text": "三、最重要的：Dataset + Experiment 离线评测"
+    },
+    {
+      "level": 3,
+      "text": "四、真正运行一次 Agent Experiment"
+    },
+    {
+      "level": 3,
+      "text": "五、还可以对整个 Experiment 打分"
+    },
+    {
+      "level": 3,
+      "text": "六、LLM-as-a-Judge 怎么实际配置"
+    },
+    {
+      "level": 3,
+      "text": "七、生产环境 Evaluation 和 Experiment 不一样"
+    },
+    {
+      "level": 3,
+      "text": "八、Code Evaluator 和 SDK Evaluator 一定要分清"
+    },
+    {
+      "level": 3,
+      "text": "九、外部系统直接写 Score"
+    },
+    {
+      "level": 3,
+      "text": "十、人工 Evaluation 不是可有可无"
+    },
+    {
+      "level": 3,
+      "text": "十一、对于你这种 LangGraph 多 Agent，我会怎么设计 Evaluation"
+    },
+    {
+      "level": 3,
+      "text": "十二、最终一定要进入 CI/CD"
+    }
+  ],
+  "renames": {
+    "题目": "题目",
+    "标签": "标签",
+    "题目导航": "题目导航",
+    "面试直接答": "面试直接答",
+    "详细解析": "详细解析",
+    "一、先把 Langfuse Evaluation 的几个核心对象搞清楚": "一、先把 Langfuse Evaluation 的几个核心对象搞清楚",
+    "在开发阶段，我主要使用 Dataset 和 Experiment 做离线回归测试": "在开发阶段，我主要使用 Dataset 和 Experiment 做离线回归测试",
+    "评测方法上，我会区分确定性评测和语义评测": "评测方法上，我会区分确定性评测和语义评测",
+    "二、Langfuse 实际上有哪几种 Evaluation": "二、Langfuse 实际上有哪几种 Evaluation",
+    "三、最重要的：Dataset + Experiment 离线评测": "三、最重要的：Dataset + Experiment 离线评测",
+    "四、真正运行一次 Agent Experiment": "四、真正运行一次 Agent Experiment",
+    "五、还可以对整个 Experiment 打分": "五、还可以对整个 Experiment 打分",
+    "六、LLM-as-a-Judge 怎么实际配置": "六、LLM-as-a-Judge 怎么实际配置",
+    "七、生产环境 Evaluation 和 Experiment 不一样": "七、生产环境 Evaluation 和 Experiment 不一样",
+    "八、Code Evaluator 和 SDK Evaluator 一定要分清": "八、Code Evaluator 和 SDK Evaluator 一定要分清",
+    "九、外部系统直接写 Score": "九、外部系统直接写 Score",
+    "十、人工 Evaluation 不是可有可无": "十、人工 Evaluation 不是可有可无",
+    "十一、对于你这种 LangGraph 多 Agent，我会怎么设计 Evaluation": "十一、对于你这种 LangGraph 多 Agent，我会怎么设计 Evaluation",
+    "十二、最终一定要进入 CI/CD": "十二、最终一定要进入 CI/CD",
+    "对于 Agent，我认为 Langfuse Evaluation 最大的价值是可以从最终结果继续向内部轨迹下钻": "对于 Agent，我认为 Langfuse Evaluation 最大的价值是可以从最终结果继续向内部轨迹下钻",
+    "附-解析：”Score 可以挂到 Trace、Observation、Session 或 DatasetRun 上“": "附-解析：”Score 可以挂到 Trace、Observation、Session 或 DatasetRun 上“",
+    "一、先把 Langfuse Evaluatio003-Evalution#详细解析#一、先把 Langfuse Evaluation 的几个核心对象搞清楚n 的几个核心对象搞清楚": "一、先把 Langfuse Evaluation 的几个核心对象搞清楚"
+  }
+}

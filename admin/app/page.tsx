@@ -21,10 +21,12 @@ import ScopeSearchPanel from '@/components/ScopeSearchPanel';
 import TagViewer from '@/components/TagViewer';
 import TabBar from '@/components/TabBar';
 import TabRestoreBar from '@/components/TabRestoreBar';
+import ScrollRestoreBar from '@/components/ScrollRestoreBar';
 import InboxView from '@/components/InboxView';
 import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
 import { stripMdText } from '@/lib/stripText';
 import { dueEntries } from '@/lib/fsrsLogic';
+import { docScrollKey, getDocScroll, setDocScroll } from '@/lib/docScroll';
 import type { FsrsCardData, FsrsStore } from '@/lib/fsrsStore';
 import { loadTabSession, saveTabSession, clearTabSession } from '@/lib/tabSession';
 import { pushRecent } from '@/lib/recent';
@@ -97,6 +99,8 @@ export default function Home() {
   const activeTabIdRef = useRef<string | null>(null);
   tabsRef.current = tabs;
   activeTabIdRef.current = activeTabId;
+  // 阅读位置恢复询问：tabId 为触发询问的标签，pos 为持久化的上次阅读位置，pct 为其占文档总高的百分比（展示用）；null 表示当前无询问
+  const [scrollPrompt, setScrollPrompt] = useState<{ tabId: string; pos: number; pct: number | null } | null>(null);
   // handleWikiLinkOpen 引用了 tabs/activeTabId 等状态，而事件监听器只在视图变化时重绑，
   // 通过 ref 始终调用最新版本，避免监听器持有旧闭包
   const wikiLinkHandlerRef = useRef<(wiki: string, slugHint?: string) => void>(() => {});
@@ -218,6 +222,29 @@ export default function Home() {
   // ---- 多标签管理 ----
   const DOC_VIEWS = ['edit', 'random', 'project-doc', 'external-doc', 'new'] as const;
 
+  // 阅读位置恢复询问条弹出的最小滚动距离：离顶部太近时询问没有意义，直接不问
+  const RESTORE_PROMPT_MIN_SCROLL = 200;
+
+  // 文档标签 → 阅读位置持久化键：category/random/review 统一按分类题目身份记录（与最近浏览口径一致），
+  // 同一文档换不同种类的标签打开也能命中同一条记录
+  const scrollKeyOfTab = (tab: DocTab): string | null => {
+    if (tab.kind === 'category' || tab.kind === 'random' || tab.kind === 'review') {
+      return tab.category && tab.filename ? docScrollKey('category', tab.category, tab.filename) : null;
+    }
+    if (tab.kind === 'project') {
+      return tab.subdir && tab.filename ? docScrollKey('project', tab.subdir, tab.filename) : null;
+    }
+    if (tab.kind === 'external') {
+      return tab.extId ? docScrollKey('external', '', tab.extId) : null;
+    }
+    return null; // 表单标签没有对应文档，不记录
+  };
+
+  // 当前是否正展示某个文档标签面板（activeTabId 命中且 view 是文档类视图）：
+  // 渲染期同步到 ref，供滚动监听判断「这次滚动属于哪个文档」；浏览/标签视图里的滚动不应写进文档的阅读位置
+  const docVisibleRef = useRef(false);
+  docVisibleRef.current = !!activeTabId && DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number]);
+
   const kindToView = (kind: DocTab['kind']) =>
     kind === 'category' ? 'edit' : kind === 'project' ? 'project-doc' : kind === 'external' ? 'external-doc' : kind === 'form' ? 'new' : 'random';
 
@@ -271,6 +298,8 @@ export default function Home() {
     const newTabs = tabs.filter((t) => t.id !== id);
     setTabs(newTabs);
     delete tabScrollsRef.current[id];
+    // 关闭的标签若还挂着阅读位置询问条，一并撤下
+    setScrollPrompt((p) => (p && p.tabId === id ? null : p));
     setTabContents((prev) => {
       const next = { ...prev };
       delete next[id];
@@ -303,6 +332,7 @@ export default function Home() {
   const closeAllTabs = () => {
     if (tabs.length === 0) return;
     tabScrollsRef.current = {};
+    setScrollPrompt(null);
     setTabContents({});
     setTabs([]);
     setActiveTabId(null);
@@ -391,8 +421,67 @@ export default function Home() {
     if (!DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number])) return;
     // 锚点跳转进行中：目标标题定位由编辑器负责，此处不要先恢复/重置滚动位置造成跳动
     if (anchorNavTabRef.current === activeTabId) return;
-    contentRef.current.scrollTop = tabScrollsRef.current[activeTabId] || 0;
+    const saved = tabScrollsRef.current[activeTabId];
+    if (saved != null) {
+      // 会话内有记录（标签间来回切换）：直接恢复，无需询问
+      contentRef.current.scrollTop = saved;
+      return;
+    }
+    // 无会话内记录 = 文档重新打开：回到顶部，若持久化位置离顶部足够远则弹询问条
+    contentRef.current.scrollTop = 0;
+    const tab = tabsRef.current.find((t) => t.id === activeTabId);
+    const key = tab ? scrollKeyOfTab(tab) : null;
+    const rec = key ? getDocScroll(key) : null;
+    if (rec && rec.pos > RESTORE_PROMPT_MIN_SCROLL) {
+      setScrollPrompt({ tabId: activeTabId, pos: rec.pos, pct: rec.pct });
+    }
   }, [activeTabId, view]);
+
+  // ---- 阅读位置持久化记录 ----
+  // 滚动停止 400ms 后写入 localStorage（按文档身份，跨会话有效）。
+  // 标签身份与位置在滚动事件发生时立即捕获，避免防抖等待期间切换标签后把位置写到别的文档头上。
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let pending: { key: string; pos: number; pct: number | null } | null = null;
+    const flush = () => {
+      if (pending) setDocScroll(pending.key, pending.pos, pending.pct);
+      pending = null;
+    };
+    const onScroll = () => {
+      // 非文档视图（浏览/标签列表等）里的滚动不属于任何文档，不记录
+      if (!docVisibleRef.current) return;
+      const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current);
+      const key = tab ? scrollKeyOfTab(tab) : null;
+      if (!key) return;
+      // 百分比按阅读当时的文档总高折算（文档之后被编辑过也不影响这里的展示值）
+      const scrollable = el.scrollHeight - el.clientHeight;
+      const pct = scrollable > 0 ? Math.min(100, Math.round((el.scrollTop / scrollable) * 100)) : null;
+      pending = { key, pos: el.scrollTop, pct };
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, 400);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    // 关闭/刷新页面前把最近一次未落盘的位置写出去
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('beforeunload', flush);
+      if (timer) clearTimeout(timer);
+      flush();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 询问条「恢复位置」：滚回持久化位置，并同步写入会话内记录（切走再切回来保持在恢复位置）
+  const restoreScroll = () => {
+    if (!scrollPrompt || !contentRef.current) return;
+    const { tabId, pos } = scrollPrompt;
+    contentRef.current.scrollTop = pos;
+    tabScrollsRef.current[tabId] = pos;
+    setScrollPrompt(null);
+  };
 
   const openQuestion = async (category: string, filename: string) => {
     const tabId = `cat:${category}:${filename}`;
@@ -1185,6 +1274,15 @@ export default function Home() {
         </header>
 
         {(view === 'edit' || view === 'random' || view === 'project-doc' || view === 'external-doc') && <EditorToolbar />}
+
+        {/* 阅读位置恢复询问条：仅在触发询问的标签处于激活状态时展示，切换标签自动隐藏、切回再现 */}
+        {scrollPrompt && scrollPrompt.tabId === activeTabId && DOC_VIEWS.includes(view as (typeof DOC_VIEWS)[number]) && (
+          <ScrollRestoreBar
+            pct={scrollPrompt.pct}
+            onRestore={restoreScroll}
+            onDismiss={() => setScrollPrompt(null)}
+          />
+        )}
 
         <div className="content" ref={contentRef}>
           {view === 'browse' && selectedCategory && (

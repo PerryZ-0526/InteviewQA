@@ -2,29 +2,31 @@
 
 > <span style="font-size: 1em">在 Claude Code 中创建和使用专门的 AI subagents，用于特定任务的工作流和改进的上下文管理。</span>
 
-<span style="font-size: 1em">Subagents 是处理特定类型任务的专门 AI 助手。当一个辅助任务会用搜索结果、日志或文件内容充斥您的主对话，而您不会再次引用这些内容时，请使用一个 subagent：该 subagent 在自己的上下文中完成这项工作，仅返回摘要。当您不断生成相同类型的工作者并使用相同的指令时，定义一个自定义 subagent。</span>
+<span style="font-size: 1em">Subagents 是<u style="text-decoration-color: #e63946">处理特定类型任务的专门 AI 助手</u>。当一个辅助任务会用搜索结果、日志或文件内容充斥您的主对话，而您不会再次引用这些内容时，请使用一个 subagent：该 subagent 在自己的上下文中完成这项工作，仅返回摘要。当您不断生成相同类型的工作者并使用相同的指令时，定义一个自定义 subagent。</span>
 
-<span style="font-size: 1em">每个 subagent 在自己的 context window 中运行，具有自定义系统提示、特定的工具访问权限和独立的权限。当 Claude 遇到与 subagent 描述相匹配的任务时，它会委托给该 subagent，该 subagent 独立工作并返回结果。要在实践中看到上下文节省，[context window 可视化](https://code.claude.com/docs/zh-CN/context-window) 演示了一个 subagent 在自己的独立窗口中处理研究的会话。</span>
+<span style="font-size: 1em">每个 subagent 在自己的</span> `context window` <span style="font-size: 1em">中运行，具有</span><span style="font-size: 1em; background-color: #fff3cd">自定义系统提示、特定的工具访问权限和独立的权限</span><span style="font-size: 1em">。当 Claude 遇到与 subagent 描述相匹配的任务时，它会委托给该 subagent，该 subagent 独立工作并返回结果。要在实践中看到上下文节省，[context window 可视化](https://code.claude.com/docs/zh-CN/context-window) 演示了一个 subagent 在自己的独立窗口中处理研究的会话。</span>
 
 <span style="font-size: 1em">Subagents 在单个会话中工作。要在并行运行许多独立会话并从一个地方监控它们，请参阅 \[background agents\](003-agent-view.md)。对于相互通信的会话，请参阅 \[agent teams\](004-agent-teams.md)。</span>
 
 <span style="font-size: 1em">Subagents 帮助您：</span>
 
-- <span style="font-size: 1em">**保留上下文**，通过将探索和实现保持在主对话之外</span>
+- <span style="font-size: 1em">**保留上下文**，通过<u style="text-decoration-color: #e63946">将探索和实现保持在主对话之外</u></span>
 - <span style="font-size: 1em">**强制执行约束**，通过限制 subagent 可以使用的工具</span>
 - <span style="font-size: 1em">**跨项目重用配置**，使用用户级 subagents</span>
-- <span style="font-size: 1em">**专门化行为**，为特定领域使用专注的系统提示</span>
+- <span style="font-size: 1em">**专门化行为**，为特定领域使用<u style="text-decoration-color: #e63946">专注的系统提示</u></span>
 - <span style="font-size: 1em">**控制成本**，通过将任务路由到更快、更便宜的模型（如 Haiku）</span>
 
-<span style="font-size: 1em">Claude 使用每个 subagent 的描述来决定何时委托任务。创建 subagent 时，请编写清晰的描述，以便 Claude 知道何时使用它。</span>
+<span style="font-size: 1em">Claude <u style="text-decoration-color: #e63946">使用每个 subagent 的描述来决定何时委托任务</u>。创建 subagent 时，请编写清晰的描述，以便 Claude 知道何时使用它。</span>
 
-<span style="font-size: 1em">Claude Code 包括几个内置 subagents，如 Explore、Plan 和 general-purpose。您也可以创建自定义 subagents 来处理特定任务。</span>
+> <span style="font-size: 1em">Claude Code 包括几个内置 subagents，如 Explore、Plan 和 general-purpose。</span>
+>
+> <span style="font-size: 1em">您也可以创建自定义 subagents 来处理特定任务。</span>
 
 ## <span style="font-size: 1em">内置 subagents</span>
 
-<span style="font-size: 1em">Claude Code 包括内置 subagents，Claude 在适当时自动使用。每个都继承父对话的权限，并有额外的工具限制。</span>
+> <span style="font-size: 1em">Claude Code 包括内置 subagents，Claude 在适当时自动使用。每个都<u style="text-decoration-color: #e63946">继承父对话的权限，并有额外的工具限制</u>。</span>
 
-<span style="font-size: 1em">Explore 和 Plan 会跳过您的 CLAUDE.md 文件和父会话的 git 状态，以保持研究快速且成本低廉。所有其他内置和[自定义 subagent](#%E9%85%8D%E7%BD%AE%20subagents) 都会加载两者。有关到达 subagent 的内容的完整分解，请参阅[启动时加载的内容](#%E5%90%AF%E5%8A%A8%E6%97%B6%E5%8A%A0%E8%BD%BD%E7%9A%84%E5%86%85%E5%AE%B9)。</span>
+<span style="font-size: 1em"><u style="text-decoration-color: #e63946">Explore 和 Plan 会跳过您的 CLAUDE.md 文件和父会话的 git 状态</u>，以保持研究快速且成本低廉。所有其他内置和[自定义 subagent](#%E9%85%8D%E7%BD%AE%20subagents) 都会加载两者。有关到达 subagent 的内容的完整分解，请参阅[启动时加载的内容](#%E5%90%AF%E5%8A%A8%E6%97%B6%E5%8A%A0%E8%BD%BD%E7%9A%84%E5%86%85%E5%AE%B9)。</span>
 
 ### <span style="font-size: 1em">1.</span> `Explore`
 
@@ -34,31 +36,35 @@
 - <span style="font-size: 1em">**Tools**: 只读工具；拒绝访问 Write 和 Edit</span>
 - <span style="font-size: 1em">**Purpose**: 文件发现、代码搜索、代码库探索</span>
 
-<span style="color: rgb(62, 62, 62); font-size: 1em">从 v2.1.198 开始，Explore 继承主对话的模型，而不是始终在 Haiku 上运行。在 Claude API 上，继承的模型限制为 Opus：主对话在更高层级上运行 Explore 时使用 Opus，主对话在 Sonnet 或 Haiku 上运行 Explore 时使用相同的模型。在任何其他提供商上，例如 [**Amazon Bedrock、Google Cloud 的 Agent Platform、Microsoft Foundry 或 AWS 上的 Claude Platform**](https://code.claude.com/docs/zh-CN/third-party-integrations)，Explore 直接继承主对话的模型。名为</span> `Explore` <span style="color: rgb(62, 62, 62); font-size: 1em">的[**用户或项目 subagent**](https://code.claude.com/docs/zh-CN/sub-agents#choose-the-subagent-scope) 会覆盖内置的，并保持其自己的</span> `model` <span style="color: rgb(62, 62, 62); font-size: 1em">字段，因此定义一个带有</span> `model: haiku` <span style="color: rgb(62, 62, 62); font-size: 1em">的来保持探索在较低成本的模型上。当 Claude 需要搜索或理解代码库而不进行更改时，它会委托给 Explore。这样可以将探索结果保持在主对话上下文之外。调用 Explore 时，Claude 指定一个彻底程度级别：**quick** 用于有针对性的查找，**medium** 用于平衡的探索，或 **very thorough** 用于全面分析。</span>
+<span style="color: rgb(62, 62, 62); font-size: 1em">从 v2.1.198 开始，Explore 继承主对话的模型，而不是始终在 Haiku 上运行。在 Claude API 上，继承的模型限制为 Opus：主对话在更高层级上运行 Explore 时使用 Opus，主对话在 Sonnet 或 Haiku 上运行 Explore 时使用相同的模型。在任何其他提供商上，例如 [**Amazon Bedrock、Google Cloud 的 Agent Platform、Microsoft Foundry 或 AWS 上的 Claude Platform**](https://code.claude.com/docs/zh-CN/third-party-integrations)，Explore 直接继承主对话的模型。名为</span> `Explore` <span style="color: rgb(62, 62, 62); font-size: 1em">的[**用户或项目 subagent**](https://code.claude.com/docs/zh-CN/sub-agents#choose-the-subagent-scope) 会覆盖内置的，并保持其自己的</span> `model` <span style="color: rgb(62, 62, 62); font-size: 1em">字段，因此定义一个带有</span> `model: haiku` <span style="color: rgb(62, 62, 62); font-size: 1em">的来保持探索在较低成本的模型上。</span>
+
+<span style="color: rgb(62, 62, 62); font-size: 1em">当 Claude 需要搜索或理解代码库而不进行更改时，它会委托给 Explore。这样可以<u style="text-decoration-color: #e63946">将探索结果保持在主对话上下文之外</u>。</span>
+
+> <span style="color: rgb(62, 62, 62); font-size: 1em">调用 Explore 时，Claude 指定一个</span>`彻底程度级别`<span style="color: rgb(62, 62, 62); font-size: 1em">：**quick** 用于有针对性的查找，**medium** 用于平衡的探索，或 **very thorough** 用于全面分析。</span>
 
 ### <span style="font-size: 1em">2.</span> `Plan`
 
-<span style="color: rgb(62, 62, 62); font-size: 1em">一个研究代理，在 [**plan mode**](https://code.claude.com/docs/zh-CN/permission-modes#analyze-before-you-edit-with-plan-mode) 期间使用，以在呈现计划之前收集上下文。</span>
+<span style="color: rgb(62, 62, 62); font-size: 1em">一个研究代理，在 [**plan mode**](https://code.claude.com/docs/zh-CN/permission-modes#analyze-before-you-edit-with-plan-mode) 期间使用，以<u style="text-decoration-color: #e63946">在呈现计划之前收集上下文</u>。</span>
 
 - <span style="font-size: 1em">**Model**: 从主对话继承</span>
 - <span style="font-size: 1em">**Tools**: 只读工具；拒绝访问 Write 和 Edit</span>
 - <span style="font-size: 1em">**Purpose**: 用于规划的代码库研究</span>
 
-<span style="color: rgb(62, 62, 62); font-size: 1em">当您处于 plan mode 并且 Claude 需要理解您的代码库时，它会将研究委托给 Plan subagent，以便探索输出保持在单独的上下文窗口中，而主对话保持只读。</span>
+> <span style="color: rgb(62, 62, 62); font-size: 1em">当您处于 plan mode 并且 Claude 需要理解您的代码库时，它会将研究委托给 Plan subagent，以便探索输出保持在单独的上下文窗口中，而主对话保持只读。</span>
 
 ### <span style="font-size: 1em">3.</span> `General-purpose`
 
 <span style="color: rgb(62, 62, 62); font-size: 1em">一个能够处理复杂、多步骤任务的代理，需要探索和操作。</span>
 
 - <span style="font-size: 1em">**Model**：从主对话继承</span>
-- <span style="font-size: 1em">**Tools**：</span><span style="font-size: 1em; background-color: #fff3cd">所有工具</span>
+- <span style="font-size: 1em">**Tools**：</span><span style="font-size: 1em; background-color: rgb(255, 243, 205)">所有工具</span>
 - <span style="font-size: 1em">**Purpose**：复杂研究、多步骤操作、代码修改</span>
 
-<span style="color: rgb(62, 62, 62); font-size: 1em">当任务需要探索和修改、复杂推理来解释结果或多个依赖步骤时，Claude 会委托给 general-purpose。</span>
+> <span style="color: rgb(62, 62, 62); font-size: 1em">当任务需要探索和修改、复杂推理来解释结果或多个依赖步骤时，Claude 会委托给 general-purpose。</span>
 
 ### <span style="font-size: 1em">4. 其他</span>
 
-<span style="font-size: 1em">Claude Code 包括用于特定任务的其他辅助代理。这些通常会自动调用，因此您不需要直接使用它们。</span>
+<span style="font-size: 1em">Claude Code 包括<u style="text-decoration-color: #e63946">用于特定任务的其他辅助代理</u>。这些通常会自动调用，因此您不需要直接使用它们。</span>
 
 
 | <span style="font-size: 1em">**Agent**</span>         | <span style="font-size: 1em">**Model**</span> | <span style="font-size: 1em">**Claude 何时使用它**</span>                                                 |
@@ -74,19 +80,22 @@
 - <span style="font-size: 1em">要仅移除内置的</span> `Explore` <span style="font-size: 1em">和</span> `Plan` <span style="font-size: 1em">subagents，请设置</span> `CLAUDE_CODE_DISABLE_EXPLORE_PLAN_AGENTS=1`<span style="font-size: 1em">。Claude 直接读取和探索文件，而不是委托给它们。需要 Claude Code v2.1.198 或更高版本。</span>
 - <span style="font-size: 1em">在[非交互模式](https://code.claude.com/docs/zh-CN/headless) 和 [Agent SDK](https://code.claude.com/docs/zh-CN/agent-sdk/overview) 中，设置</span> `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS=1` <span style="font-size: 1em">以移除所有内置类型并仅提供您自己的。</span>
 
-<span style="font-size: 1em">除了这些内置 subagents，您可以创建自己的，具有自定义提示、工具限制、权限模式、hooks 和 skills。以下部分展示了如何开始和自定义 subagents。</span>
+> <span style="font-size: 1em">除了这些内置 subagents，您可以创建自己的，具有自定义提示、工具限制、权限模式、hooks 和 skills。以下部分展示了如何开始和自定义 subagents。</span>
 
 ## <span style="font-size: 1em">快速入门：创建您的第一个 subagent</span>
 
-<span style="font-size: 1em">Subagents 是带有 YAML frontmatter 的 Markdown 文件。要创建一个，请要求 Claude 为您编写，或者 [自己编写文件](#%E7%BC%96%E5%86%99%20subagent%20%E6%96%87%E4%BB%B6)。</span>
+> <span style="font-size: 1em">Subagents 是</span>`带有 YAML frontmatter 的 Markdown 文件`<span style="font-size: 1em">。</span>
+>
+> <span style="font-size: 1em">要创建一个，请要求 Claude 为您编写，或者 [自己编写文件](#%E7%BC%96%E5%86%99%20subagent%20%E6%96%87%E4%BB%B6)。</span>
 
 <span style="font-size: 1em">从 v2.1.198 开始，</span>`/agents` <span style="font-size: 1em">命令不再打开交互式创建向导；运行它会打印一个提醒，要求您询问 Claude 或直接编辑</span> `.claude/agents/`<span style="font-size: 1em">。Subagent 文件、frontmatter 字段以及</span> `.claude/agents/` <span style="font-size: 1em">和</span> `~/.claude/agents/` <span style="font-size: 1em">位置保持不变；仅删除了终端向导。</span>
 
-<span style="font-size: 1em">本演练创建一个用户级 subagent，用于审查代码并建议改进。</span>
+### <span style="font-size: 1em">本演练创建一个用户级 subagent，用于审查代码并建议改进</span>
+
+### <span style="color: rgb(23, 23, 23); font-size: 16px">1. 要求 Claude 创建 subagent</span>
 
 <span style="font-size: 1em">在 Claude Code 中，描述您想要的 subagent 及其保存位置：</span>
 ```
-```text wrap theme={null}
 Create a personal code-improver subagent in ~/.claude/agents/ that scans
 files and suggests improvements for readability, performance, and best
 practices. It should explain each issue, show the current code, and
@@ -94,11 +103,11 @@ provide an improved version. Make it read-only and have it use Sonnet.
 ```
 
 <span style="font-size: 1em">Claude 使用</span> `name`<span style="font-size: 1em">、</span>`description`<span style="font-size: 1em">、</span>`tools` <span style="font-size: 1em">列表、</span>`model` <span style="font-size: 1em">和系统提示来编写文件。</span>
-```
 
- 打开 \`\~/.claude/agents/code-improver.md\` 并确认 frontmatter 与您的要求相符。结果如下所示：
-```
-```markdown
+### <span style="color: rgb(23, 23, 23); font-size: 16px">2. 审查文件</span>
+
+打开 \\\`\\\~/.claude/agents/code-improver.md\\\` 并确认 frontmatter 与您的要求相符。结果如下所示：
+```code
 ---
 name: code-improver
 description: Scans files and suggests improvements for readability, performance, and best practices. Use after writing or modifying code.
@@ -111,82 +120,84 @@ the problem, show the current code, and provide an improved version.
 ```
 
 <span style="font-size: 1em">因为该文件位于</span> `~/.claude/agents/`<span style="font-size: 1em">，所以 subagent 在您机器上的每个项目中都可用。要将其范围限制在一个项目中，请将其移动到该项目的</span> `.claude/agents/` <span style="font-size: 1em">目录。[选择 subagent 范围](#%E9%80%89%E6%8B%A9%20subagent%20%E8%8C%83%E5%9B%B4) 比较了两者。</span>
-```
 
- 要求 Claude 委托给新的 subagent：
-```
+### <span style="font-size: 1em">3. 尝试一下</span>
+
+要求 Claude 委托给新的 subagent：
 ```text
 Use the code-improver agent to suggest improvements in this project
 ```
 
-<span style="font-size: 1em">Claude 委托给您的新 subagent，它扫描代码库并返回改进建议。</span>
+<span style="font-size: 1em">Claude 委托给您的新 subagent，它<u style="text-decoration-color: #e63946">扫描代码库并返回改进建议</u>。</span>
 
 <span style="font-size: 1em">如果 Claude 找不到新的 subagent，请重新启动 Claude Code 并重试。这仅在会话开始前</span> `~/.claude/agents/` <span style="font-size: 1em">不存在时发生，因为运行中的会话不会检测到新创建的</span> `agents` <span style="font-size: 1em">目录。</span>
-```
+
+---
 
 现在您有了一个 subagent，可以在您机器上的任何项目中使用它来分析代码库并建议改进。
 
-您也可以手动编写 subagent 文件、通过 CLI 标志定义它们，或通过 plugins 分发它们。以下部分涵盖所有配置选项。
+您也可以手动编写 subagent 文件、通过 CLI 标志定义它们，<u style="text-decoration-color: #e63946">或通过 plugins 分发它们</u>。以下部分涵盖所有配置选项。
 
- 在 Claude Code v2.1.197 及更早版本中，\`/agents\` 打开一个交互式向导，其中有一个 \*\*Running\*\* 选项卡列出实时 subagents，以及一个 \*\*Library\*\* 选项卡用于创建、编辑和删除它们。
+> 在 Claude Code v2.1.197 及更早版本中，`/agents` 打开一个交互式向导，其中有一个 Running 选项卡列出实时 subagents，以及一个 Library 选项卡用于创建、编辑和删除它们。
 
 ## 配置 subagents
 
-一个 subagent 的文件位置决定了谁可以使用它，其 frontmatter 决定了它可以做什么。本节涵盖 subagent 文件的位置以及它们支持的每个字段。
+一个 subagent 的<u style="text-decoration-color: #e63946">文件位置决定了谁可以使用它</u>，其 <u style="text-decoration-color: #e63946">frontmatter 决定了它可以做什么</u>。本节涵盖 subagent 文件的位置以及它们支持的每个字段。
 
 ### 选择 subagent 范围
 
 根据范围将 subagent 文件存储在不同的位置。当多个 subagents 共享相同的名称时，Claude Code 使用来自更高优先级位置的那个。
 
 
-| Location              | Scope         | Priority | 如何创建                                                                  |
-| :--------------------- | :------------- | :-------- | :--------------------------------------------------------------------- |
-| 托管设置                  | 组织范围          | 1（最高）    | 通过 [managed settings](https://code.claude.com/docs/zh-CN/settings) 部署 |
-| `--agents` CLI 标志     | 当前会话          | 2        | 启动 Claude Code 时传递 JSON                                               |
-| `.claude/agents/`     | 当前项目          | 3        | 询问 Claude，或手动创建文件                                                     |
-| `~/.claude/agents/`   | 所有您的项目        | 4        | 询问 Claude，或手动创建文件                                                     |
-| Plugin 的 `agents/` 目录 | 启用 plugin 的位置 | 5（最低）    | 与 [plugins](https://code.claude.com/docs/zh-CN/plugins) 一起安装          |
+
+| **Location**          | **Scope**     | **Priority** | **如何创建**                                                                  |
+| :--------------------- | :------------- | :------------ | :------------------------------------------------------------------------- |
+| 托管设置                  | 组织范围          | 1（最高）        | 通过 [**managed settings**](https://code.claude.com/docs/zh-CN/settings) 部署 |
+| `--agents` CLI 标志     | 当前会话          | 2            | 启动 Claude Code 时传递 JSON                                                   |
+| `.claude/agents/`     | 当前项目          | 3            | 询问 Claude，或手动创建文件                                                         |
+| `~/.claude/agents/`   | 所有您的项目        | 4            | 询问 Claude，或手动创建文件                                                         |
+| Plugin 的 `agents/` 目录 | 启用 plugin 的位置 | 5（最低）        | 与 [**plugins**](https://code.claude.com/docs/zh-CN/plugins) 一起安装          |
 
 
-**项目 subagents**（`.claude/agents/`）非常适合特定于代码库的 subagents。将它们检入版本控制，以便您的团队可以协作使用和改进它们。
+项目 subagents（`.claude/agents/`）非常适合特定于代码库的 subagents。将它们检入版本控制，以便您的团队可以协作使用和改进它们。
 
-项目 subagents 通过从当前工作目录向上遍历来发现，因此会扫描那里和存储库根目录之间的每个 `.claude/agents/`。从 v2.1.178 开始，当这些嵌套目录中的多个目录定义相同的 `name` 时，Claude Code 使用最接近工作目录的定义。
+项目 subagents 通过从当前工作目录向上遍历来发现，因此会扫描那里和存储库根目录之间的每个 \`.claude/agents/\`。从 v2.1.178 开始，当这些嵌套目录中的多个目录定义相同的 \`name\` 时，Claude Code 使用最接近工作目录的定义。
 
-使用 `--add-dir` 添加的目录也会被扫描：添加目录内的 `.claude/agents/` 文件夹与项目 subagents 一起加载。有关哪些其他配置类型从 `--add-dir` 加载，请参阅 [Additional directories](https://code.claude.com/docs/zh-CN/permissions#additional-directories-grant-file-access-not-configuration)。要在没有 `--add-dir` 的情况下跨项目共享 subagents，请使用 `~/.claude/agents/` 或 [plugin](https://code.claude.com/docs/zh-CN/plugins)。
+使用 \`--add-dir\` 添加的目录也会被扫描：添加目录内的 \`.claude/agents/\` 文件夹与项目 subagents 一起加载。有关哪些其他配置类型从 \`--add-dir\` 加载，请参阅 \[Additional directories\](https://code.claude.com/docs/zh-CN/permissions#additional-directories-grant-file-access-not-configuration)。要在没有 \`--add-dir\` 的情况下跨项目共享 subagents，请使用 \`\~/.claude/agents/\` 或 \[plugin\](https://code.claude.com/docs/zh-CN/plugins)。
 
-**用户 subagents**（`~/.claude/agents/`）是在所有项目中可用的个人 subagents。
+\*\*用户 subagents\*\*（\`\~/.claude/agents/\`）是在所有项目中可用的个人 subagents。
 
-Claude Code 递归扫描 `.claude/agents/` 和 `~/.claude/agents/`，因此您可以将定义组织到子文件夹中，例如 `agents/review/` 或 `agents/research/`。子目录路径不会影响 subagent 的识别或调用方式，因为身份仅来自 `name` frontmatter 字段。
+Claude Code 递归扫描 \`.claude/agents/\` 和 \`\~/.claude/agents/\`，因此您可以将定义组织到子文件夹中，例如 \`agents/review/\` 或 \`agents/research/\`。子目录路径不会影响 subagent 的识别或调用方式，因为身份仅来自 \`name\` frontmatter 字段。
 
-在整个树中保持 `name` 值唯一：如果同一 `.claude/agents/` 目录下的两个文件（包括其子文件夹）声明相同的名称，Claude Code 仅加载其中一个，由文件系统读取顺序选择，而不是有文档记录的优先级。在嵌套项目目录中，最接近工作目录的定义获胜，如上所述。`/doctor` 设置检查报告同一目录中共享名称的文件，并建议重命名或删除除一个之外的所有文件。在 v2.1.205 之前，`/doctor` 打开一个诊断屏幕，列出重复项并显示哪个定义是活跃的。
+在整个树中保持 \`name\` 值唯一：如果同一 \`.claude/agents/\` 目录下的两个文件（包括其子文件夹）声明相同的名称，Claude Code 仅加载其中一个，由文件系统读取顺序选择，而不是有文档记录的优先级。在嵌套项目目录中，最接近工作目录的定义获胜，如上所述。\`/doctor\` 设置检查报告同一目录中共享名称的文件，并建议重命名或删除除一个之外的所有文件。在 v2.1.205 之前，\`/doctor\` 打开一个诊断屏幕，列出重复项并显示哪个定义是活跃的。
 
-Plugin `agents/` 目录也会被递归扫描。与项目和用户范围不同，plugin 的 `agents/` 目录内的子文件夹成为 [scoped identifier](#%E6%98%BE%E5%BC%8F%E8%B0%83%E7%94%A8%20subagents) 的一部分：plugin `my-plugin` 中位于 `agents/review/security.md` 的文件注册为 `my-plugin:review:security`。
+Plugin \`agents/\` 目录也会被递归扫描。与项目和用户范围不同，plugin 的 \`agents/\` 目录内的子文件夹成为 \[scoped identifier\](#%E6%98%BE%E5%BC%8F%E8%B0%83%E7%94%A8%20subagents) 的一部分：plugin \`my-plugin\` 中位于 \`agents/review/security.md\` 的文件注册为 \`my-plugin:review:security\`。
 
-**CLI 定义的 subagents** 在启动 Claude Code 时作为 JSON 传递。它们仅存在于该会话中，不会保存到磁盘，使其对快速测试或自动化脚本很有用。您可以在单个 `--agents` 调用中定义多个 subagents：
+\*\*CLI 定义的 subagents\*\* 在启动 Claude Code 时作为 JSON 传递。它们仅存在于该会话中，不会保存到磁盘，使其对快速测试或自动化脚本很有用。您可以在单个 \`--agents\` 调用中定义多个 subagents：
 
- \`\`\`bash theme={null} claude --agents '{ "code-reviewer": { "description": "Expert code reviewer. Use proactively after code changes.", "prompt": "You are a senior code reviewer. Focus on code quality, security, and best practices.", "tools": \["Read", "Grep", "Glob", "Bash"\], "model": "sonnet" }, "debugger": { "description": "Debugging specialist for errors and test failures.", "prompt": "You are an expert debugger. Analyze errors, identify root causes, and provide fixes." } }' \`\`\` \`\`\`powershell theme={null} claude --agents @' { "code-reviewer": { "description": "Expert code reviewer. Use proactively after code changes.", "prompt": "You are a senior code reviewer. Focus on code quality, security, and best practices.", "tools": \["Read", "Grep", "Glob", "Bash"\], "model": "sonnet" }, "debugger": { "description": "Debugging specialist for errors and test failures.", "prompt": "You are an expert debugger. Analyze errors, identify root causes, and provide fixes." } } '@ \`\`\`
+ \\\`\\\`\\\`bash theme={null} claude --agents '{ "code-reviewer": { "description": "Expert code reviewer. Use proactively after code changes.", "prompt": "You are a senior code reviewer. Focus on code quality, security, and best practices.", "tools": \\\["Read", "Grep", "Glob", "Bash"\\\], "model": "sonnet" }, "debugger": { "description": "Debugging specialist for errors and test failures.", "prompt": "You are an expert debugger. Analyze errors, identify root causes, and provide fixes." } }' \\\`\\\`\\\` \\\`\\\`\\\`powershell theme={null} claude --agents @' { "code-reviewer": { "description": "Expert code reviewer. Use proactively after code changes.", "prompt": "You are a senior code reviewer. Focus on code quality, security, and best practices.", "tools": \\\["Read", "Grep", "Glob", "Bash"\\\], "model": "sonnet" }, "debugger": { "description": "Debugging specialist for errors and test failures.", "prompt": "You are an expert debugger. Analyze errors, identify root causes, and provide fixes." } } '@ \\\`\\\`\\\`
 
-`--agents` 标志接受 JSON，具有与基于文件的 subagents 相同的 [frontmatter](#%E6%94%AF%E6%8C%81%E7%9A%84%20frontmatter%20%E5%AD%97%E6%AE%B5) 字段：`description`、`prompt`、`tools`、`disallowedTools`、`model`、`permissionMode`、`mcpServers`、`hooks`、`maxTurns`、`skills`、`initialPrompt`、`memory`、`effort`、`background`、`isolation` 和 `color`。对系统提示使用 `prompt`，等同于基于文件的 subagents 中的 markdown 正文。
+\`--agents\` 标志接受 JSON，具有与基于文件的 subagents 相同的 \[frontmatter\](#%E6%94%AF%E6%8C%81%E7%9A%84%20frontmatter%20%E5%AD%97%E6%AE%B5) 字段：\`description\`、\`prompt\`、\`tools\`、\`disallowedTools\`、\`model\`、\`permissionMode\`、\`mcpServers\`、\`hooks\`、\`maxTurns\`、\`skills\`、\`initialPrompt\`、\`memory\`、\`effort\`、\`background\`、\`isolation\` 和 \`color\`。对系统提示使用 \`prompt\`，等同于基于文件的 subagents 中的 markdown 正文。
 
-**托管 subagents** 由组织管理员部署。在 [managed settings directory](https://code.claude.com/docs/zh-CN/settings#settings-files) 内的 `.claude/agents/` 中放置 markdown 文件，使用与项目和用户 subagents 相同的 frontmatter 格式。托管定义优先于具有相同名称的项目和用户 subagents。
+\*\*托管 subagents\*\* 由组织管理员部署。在 \[managed settings directory\](https://code.claude.com/docs/zh-CN/settings#settings-files) 内的 \`.claude/agents/\` 中放置 markdown 文件，使用与项目和用户 subagents 相同的 frontmatter 格式。托管定义优先于具有相同名称的项目和用户 subagents。
 
-**Plugin subagents** 来自您已安装的 [plugins](https://code.claude.com/docs/zh-CN/plugins)。它们与您的自定义 subagents 一起加载，并在 @-mention 类型提前中以其范围名称出现。有关创建 plugin subagents 的详细信息，请参阅 [plugin 组件参考](https://code.claude.com/docs/zh-CN/plugins-reference#agents)。
+\*\*Plugin subagents\*\* 来自您已安装的 \[plugins\](https://code.claude.com/docs/zh-CN/plugins)。它们与您的自定义 subagents 一起加载，并在 @-mention 类型提前中以其范围名称出现。有关创建 plugin subagents 的详细信息，请参阅 \[plugin 组件参考\](https://code.claude.com/docs/zh-CN/plugins-reference#agents)。
 
- 出于安全原因，plugin subagents 不支持 \`hooks\`、\`mcpServers\` 或 \`permissionMode\` frontmatter 字段。加载来自 plugin 的代理时，这些字段被忽略。如果您需要它们，请将代理文件复制到 \`.claude/agents/\` 或 \`\~/.claude/agents/\`。您也可以在 \`settings.json\` 或 \`settings.local.json\` 中向 \[\`permissions.allow\`\](https://code.claude.com/docs/zh-CN/settings#permission-settings) 添加规则，但这些规则适用于整个会话，而不仅仅是 plugin subagent。
+ 出于安全原因，plugin subagents 不支持 \\\`hooks\\\`、\\\`mcpServers\\\` 或 \\\`permissionMode\\\` frontmatter 字段。加载来自 plugin 的代理时，这些字段被忽略。如果您需要它们，请将代理文件复制到 \\\`.claude/agents/\\\` 或 \\\`\\\~/.claude/agents/\\\`。您也可以在 \\\`settings.json\\\` 或 \\\`settings.local.json\\\` 中向 \\\[\\\`permissions.allow\\\`\\\](https://code.claude.com/docs/zh-CN/settings#permission-settings) 添加规则，但这些规则适用于整个会话，而不仅仅是 plugin subagent。
 
-来自任何这些范围的 subagent 定义也可用于 [agent teams](004-agent-teams.md#%E4%B8%BA%E9%98%9F%E5%8F%8B%E4%BD%BF%E7%94%A8%20subagent%20%E5%AE%9A%E4%B9%89)：当生成一个队友时，您可以引用一个 subagent 类型，队友使用其 `tools` 和 `model`，定义的正文作为额外指令附加到队友的系统提示。有关哪些 frontmatter 字段适用于该路径，请参阅 [agent teams](004-agent-teams.md#%E4%B8%BA%E9%98%9F%E5%8F%8B%E4%BD%BF%E7%94%A8%20subagent%20%E5%AE%9A%E4%B9%89)。
+来自任何这些范围的 subagent 定义也可用于 \[agent teams\](004-agent-teams.md#%E4%B8%BA%E9%98%9F%E5%8F%8B%E4%BD%BF%E7%94%A8%20subagent%20%E5%AE%9A%E4%B9%89)：当生成一个队友时，您可以引用一个 subagent 类型，队友使用其 \`tools\` 和 \`model\`，定义的正文作为额外指令附加到队友的系统提示。有关哪些 frontmatter 字段适用于该路径，请参阅 \[agent teams\](004-agent-teams.md#%E4%B8%BA%E9%98%9F%E5%8F%8B%E4%BD%BF%E7%94%A8%20subagent%20%E5%AE%9A%E4%B9%89)。
 
 ### 编写 subagent 文件
 
 Subagent 文件使用 YAML frontmatter 进行配置，然后是 Markdown 中的系统提示：
 
- Claude Code 监视 \`\~/.claude/agents/\` 和 \`.claude/agents/\`。当您在磁盘上添加或编辑 subagent 文件，或要求 Claude 为您编写一个时，Claude Code 会在几秒内检测到更改，下一次委托使用更新的定义，无需重启。
+ Claude Code 监视 \\\`\\\~/.claude/agents/\\\` 和 \\\`.claude/agents/\\\`。当您在磁盘上添加或编辑 subagent 文件，或要求 Claude 为您编写一个时，Claude Code 会在几秒内检测到更改，下一次委托使用更新的定义，无需重启。
 
 两种情况仍然需要重启：
 
-- 监视器仅涵盖会话启动时存在的目录，因此在新 `agents` 目录中创建范围的第一个代理文件后，重启以加载它。
-- 使用 `--disable-slash-commands` 启动的会话根本不监视这些目录。
-```markdown
+- 监视器仅涵盖会话启动时存在的目录，因此在新 \`agents\` 目录中创建范围的第一个代理文件后，重启以加载它。
+- 使用 \`--disable-slash-commands\` 启动的会话根本不监视这些目录。
+\`\`\`markdown
 ---
 name: code-reviewer
 description: Reviews code for quality and best practices
@@ -196,7 +207,6 @@ model: sonnet
 
 You are a code reviewer. When invoked, analyze the code and provide
 specific, actionable feedback on quality, security, and best practices.
-```
 
 <span style="font-size: 1em">Frontmatter 定义了 subagent 的元数据和配置。正文成为指导 subagent 行为的系统提示。Subagents 仅接收此系统提示（加上基本环境详细信息，如工作目录），而不是完整的 Claude Code 系统提示。</span>
 
@@ -359,7 +369,7 @@ Use the Playwright tools to navigate, screenshot, and interact with pages.
 
 - `--strict-mcp-config` <span style="font-size: 1em">和</span> `--bare`
 - [<span style="font-size: 1em">Enterprise managed MCP configuration</span>](https://code.claude.com/docs/zh-CN/managed-mcp)
-- `allowedMcpServers` <span style="font-size: 1em">[和](https://code.claude.com/docs/zh-CN/managed-mcp#policy-based-control-with-allowlists-and-denylists)</span> `deniedMcpServers` <span style="font-size: 1em">[策略](https://code.claude.com/docs/zh-CN/managed-mcp#policy-based-control-with-allowlists-and-denylists)</span>
+- `allowedMcpServers` [<span style="font-size: 1em">和</span>](https://code.claude.com/docs/zh-CN/managed-mcp#policy-based-control-with-allowlists-and-denylists) `deniedMcpServers` [<span style="font-size: 1em">策略</span>](https://code.claude.com/docs/zh-CN/managed-mcp#policy-based-control-with-allowlists-and-denylists)
 
 <span style="font-size: 1em">当其中之一阻止服务器时，Claude Code 会跳过它并显示一个警告，命名被阻止的服务器。</span>
 
@@ -1062,4 +1072,4 @@ chmod +x ./scripts/validate-readonly-query.sh
 - <span style="font-size: 1em">[使用 MCP 服务器](https://code.claude.com/docs/zh-CN/mcp) 为 subagents 提供对外部工具和数据的访问</span>
 
 <!-- created: 2026-08-13 18:20:12 -->
-<!-- updated: 2026-08-19 14:54:22 -->
+<!-- updated: 2026-09-08 10:54:55 -->

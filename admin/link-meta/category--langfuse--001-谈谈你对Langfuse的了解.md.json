@@ -17,47 +17,59 @@
       "text": "面试直接答"
     },
     {
+      "level": 3,
+      "text": "在可观测性方面，Langfuse 主要通过 Trace、Observation 和 Session 来组织数据"
+    },
+    {
+      "level": 3,
+      "text": "第二个重要能力是 Prompt Management"
+    },
+    {
+      "level": 3,
+      "text": "第三个重要能力是 Evaluation，因为大模型返回结果不能简单通过 HTTP 200 判断“业务正确”"
+    },
+    {
       "level": 2,
       "text": "详细解析"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "一、Langfuse 是解决什么问题的"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "二、核心能力一：Observability，可观测性"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "三、为什么 Trace 对 Agent 和 RAG 特别重要"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "四、Langfuse 还能监控 Token、Cost 和 Latency"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "五、核心能力二：Prompt Management"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "六、核心能力三：Evaluation"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "七、Dataset 和 Experiment 为什么重要"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "八、它和传统 APM 有什么区别"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "九、部署和接入方式"
     },
     {
-      "level": 2,
+      "level": 3,
       "text": "十、面试最后怎么收口"
     }
   ],
@@ -76,6 +88,9 @@
     "七、Dataset 和 Experiment 为什么重要": "七、Dataset 和 Experiment 为什么重要",
     "八、它和传统 APM 有什么区别": "八、它和传统 APM 有什么区别",
     "九、部署和接入方式": "九、部署和接入方式",
-    "十、面试最后怎么收口": "十、面试最后怎么收口"
+    "十、面试最后怎么收口": "十、面试最后怎么收口",
+    "在可观测性方面，Langfuse 主要通过 Trace、Observation 和 Session 来组织数据": "在可观测性方面，Langfuse 主要通过 Trace、Observation 和 Session 来组织数据",
+    "第二个重要能力是 Prompt Management": "第二个重要能力是 Prompt Management",
+    "第三个重要能力是 Evaluation，因为大模型返回结果不能简单通过 HTTP 200 判断“业务正确”": "第三个重要能力是 Evaluation，因为大模型返回结果不能简单通过 HTTP 200 判断“业务正确”"
   }
 }

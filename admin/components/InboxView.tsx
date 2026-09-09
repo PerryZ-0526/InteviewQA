@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeQuestionText } from '@/lib/normalize';
 
 interface InboxQuestion {
   text: string;
@@ -19,7 +20,8 @@ interface Props {
 /**
  * 待入库题单编辑页：
  * 上方输入栏支持多题目输入（按换行拆题），下方按批次倒序展示历史题目（最新批次在最上），
- * 全批次题目统一连续编号；每题右侧提供勾选框（标记已入库）与复制按钮。
+ * 全批次题目统一连续编号；每题右侧提供勾选框（标记已入库）、复制与删除按钮，
+ * 题目文本可直接点击进入行内编辑。
  */
 export default function InboxView({ onToast }: Props) {
   const [batches, setBatches] = useState<InboxBatch[]>([]);
@@ -28,7 +30,12 @@ export default function InboxView({ onToast }: Props) {
   const [adding, setAdding] = useState(false);
   // 复制成功的题目 key（`${批次下标}-${题目下标}`），1.5s 内按钮显示为对勾
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  // PUT 串行链：按触发顺序落盘，避免快速连续勾选时慢的旧请求后到覆盖新状态
+  // 正在编辑的题目 key 与其编辑框内容
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  // 编辑防抖定时器：输入即保存，停顿片刻后自动落盘
+  const editTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // PUT 串行链：按触发顺序落盘，避免快速连续操作时慢的旧请求后到覆盖新状态
   const writeChainRef = useRef<Promise<unknown>>(Promise.resolve());
 
   // 输入框按行拆题（去首尾空白、去空行）
@@ -45,6 +52,10 @@ export default function InboxView({ onToast }: Props) {
 
   useEffect(() => {
     loadInbox();
+    // 组件卸载时清理编辑防抖定时器，避免内存泄漏
+    return () => {
+      if (editTimerRef.current) clearTimeout(editTimerRef.current);
+    };
   }, [loadInbox]);
 
   // 题单内容变化时通知侧边栏刷新待处理徽标
@@ -74,14 +85,8 @@ export default function InboxView({ onToast }: Props) {
     setAdding(false);
   };
 
-  const toggleChecked = (batchIndex: number, questionIndex: number) => {
-    const prev = batches;
-    // 乐观更新：先翻转界面状态，再串行落盘，失败时回滚
-    const next = prev.map((b, bi) =>
-      bi === batchIndex
-        ? { ...b, questions: b.questions.map((q, qi) => (qi === questionIndex ? { ...q, checked: !q.checked } : q)) }
-        : b
-    );
+  // 串行落盘：把 next 状态乐观更新到界面并写入服务端，失败时回滚为 prev 并提示
+  const persistBatches = (prev: InboxBatch[], next: InboxBatch[], failMsg: string) => {
     setBatches(next);
     notifySidebar();
     const run = writeChainRef.current.then(async () => {
@@ -94,8 +99,75 @@ export default function InboxView({ onToast }: Props) {
     });
     writeChainRef.current = run.catch(() => {
       setBatches(prev);
-      onToast?.('勾选状态保存失败，已回滚', 'error');
+      onToast?.(failMsg, 'error');
     });
+  };
+
+  const toggleChecked = (batchIndex: number, questionIndex: number) => {
+    const prev = batches;
+    // 乐观更新：先翻转界面状态，再串行落盘，失败时回滚
+    const next = prev.map((b, bi) =>
+      bi === batchIndex
+        ? { ...b, questions: b.questions.map((q, qi) => (qi === questionIndex ? { ...q, checked: !q.checked } : q)) }
+        : b
+    );
+    persistBatches(prev, next, '勾选状态保存失败，已回滚');
+  };
+
+  // 进入编辑态：取消可能存在的未落盘防抖任务，记录题目 key 并把原文本填入编辑框
+  const startEdit = (key: string, text: string) => {
+    if (editTimerRef.current) {
+      clearTimeout(editTimerRef.current);
+      editTimerRef.current = null;
+    }
+    setEditingKey(key);
+    setEditingText(text);
+  };
+
+  // 把编辑中的文本写入本地状态并落盘（先做标点/空格归一化，与服务端保持一致；空文本跳过）
+  const applyEditText = (batchIndex: number, questionIndex: number, raw: string) => {
+    const text = normalizeQuestionText(raw);
+    if (!text) return;
+    const prev = batches;
+    const next = prev.map((b, bi) =>
+      bi === batchIndex
+        ? { ...b, questions: b.questions.map((q, qi) => (qi === questionIndex ? { ...q, text } : q)) }
+        : b
+    );
+    persistBatches(prev, next, '题目修改保存失败，已回滚');
+  };
+
+  // 输入即保存：更新编辑框内容，停顿 600ms 后自动落盘
+  const onEditTextChange = (batchIndex: number, questionIndex: number, value: string) => {
+    setEditingText(value);
+    if (editTimerRef.current) clearTimeout(editTimerRef.current);
+    editTimerRef.current = setTimeout(() => {
+      editTimerRef.current = null;
+      applyEditText(batchIndex, questionIndex, value);
+    }, 600);
+  };
+
+  // 结束编辑态：立即落盘剩余输入（Enter/Esc/失焦均走这里，Esc 不做撤销——输入即已保存）
+  const finishEdit = (batchIndex: number, questionIndex: number) => {
+    if (editTimerRef.current) {
+      clearTimeout(editTimerRef.current);
+      editTimerRef.current = null;
+    }
+    setEditingKey(null);
+    applyEditText(batchIndex, questionIndex, editingText);
+  };
+
+  // 删除题目：批次被删空时本地直接丢弃该批次（与后端 PUT 归一化行为一致，避免残留空批次卡片）
+  const deleteQuestion = (batchIndex: number, questionIndex: number) => {
+    const prev = batches;
+    const next = prev
+      .map((b, bi) =>
+        bi === batchIndex ? { ...b, questions: b.questions.filter((_, qi) => qi !== questionIndex) } : b
+      )
+      .filter((b) => b.questions.length > 0);
+    if (editingKey !== null) setEditingKey(null);
+    persistBatches(prev, next, '题目删除失败，已回滚');
+    onToast?.('已删除该题目', 'success');
   };
 
   const copyQuestion = async (text: string, key: string) => {
@@ -210,10 +282,40 @@ export default function InboxView({ onToast }: Props) {
             {batch.questions.map((q, qi) => {
               const key = `${batch.origIndex}-${qi}`;
               const copied = copiedKey === key;
+              const editing = editingKey === key;
+              // 编辑态：文本替换为行内输入框，输入即保存，失焦/Enter/Esc 结束编辑
+              if (editing) {
+                return (
+                  <div className="inbox-question editing" key={key}>
+                    <span className="inbox-question-index">{batch.start + qi}</span>
+                    <input
+                      className="inbox-edit-input"
+                      value={editingText}
+                      onChange={(e) => onEditTextChange(batch.origIndex, qi, e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === 'Escape') {
+                          e.preventDefault();
+                          // 触发 blur，由统一的失焦逻辑立即落盘并退出编辑
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
+                      onBlur={() => finishEdit(batch.origIndex, qi)}
+                      autoFocus
+                      spellCheck={false}
+                    />
+                  </div>
+                );
+              }
               return (
                 <div className={`inbox-question${q.checked ? ' done' : ''}`} key={key}>
                   <span className="inbox-question-index">{batch.start + qi}</span>
-                  <span className="inbox-question-text" title={q.text}>{q.text}</span>
+                  <span
+                    className="inbox-question-text"
+                    title={`${q.text}\n（点击编辑）`}
+                    onClick={() => startEdit(key, q.text)}
+                  >
+                    {q.text}
+                  </span>
                   <label className="inbox-check" title={q.checked ? '取消入库标记' : '标记为已入库'}>
                     <input
                       type="checkbox"
@@ -236,6 +338,16 @@ export default function InboxView({ onToast }: Props) {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                       </svg>
                     )}
+                  </button>
+                  <button
+                    className="inbox-copy-btn inbox-del-btn"
+                    onClick={() => deleteQuestion(batch.origIndex, qi)}
+                    title="删除题目"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
                   </button>
                 </div>
               );

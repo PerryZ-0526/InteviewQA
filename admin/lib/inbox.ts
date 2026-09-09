@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { PROJECT_ROOT } from './paths';
+import { normalizeQuestionText } from './normalize';
 
 // 待入库题单：收集到的面试题暂存文件（应用数据，与 fsrs.json / external-docs.json 同级）
 const INBOX_FILE = path.join(PROJECT_ROOT, 'admin', 'inbox.md');
@@ -59,13 +60,13 @@ export async function readInbox(): Promise<InboxBatch[]> {
     .filter((b) => b.questions.length > 0);
 }
 
-/** 把批次结构序列化为 md 文本（时间正序书写） */
+/** 把批次结构序列化为 md 文本（时间正序书写；题目文本统一做标点/空格归一化） */
 export function serializeInbox(batches: InboxBatch[]): string {
   const lines: string[] = ['# 待入库题单'];
   for (const batch of batches) {
     lines.push('', `## ${batch.time}`);
     for (const q of batch.questions) {
-      lines.push(`- [${q.checked ? 'x' : ' '}] ${q.text}`);
+      lines.push(`- [${q.checked ? 'x' : ' '}] ${normalizeQuestionText(q.text)}`);
     }
   }
   return lines.join('\n') + '\n';
@@ -77,12 +78,12 @@ export async function writeInbox(batches: InboxBatch[]): Promise<void> {
   await fs.writeFile(INBOX_FILE, serializeInbox(batches), 'utf-8');
 }
 
-/** 追加一个新批次（服务器当前北京时间），返回更新后的全部批次 */
+/** 追加一个新批次（服务器当前北京时间；题目文本入库前先做标点/空格归一化），返回更新后的全部批次 */
 export async function appendInboxBatch(questions: string[]): Promise<InboxBatch[]> {
   const batches = await readInbox();
   batches.push({
     time: beijingNow(),
-    questions: questions.map((text) => ({ text, checked: false })),
+    questions: questions.map((text) => ({ text: normalizeQuestionText(text), checked: false })),
   });
   await writeInbox(batches);
   return batches;

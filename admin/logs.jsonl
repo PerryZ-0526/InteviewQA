@@ -34,9 +34,39 @@
 {"timestamp":"2026-09-03 09:49:00","action":"create_project_doc","status":"success","category":"javaguide-高性能","filename":"002-1.md","detail":"1"}
 {"timestamp":"2026-09-03 09:50:29","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"002-1.md","count":3}
 {"timestamp":"2026-09-03 09:50:34","action":"delete_project_doc","status":"success","category":"javaguide-高性能","filename":"002-1.md"}
-{"timestamp":"2026-09-03 14:14:39","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"001-负载均衡.md","count":19}
-{"timestamp":"2026-09-03 14:28:38","action":"update_question","status":"success","category":"HR","filename":"001-HR面-面试题总结.md","count":14}
+{"timestamp":"2026-09-03 17:19:01","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"001-负载均衡.md","count":85}
+{"timestamp":"2026-09-03 17:15:17","action":"update_question","status":"success","category":"HR","filename":"001-HR面-面试题总结.md","count":15}
 {"timestamp":"2026-09-03 14:22:27","action":"create_empty","status":"success","category":"compute-network","filename":"005-反向代理.md","detail":"反向代理"}
 {"timestamp":"2026-09-03 14:57:48","action":"update_question","status":"success","category":"compute-network","filename":"005-反向代理.md","count":45}
 {"timestamp":"2026-09-03 14:58:11","action":"create_empty","status":"success","category":"langfuse","filename":"001-谈谈你对Langfuse的了解.md","detail":"谈谈你对Langfuse的了解"}
 {"timestamp":"2026-09-03 15:01:16","action":"update_question","status":"success","category":"langfuse","filename":"001-谈谈你对Langfuse的了解.md","count":6}
+{"timestamp":"2026-09-03 15:12:09","action":"annotation_update","status":"success","category":"javaguide-高性能","filename":"001-负载均衡.md","detail":"1 条批注"}
+{"timestamp":"2026-09-03 15:22:27","action":"external_update","status":"success","category":"external","filename":"D:\\rise\\ai-counselor-copilot\\docs_project_portrait\\00-项目面试总结.md"}
+{"timestamp":"2026-09-03 15:30:17","action":"project_doc_update","status":"success","category":"interview-record","filename":"001-面试记录.md","count":135}
+{"timestamp":"2026-09-03 16:00:24","action":"create_project_doc","status":"success","category":"javaguide-高性能","filename":"002-一致性哈希算法.md","detail":"一致性哈希算法"}
+{"timestamp":"2026-09-03 16:40:50","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"002-一致性哈希算法.md","count":41}
+{"timestamp":"2026-09-07 04:16:41","action":"update_question","status":"success","category":"HR","filename":"001-HR面-面试题总结.md","count":15}
+{"timestamp":"2026-09-07 04:47:26","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"001-负载均衡.md","count":106}
+{"timestamp":"2026-09-07 01:30:12","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"002-一致性哈希算法.md","count":3}
+{"timestamp":"2026-09-07 03:44:32","action":"update_question","status":"success","category":"langfuse","filename":"001-谈谈你对Langfuse的了解.md","count":2}
+{"timestamp":"2026-09-07 04:23:35","action":"update_question","status":"success","category":"compute-network","filename":"005-反向代理.md","count":41}
+{"timestamp":"2026-09-07 04:20:19","action":"create_empty","status":"success","category":"Data Structure","filename":"001-如何设计一个map？.md","detail":"如何设计一个map？"}
+{"timestamp":"2026-09-07 04:23:46","action":"update_question","status":"success","category":"compute-network","filename":"003-http-和-https-的区别.md","count":4}
+{"timestamp":"2026-09-07 04:38:12","action":"create_project_doc","status":"success","category":"javaguide-高性能","filename":"003-负载均衡中的会话管理：从-Cookie、Session-到-Redis-共享会话.md","detail":"负载均衡中的会话管理：从 Cookie、Session 到 Redis 共享会话"}
+{"timestamp":"2026-09-07 04:39:04","action":"project_doc_update","status":"success","category":"javaguide-高性能","filename":"003-负载均衡中的会话管理：从-Cookie、Session-到-Redis-共享会话.md","count":4}
+{"timestamp":"2026-09-07 10:32:55","action":"create_project_doc","status":"success","category":"ai-counselor-copilot","filename":"002-模块-1-销售复盘.md","detail":"模块-1 销售复盘"}
+{"timestamp":"2026-09-07 10:33:16","action":"create_project_doc","status":"success","category":"ai-counselor-copilot","filename":"003-模块-2-策略复盘.md","detail":"模块-2 策略复盘"}
+{"timestamp":"2026-09-07 10:41:24","action":"project_doc_update","status":"success","category":"ai-counselor-copilot","filename":"003-模块-2-策略复盘.md","count":16}
+{"timestamp":"2026-09-07 10:41:22","action":"project_doc_update","status":"success","category":"ai-counselor-copilot","filename":"002-模块-1-销售复盘.md","count":17}
+{"timestamp":"2026-09-07 10:35:11","action":"create_project_doc","status":"success","category":"ai-counselor-copilot","filename":"004-模块-3-策略话术.md","detail":"模块-3 策略话术"}
+{"timestamp":"2026-09-07 10:41:27","action":"project_doc_update","status":"success","category":"ai-counselor-copilot","filename":"004-模块-3-策略话术.md","count":8}
+{"timestamp":"2026-09-07 11:43:09","action":"project_doc_update","status":"success","category":"ai-counselor-copilot","filename":"001-项目概览.md","count":2}
+{"timestamp":"2026-09-07 14:32:28","action":"update_question","status":"success","category":"langfuse","filename":"001-谈谈你对Langfuse的了解.md","count":53}
+{"timestamp":"2026-09-07 13:41:36","action":"create_empty","status":"success","category":"langfuse","filename":"002-Evalution.md","detail":"Evalution"}
+{"timestamp":"2026-09-07 14:26:13","action":"update_question","status":"success","category":"langfuse","filename":"002-Evalution.md","count":44}
+{"timestamp":"2026-09-07 14:37:51","action":"create_empty","status":"success","category":"langfuse","filename":"003-Langfuse-prompt-management.md","detail":"Langfuse-prompt management"}
+{"timestamp":"2026-09-07 14:37:53","action":"move_question","status":"success","category":"langfuse","filename":"003-Langfuse-prompt-management.md","detail":"langfuse/003-Langfuse-prompt-management.md → langfuse/002-Langfuse-prompt-management.md @1"}
+{"timestamp":"2026-09-07 14:40:31","action":"update_question","status":"success","category":"langfuse","filename":"002-Langfuse-prompt-management.md","count":23}
+{"timestamp":"2026-09-07 16:46:44","action":"update_question","status":"success","category":"langfuse","filename":"003-Evalution.md","count":120}
+{"timestamp":"2026-09-07 16:39:57","action":"project_doc_update","status":"success","category":"interview-record","filename":"001-面试记录.md","count":39}
+{"timestamp":"2026-09-08 10:54:55","action":"project_doc_update","status":"success","category":"Claude Code Docs","filename":"002-sub-agents.md","count":124}
