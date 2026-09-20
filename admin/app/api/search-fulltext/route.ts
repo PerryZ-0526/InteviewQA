@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchFullTextAll, searchFullTextScoped, searchFullTextExternalGroup } from '@/lib/fulltextSearch';
+import {
+  getFulltextIndexStats,
+  searchFullTextAll,
+  searchFullTextExternalGroup,
+  searchFullTextScoped,
+} from '@/lib/fulltextSearch';
+import { isSafePathSegment } from '@/lib/safePath';
 
 // 全文关键字检索接口：
 // - GET /api/search-fulltext?q=关键字                 -> 全库检索（分类 + project + 分组 + 外部文档）
@@ -18,12 +24,25 @@ export async function GET(req: NextRequest) {
     if ((scope === 'category' || scope === 'project') && !slug) {
       return NextResponse.json({ success: false, error: '缺少 slug 参数' }, { status: 400 });
     }
+    if ((scope === 'category' || scope === 'project') && !isSafePathSegment(slug)) {
+      return NextResponse.json({ success: false, error: 'slug 参数不合法' }, { status: 400 });
+    }
+    const before = getFulltextIndexStats();
     const data = scope === 'category' || scope === 'project'
       ? await searchFullTextScoped(scope, slug, q)
       : scope === 'external'
       ? await searchFullTextExternalGroup(slug, q)
       : await searchFullTextAll(q);
-    return NextResponse.json({ success: true, data });
+    const after = getFulltextIndexStats();
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          'X-Search-Index-Reads': String(after.indexedReads - before.indexedReads),
+          'X-Search-Cache-Hits': String(after.cacheHits - before.cacheHits),
+        },
+      },
+    );
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

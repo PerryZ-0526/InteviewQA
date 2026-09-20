@@ -3,6 +3,7 @@ import path from 'path';
 import { PROJECT_ROOT } from './fileUtils';
 import { TASK_TIMEOUT_MS } from './claudeCode';
 import { finalizeLogEntry, failStaleRunningEntries } from './logger';
+import { createGeneratedQuestion } from './questionRepository';
 
 export const TASKS_DIR = path.join(PROJECT_ROOT, 'admin', 'tasks');
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
@@ -126,6 +127,27 @@ async function readOutputFile(file: string): Promise<string> {
   }
 }
 
+function parseGeneratedOutput(output: string): {
+  category: string;
+  categoryDisplayName?: string;
+  tags: string[];
+  content: string;
+} | null {
+  const metaText = output.match(/===META_START===\s*([\s\S]*?)\s*===META_END===/)?.[1];
+  const content = output.match(/===CONTENT_START===\s*([\s\S]*?)\s*===CONTENT_END===/)?.[1];
+  if (!metaText || !content) return null;
+  const meta = JSON.parse(metaText);
+  if (typeof meta.category !== 'string' || !Array.isArray(meta.tags)) {
+    throw new Error('AI 输出的元数据格式不合法');
+  }
+  return {
+    category: meta.category,
+    categoryDisplayName: typeof meta.categoryDisplayName === 'string' ? meta.categoryDisplayName : undefined,
+    tags: meta.tags.filter((tag: unknown): tag is string => typeof tag === 'string'),
+    content,
+  };
+}
+
 /**
  * 对账单个任务：pid 存活判定 + 30 分钟超时上限 + 输出文件 FILE_CREATED 解析 + 快照兜底。
  * 幂等：非 running 状态直接返回。
@@ -152,6 +174,28 @@ export async function reconcileTask(id: string): Promise<GenTask | null> {
 
     // pid 已死：检查输出文件定成败
     const out = await readOutputFile(task.outputFile);
+    try {
+      const generated = parseGeneratedOutput(out);
+      if (generated) {
+        const created = await createGeneratedQuestion({
+          category: task.category || generated.category,
+          categoryDisplayName: generated.categoryDisplayName,
+          tags: task.tags.length > 0 ? task.tags : generated.tags,
+          content: generated.content,
+        });
+        await finalizeTask(task, 'success', {
+          filename: created.filename,
+          resolvedCategory: created.category,
+        });
+        return task;
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'AI 输出落盘失败';
+      await finalizeTask(task, 'fail', { error: message });
+      return task;
+    }
+
+    // 兼容迁移前已经启动、仍由 Claude Code 直接写文件的任务。
     const otherKeys = await otherTaskQuestionKeys(task.id);
     const marker = out.match(/FILE_CREATED:\s*(.+\.md)/);
     if (marker) {

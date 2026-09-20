@@ -3,6 +3,7 @@ import path from 'path';
 import { backupBeforeWrite } from './backup';
 import { PROJECT_ROOT } from './paths';
 import { stripMdText } from './stripText';
+import { assertSafePathSegment, isMarkdownFilename } from './safePath';
 
 export { PROJECT_ROOT };
 
@@ -13,8 +14,14 @@ const PROJECT_DIR = path.join(PROJECT_ROOT, 'project');
 const GROUPS_DIR = path.join(PROJECT_ROOT, 'groups');
 const LINK_META_DIR = path.join(PROJECT_ROOT, 'admin', 'link-meta');
 
+function assertDocumentPath(parent: string, filename: string): void {
+  assertSafePathSegment(parent, '目录名');
+  if (!isMarkdownFilename(filename)) throw new Error('Markdown 文件名不合法');
+}
+
 /** 解析 project 子目录/分组目录的真实磁盘位置（groups/ 下存在则优先） */
 export async function resolveSubdirBase(subdir: string): Promise<string> {
+  assertSafePathSegment(subdir, '子目录名');
   try {
     await fs.access(path.join(GROUPS_DIR, subdir));
     return GROUPS_DIR;
@@ -47,10 +54,7 @@ function countWords(md: string): number {
  */
 export async function listCategories() {
   const entries = await fs.readdir(CATEGORIES_DIR, { withFileTypes: true });
-  const categories = [];
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+  const categories = await Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
     const categoryPath = path.join(CATEGORIES_DIR, entry.name);
     const files = await fs.readdir(categoryPath);
 
@@ -67,8 +71,7 @@ export async function listCategories() {
       .filter((f) => f.match(/^\d{3}-.+\.md$/) && f !== '00-index.md')
       .sort();
 
-    const questions = [];
-    for (const f of questionFiles) {
+    const questions = await Promise.all(questionFiles.map(async (f) => {
       let title = f.replace(/^\d{3}-/, '').replace(/\.md$/, '');
       let wordCount = 0;
       try {
@@ -77,16 +80,16 @@ export async function listCategories() {
         if (h1) title = stripMdText(h1[1]);
         wordCount = countWords(content);
       } catch {}
-      questions.push({ filename: f, title, wordCount });
-    }
+      return { filename: f, title, wordCount };
+    }));
 
-    categories.push({
+    return {
       slug: entry.name,
       name: displayName,
       questionCount: questionFiles.length,
       questions,
-    });
-  }
+    };
+  }));
 
   return categories.sort((a, b) => a.slug.localeCompare(b.slug));
 }
@@ -95,6 +98,7 @@ export async function listCategories() {
  * 读取分类下的一道题目
  */
 export async function readQuestion(category: string, filename: string) {
+  assertDocumentPath(category, filename);
   const filePath = path.join(CATEGORIES_DIR, category, filename);
   const content = await fs.readFile(filePath, 'utf-8');
   return content;
@@ -104,6 +108,7 @@ export async function readQuestion(category: string, filename: string) {
  * 直接写入题目文件（更新用）
  */
 export async function writeQuestion(category: string, filename: string, content: string) {
+  assertDocumentPath(category, filename);
   const filePath = path.join(CATEGORIES_DIR, category, filename);
   await fs.writeFile(filePath, content, 'utf-8');
 }
@@ -112,6 +117,7 @@ export async function writeQuestion(category: string, filename: string, content:
  * 删除题目文件
  */
 export async function deleteQuestion(category: string, filename: string) {
+  assertDocumentPath(category, filename);
   const filePath = path.join(CATEGORIES_DIR, category, filename);
   await fs.unlink(filePath);
 }
@@ -145,6 +151,7 @@ function applyRenameMapsToContent(content: string, renameMap: Map<string, string
  * 获取分类目录下的最大序号
  */
 export async function getMaxSequence(category: string): Promise<number> {
+  assertSafePathSegment(category, '分类名');
   const categoryPath = path.join(CATEGORIES_DIR, category);
   const files = await fs.readdir(categoryPath);
   let max = 0;
@@ -164,6 +171,7 @@ export async function getMaxSequence(category: string): Promise<number> {
  * 返回旧文件名 → 新文件名的映射。
  */
 export async function renumberCategoryAfterDelete(category: string, deletedFilename: string): Promise<Map<string, string>> {
+  assertDocumentPath(category, deletedFilename);
   return renumberDirAfterDelete(
     path.join(CATEGORIES_DIR, category),
     path.join('categories', category),
@@ -180,6 +188,7 @@ export async function renumberCategoryAfterDelete(category: string, deletedFilen
  * 返回旧文件名 -> 新文件名的映射。
  */
 export async function renumberProjectSubdirAfterDelete(subdir: string, deletedFilename: string): Promise<Map<string, string>> {
+  assertDocumentPath(subdir, deletedFilename);
   const base = await resolveSubdirBase(subdir);
   const relBase = path.relative(PROJECT_ROOT, base); // 'project' 或 'groups'
   return renumberDirAfterDelete(
@@ -276,6 +285,7 @@ async function renumberDirAfterDelete(
 
 /** 按当前磁盘文件顺序重建分类下所有文档的题目导航链接 */
 export async function fixNavigationChain(category: string): Promise<void> {
+  assertSafePathSegment(category, '分类名');
   await fixNavigationChainInDir(path.join(CATEGORIES_DIR, category), path.join('categories', category));
 }
 
@@ -310,6 +320,7 @@ async function fixNavigationChainInDir(dirPath: string, relDir: string): Promise
 
 /** 从磁盘文件重建分类 00-index.md */
 export async function rebuildCategoryIndex(category: string): Promise<void> {
+  assertSafePathSegment(category, '分类名');
   const catDir = path.join(CATEGORIES_DIR, category);
   const indexPath = path.join(catDir, '00-index.md');
 
@@ -479,6 +490,7 @@ export async function listTags() {
  * 检查分类目录是否存在
  */
 export async function categoryExists(slug: string): Promise<boolean> {
+  assertSafePathSegment(slug, '分类名');
   try {
     await fs.access(path.join(CATEGORIES_DIR, slug));
     return true;
@@ -579,6 +591,7 @@ export async function listProjectDocs() {
 
 /** 在 groups/ 目录下创建分组（侧边栏独立区块） */
 export async function createGroupSubdir(slug: string, displayName: string): Promise<void> {
+  assertSafePathSegment(slug, '分组名');
   const dirPath = path.join(GROUPS_DIR, slug);
   await fs.mkdir(dirPath, { recursive: true });
   const indexContent = `# ${displayName} - 分组文档索引\n\n## 文档列表\n\n`;
@@ -594,6 +607,7 @@ export async function createGroupSubdir(slug: string, displayName: string): Prom
  * 读取 project/<subdir>/ 或 groups/<subdir>/ 下的一篇文档
  */
 export async function readProjectDoc(subdir: string, filename: string): Promise<string | null> {
+  assertDocumentPath(subdir, filename);
   try {
     const base = await resolveSubdirBase(subdir);
     const filePath = path.join(base, subdir, filename);
@@ -604,6 +618,7 @@ export async function readProjectDoc(subdir: string, filename: string): Promise<
 }
 
 export async function writeProjectDoc(subdir: string, filename: string, content: string): Promise<void> {
+  assertDocumentPath(subdir, filename);
   const base = await resolveSubdirBase(subdir);
   const filePath = path.join(base, subdir, filename);
   await fs.writeFile(filePath, content, 'utf-8');
@@ -657,6 +672,7 @@ async function syncProjectIndex(base: string, subdir: string, filename: string, 
 
 /** 创建新分类目录 + 00-index.md */
 export async function createCategory(slug: string, displayName: string): Promise<void> {
+  assertSafePathSegment(slug, '分类名');
   const dirPath = path.join(CATEGORIES_DIR, slug);
   await fs.mkdir(dirPath, { recursive: true });
   const indexContent = `# ${displayName} - 题目索引\n\n## 题目列表\n\n`;
@@ -665,6 +681,7 @@ export async function createCategory(slug: string, displayName: string): Promise
 
 /** 获取 project/groups 子目录下的最大序号 */
 export async function getProjectMaxSequence(subdir: string): Promise<number> {
+  assertSafePathSegment(subdir, '子目录名');
   const base = await resolveSubdirBase(subdir);
   const dirPath = path.join(base, subdir);
   const files = await fs.readdir(dirPath);
@@ -681,6 +698,7 @@ export async function getProjectMaxSequence(subdir: string): Promise<number> {
 
 /** 创建 project 子目录 + 00-index.md */
 export async function createProjectSubdir(slug: string, displayName: string): Promise<void> {
+  assertSafePathSegment(slug, '子目录名');
   const dirPath = path.join(PROJECT_DIR, slug);
   await fs.mkdir(dirPath, { recursive: true });
   const indexContent = `# ${displayName} - 项目文档索引\n\n## 文档列表\n\n`;
@@ -689,6 +707,7 @@ export async function createProjectSubdir(slug: string, displayName: string): Pr
 
 /** 在 project/groups 子目录下创建文档 */
 export async function createProjectDocFile(subdir: string, filename: string, title: string): Promise<void> {
+  assertDocumentPath(subdir, filename);
   const base = await resolveSubdirBase(subdir);
   const filePath = path.join(base, subdir, filename);
   const content = `# ${title}\n\n`;
@@ -796,6 +815,8 @@ export async function moveCategoryQuestion(
   to: string,
   toIndex: number,
 ): Promise<MoveResult> {
+  assertDocumentPath(from, filename);
+  assertSafePathSegment(to, '目标分类名');
   const fromDir = path.join(CATEGORIES_DIR, from);
   const toDir = path.join(CATEGORIES_DIR, to);
 
@@ -995,6 +1016,8 @@ export async function moveProjectDoc(
   to: string,
   toIndex: number,
 ): Promise<MoveResult> {
+  assertDocumentPath(from, filename);
+  assertSafePathSegment(to, '目标目录名');
   const source = await listProjectSubdirFiles(from);
   const originalIndex = source.files.indexOf(filename);
   if (originalIndex < 0) throw new Error(`源文档不存在: ${from}/${filename}`);
@@ -1128,7 +1151,5 @@ export async function moveProjectDoc(
     throw error;
   }
 }
-
-
 
 

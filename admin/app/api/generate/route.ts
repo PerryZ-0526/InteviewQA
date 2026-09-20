@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { PROJECT_ROOT } from '@/lib/fileUtils';
 import { spawnClaudeDetached, buildGeneratePrompt } from '@/lib/claudeCode';
 import { logCreateStart } from '@/lib/logger';
+import { isSafePathSegment } from '@/lib/safePath';
 import {
   TASKS_DIR,
   createTaskFile,
@@ -23,10 +24,12 @@ export async function POST(req: NextRequest) {
   let category = '';
   try {
     const body = await req.json();
-    question = body.question || '';
-    category = body.category || '';
-    const tags = body.tags || [];
-    const extraRequirements = body.extraRequirements || '';
+    question = typeof body.question === 'string' ? body.question : '';
+    category = typeof body.category === 'string' ? body.category.trim() : '';
+    const tags: string[] = Array.isArray(body.tags)
+      ? body.tags.filter((tag: unknown): tag is string => typeof tag === 'string')
+      : [];
+    const extraRequirements = typeof body.extraRequirements === 'string' ? body.extraRequirements : '';
     const includeAnswer = body.includeAnswer !== false;
     const includeAnalysis = body.includeAnalysis !== false;
 
@@ -35,6 +38,12 @@ export async function POST(req: NextRequest) {
         { success: false, error: '题目内容不能为空' },
         { status: 400 }
       );
+    }
+    if (question.length > 10000 || extraRequirements.length > 10000) {
+      return NextResponse.json({ success: false, error: '输入内容过长' }, { status: 400 });
+    }
+    if ((category && !isSafePathSegment(category)) || tags.some((tag) => !isSafePathSegment(tag.trim()))) {
+      return NextResponse.json({ success: false, error: '分类或标签名不合法' }, { status: 400 });
     }
 
     // 先对账：清掉过期/已死任务，避免卡死任务挡住新提交

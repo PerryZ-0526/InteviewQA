@@ -23,9 +23,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: '图片超过 10MB 限制' }, { status: 400 });
     }
 
-    // 目录校验：必须位于项目根目录内的真实目录
+    // 目录校验：只允许题库内容目录，避免借上传接口写入应用源码或配置目录。
     const absDir = path.resolve(PROJECT_ROOT, dir);
-    if (absDir === PROJECT_ROOT || !absDir.startsWith(PROJECT_ROOT + path.sep)) {
+    const allowedRoots = ['categories', 'project', 'groups'].map((name) => path.join(PROJECT_ROOT, name));
+    if (!allowedRoots.some((root) => absDir.startsWith(`${root}${path.sep}`))) {
       return NextResponse.json({ success: false, error: '非法目录' }, { status: 400 });
     }
     try {

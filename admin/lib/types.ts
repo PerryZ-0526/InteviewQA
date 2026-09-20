@@ -22,12 +22,17 @@ export interface Question {
   answer: string;       // 面试直接答
   analysis: string;     // 详细解析
   filename: string;
-  prevLink: string | null;
-  nextLink: string | null;
+  prevLink: DocumentLink | null;
+  nextLink: DocumentLink | null;
   createdAt: string;
   updatedAt: string;
   notes: string;
   customSections: { title: string; content: string }[];
+}
+
+export interface DocumentLink {
+  title: string;
+  href: string;
 }
 
 // 生成请求

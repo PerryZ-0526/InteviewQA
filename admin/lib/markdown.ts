@@ -1,4 +1,4 @@
-import { Question } from './types';
+import { DocumentLink, Question } from './types';
 import { marked } from 'marked';
 
 const PROJECT_ROOT = process.cwd() + '/..';
@@ -44,8 +44,8 @@ export function parseQuestion(markdown: string, filename: string): Question {
   const tags: string[] = [];
   let answer = '';
   let analysis = '';
-  let prevLink: string | null = null;
-  let nextLink: string | null = null;
+  let prevLink: DocumentLink | null = null;
+  let nextLink: DocumentLink | null = null;
 
   const KNOWN_SECTIONS = ['题目', '标签', '题目导航', '面试直接答', '详细解析', '我的作答'];
   let currentSection = '';
@@ -121,9 +121,9 @@ export function parseQuestion(markdown: string, filename: string): Question {
       case '题目导航':
         const prevMatch = line.match(/←\s*\[([^\]]+)\]\(([^)]+)\)/);
         const nextMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)\s*→/);
-        if (prevMatch) prevLink = prevMatch[1];
+        if (prevMatch) prevLink = { title: prevMatch[1], href: prevMatch[2] };
         else if (line.includes('← 无')) prevLink = null;
-        if (nextMatch) nextLink = nextMatch[1];
+        if (nextMatch) nextLink = { title: nextMatch[1], href: nextMatch[2] };
         else if (line.includes('无 →')) nextLink = null;
         break;
       case '面试直接答':
@@ -208,10 +208,10 @@ export function generateMarkdown(q: Question): string {
     .join(' | ');
 
   const prevPart = q.prevLink
-    ? `← [${q.prevLink}](${q.prevLink})`
+    ? `← [${q.prevLink.title}](${q.prevLink.href})`
     : '← 无';
   const nextPart = q.nextLink
-    ? `[${q.nextLink}](${q.nextLink}) →`
+    ? `[${q.nextLink.title}](${q.nextLink.href}) →`
     : '无 →';
 
   const now = formatDateTime(new Date());

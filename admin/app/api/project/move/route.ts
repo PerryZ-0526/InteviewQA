@@ -2,14 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { moveProjectDoc } from '@/lib/fileUtils';
 import { logMoveProjectDoc } from '@/lib/logger';
 import { remapFsrsKeys } from '@/lib/fsrsStore';
+import { isMarkdownFilename, isSafePathSegment } from '@/lib/safePath';
 
 // POST: 在 project 与 groups 的子目录之间移动文档，两者不与分类文档互通。
 // body: { fromSubdir, filename, toSubdir, toIndex }
 export async function POST(req: NextRequest) {
   try {
     const { fromSubdir, filename, toSubdir, toIndex } = await req.json();
-    if (!fromSubdir || !filename || !toSubdir || !Number.isFinite(toIndex)) {
-      return NextResponse.json({ success: false, error: '参数不完整' }, { status: 400 });
+    if (
+      !isSafePathSegment(fromSubdir)
+      || !isSafePathSegment(toSubdir)
+      || !isMarkdownFilename(filename)
+      || !Number.isInteger(toIndex)
+      || toIndex < 0
+      || toIndex > 10000
+    ) {
+      return NextResponse.json({ success: false, error: '参数不合法' }, { status: 400 });
     }
 
     const result = await moveProjectDoc(fromSubdir, filename, toSubdir, toIndex);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { moveCategoryQuestion, categoryExists } from '@/lib/fileUtils';
 import { logMove } from '@/lib/logger';
 import { remapFsrsKeys } from '@/lib/fsrsStore';
+import { isMarkdownFilename, isSafePathSegment } from '@/lib/safePath';
 
 // POST: 跨分类移动一道题目（拖拽落点触发）。
 // body: { fromCategory, filename, toCategory, toIndex }
@@ -13,9 +14,9 @@ export async function POST(req: NextRequest) {
     const { fromCategory, filename, toCategory, toIndex } = body || {};
 
     if (
-      typeof fromCategory !== 'string' || !/^[\w.-]+$/.test(fromCategory) ||
-      typeof toCategory !== 'string' || !/^[\w.-]+$/.test(toCategory) ||
-      typeof filename !== 'string' || !/^\d{3}-.+\.md$/.test(filename) ||
+      !isSafePathSegment(fromCategory) ||
+      !isSafePathSegment(toCategory) ||
+      !isMarkdownFilename(filename) ||
       typeof toIndex !== 'number' || !Number.isInteger(toIndex) || toIndex < 0 || toIndex > 10000
     ) {
       return NextResponse.json({ success: false, error: '参数不合法' }, { status: 400 });

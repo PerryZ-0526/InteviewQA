@@ -24,7 +24,8 @@ export async function POST(req: NextRequest) {
     }
 
     const absDir = path.resolve(PROJECT_ROOT, dir);
-    if (absDir === PROJECT_ROOT || !absDir.startsWith(PROJECT_ROOT + path.sep)) {
+    const allowedRoots = ['categories', 'project', 'groups'].map((name) => path.join(PROJECT_ROOT, name));
+    if (!allowedRoots.some((root) => absDir.startsWith(`${root}${path.sep}`))) {
       return NextResponse.json({ success: false, error: '非法目录' }, { status: 400 });
     }
     try {

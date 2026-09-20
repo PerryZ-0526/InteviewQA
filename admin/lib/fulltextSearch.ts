@@ -4,136 +4,197 @@ import { PROJECT_ROOT } from './fileUtils';
 import { stripMdText } from './stripText';
 import { loadExternalDocs, externalDocId } from './externalDocs';
 
-// 全文关键字检索：支持全库（分类 + project + 分组 + 外部文档）与指定目录范围两种模式
-
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
 const PROJECT_DIR = path.join(PROJECT_ROOT, 'project');
 const GROUPS_DIR = path.join(PROJECT_ROOT, 'groups');
 
 export interface FullTextHit {
   kind: 'category' | 'project' | 'external';
-  category: string;   // 所属分类/子目录/分组 slug；外部文档为空串
-  filename?: string;  // 外部文档为空
-  extId?: string;     // 仅外部文档：索引用 id
+  category: string;
+  filename?: string;
+  extId?: string;
   title: string;
-  count: number;      // 正文中命中次数（标题命中时可为 0）
-  snippet: string;    // 首个命中位置附近的上下文片段
+  count: number;
+  snippet: string;
 }
 
-/** 统计大小写不敏感的非重叠出现次数 */
-function countOccurrences(haystack: string, needle: string): number {
-  if (!needle) return 0;
+interface IndexedDocument {
+  mtimeMs: number;
+  size: number;
+  contentLower: string;
+  collapsed: string;
+  collapsedLower: string;
+  h1: string;
+}
+
+const documentIndex = new Map<string, IndexedDocument>();
+const pendingReads = new Map<string, Promise<IndexedDocument | null>>();
+let indexedReads = 0;
+let cacheHits = 0;
+
+async function indexDocument(filePath: string): Promise<IndexedDocument | null> {
+  const existingRead = pendingReads.get(filePath);
+  if (existingRead) return existingRead;
+
+  const task = (async () => {
+    const stat = await fs.stat(filePath).catch(() => null);
+    if (!stat?.isFile()) {
+      documentIndex.delete(filePath);
+      return null;
+    }
+
+    const cached = documentIndex.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      cacheHits += 1;
+      return cached;
+    }
+
+    const content = await fs.readFile(filePath, 'utf8').catch(() => '');
+    if (!content) {
+      documentIndex.delete(filePath);
+      return null;
+    }
+    indexedReads += 1;
+    const collapsed = content.replace(/\s+/g, ' ').trim();
+    const indexed: IndexedDocument = {
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      contentLower: content.toLowerCase(),
+      collapsed,
+      collapsedLower: collapsed.toLowerCase(),
+      h1: stripMdText(content.match(/^#\s+(.+)/m)?.[1] || ''),
+    };
+    documentIndex.set(filePath, indexed);
+    return indexed;
+  })().finally(() => pendingReads.delete(filePath));
+
+  pendingReads.set(filePath, task);
+  return task;
+}
+
+function countOccurrences(haystackLower: string, needleLower: string): number {
+  if (!needleLower) return 0;
   let count = 0;
-  let idx = haystack.toLowerCase().indexOf(needle.toLowerCase());
-  while (idx !== -1) {
+  let index = haystackLower.indexOf(needleLower);
+  while (index !== -1) {
     count += 1;
-    idx = haystack.toLowerCase().indexOf(needle.toLowerCase(), idx + needle.length);
+    index = haystackLower.indexOf(needleLower, index + needleLower.length);
   }
   return count;
 }
 
-/** 取首个命中位置附近的片段：折叠空白为单空格，前后各留约 60 字符 */
-function makeSnippet(content: string, q: string): string {
-  const collapsed = content.replace(/\s+/g, ' ').trim();
-  const idx = collapsed.toLowerCase().indexOf(q.toLowerCase());
-  if (idx === -1) return collapsed.slice(0, 120);
-  const start = Math.max(0, idx - 60);
-  const end = Math.min(collapsed.length, idx + q.length + 60);
-  return (start > 0 ? '…' : '') + collapsed.slice(start, end) + (end < collapsed.length ? '…' : '');
+function makeSnippet(indexed: IndexedDocument, query: string, queryLower: string): string {
+  const index = indexed.collapsedLower.indexOf(queryLower);
+  if (index === -1) return indexed.collapsed.slice(0, 120);
+  const start = Math.max(0, index - 60);
+  const end = Math.min(indexed.collapsed.length, index + query.length + 60);
+  return `${start > 0 ? '…' : ''}${indexed.collapsed.slice(start, end)}${end < indexed.collapsed.length ? '…' : ''}`;
 }
 
-/** 检索单个目录（slug 目录名）下所有 md 文档，返回命中文档列表 */
-async function scanDir(baseDir: string, kind: 'category' | 'project', slug: string, q: string): Promise<FullTextHit[]> {
+function matchIndexedDocument(
+  indexed: IndexedDocument,
+  query: string,
+  queryLower: string,
+  title: string,
+  filename?: string,
+): Pick<FullTextHit, 'count' | 'snippet'> | null {
+  const count = countOccurrences(indexed.contentLower, queryLower);
+  const titleMatch = title.toLowerCase().includes(queryLower) || filename?.toLowerCase().includes(queryLower);
+  if (count === 0 && !titleMatch) return null;
+  return { count, snippet: makeSnippet(indexed, query, queryLower) };
+}
+
+async function scanDir(
+  baseDir: string,
+  kind: 'category' | 'project',
+  slug: string,
+  query: string,
+  queryLower: string,
+): Promise<FullTextHit[]> {
   const dir = path.join(baseDir, slug);
-  const hits: FullTextHit[] = [];
   const files = await fs.readdir(dir).catch(() => [] as string[]);
-  for (const f of files) {
-    if (!f.endsWith('.md') || f === '00-index.md') continue;
-    const content = await fs.readFile(path.join(dir, f), 'utf-8').catch(() => '');
-    if (!content) continue;
-    const title = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '') || f;
-    const count = countOccurrences(content, q);
-    const titleMatch = title.toLowerCase().includes(q.toLowerCase()) || f.toLowerCase().includes(q.toLowerCase());
-    // 标题或正文任一命中即收录
-    if (count === 0 && !titleMatch) continue;
-    hits.push({ kind, category: slug, filename: f, title, count, snippet: makeSnippet(content, q) });
-  }
-  return hits;
+  const hits = await Promise.all(files.map(async (filename): Promise<FullTextHit | null> => {
+    if (!filename.endsWith('.md') || filename === '00-index.md') return null;
+    const indexed = await indexDocument(path.join(dir, filename));
+    if (!indexed) return null;
+    const title = indexed.h1 || filename;
+    const match = matchIndexedDocument(indexed, query, queryLower, title, filename);
+    return match ? { kind, category: slug, filename, title, ...match } : null;
+  }));
+  return hits.filter((hit): hit is FullTextHit => hit !== null);
 }
 
-/** 检索外部文档索引中的文档（文件缺失时静默跳过）；传入 group 时仅检索该分组（空串 = 未分组） */
-async function scanExternal(q: string, group?: string): Promise<FullTextHit[]> {
-  const hits: FullTextHit[] = [];
+async function scanExternal(query: string, queryLower: string, group?: string): Promise<FullTextHit[]> {
   const entries = await loadExternalDocs().catch(() => []);
-  for (const entry of entries) {
-    // 指定分组时按分组过滤（条目 group 缺省/空白视为未分组）
-    if (group !== undefined && (entry.group?.trim() || '') !== group) continue;
-    const content = await fs.readFile(entry.path, 'utf-8').catch(() => '');
-    if (!content) continue;
-    const h1 = stripMdText(content.match(/^#\s+(.+)/m)?.[1] || '');
-    const title = entry.customTitle || h1 || path.basename(entry.path);
-    const count = countOccurrences(content, q);
-    const titleMatch = title.toLowerCase().includes(q.toLowerCase());
-    if (count === 0 && !titleMatch) continue;
-    // 分组检索时 category 记录分组名，全库检索保持空串
-    hits.push({ kind: 'external', category: group ?? '', extId: externalDocId(entry.path), title, count, snippet: makeSnippet(content, q) });
-  }
-  return hits;
+  const hits = await Promise.all(entries.map(async (entry): Promise<FullTextHit | null> => {
+    if (group !== undefined && (entry.group?.trim() || '') !== group) return null;
+    const indexed = await indexDocument(entry.path);
+    if (!indexed) return null;
+    const title = entry.customTitle || indexed.h1 || path.basename(entry.path);
+    const match = matchIndexedDocument(indexed, query, queryLower, title);
+    return match
+      ? { kind: 'external', category: group ?? '', extId: externalDocId(entry.path), title, ...match }
+      : null;
+  }));
+  return hits.filter((hit): hit is FullTextHit => hit !== null);
 }
 
-/** 范围检索外部文档分组（group 为空串 = 未分组） */
-export async function searchFullTextExternalGroup(group: string, q: string): Promise<FullTextHit[]> {
-  // 空关键词直接返回，避免 includes('') 恒真导致全部命中
-  if (!q.trim()) return [];
-  return scanExternal(q, group);
+export async function searchFullTextExternalGroup(group: string, query: string): Promise<FullTextHit[]> {
+  const normalized = query.trim();
+  if (!normalized) return [];
+  return scanExternal(normalized, normalized.toLowerCase(), group);
 }
 
-/**
- * 范围检索：
- * - scopeKind='category' → categories/<slug>
- * - scopeKind='project'  → project/<slug> 或 groups/<slug>（哪个存在搜哪个）
- */
-export async function searchFullTextScoped(scopeKind: 'category' | 'project', slug: string, q: string): Promise<FullTextHit[]> {
-  // 空关键词直接返回，避免 includes('') 恒真导致全部命中
-  if (!q.trim()) return [];
-  if (scopeKind === 'category') return scanDir(CATEGORIES_DIR, 'category', slug, q);
-  // project 与 groups 同为「project kind」，按目录存在性定位
-  const projHits = await scanDir(PROJECT_DIR, 'project', slug, q);
-  if (projHits.length > 0) return projHits;
-  return scanDir(GROUPS_DIR, 'project', slug, q);
+export async function searchFullTextScoped(
+  scopeKind: 'category' | 'project',
+  slug: string,
+  query: string,
+): Promise<FullTextHit[]> {
+  const normalized = query.trim();
+  if (!normalized) return [];
+  const queryLower = normalized.toLowerCase();
+  if (scopeKind === 'category') return scanDir(CATEGORIES_DIR, 'category', slug, normalized, queryLower);
+  try {
+    const stat = await fs.stat(path.join(PROJECT_DIR, slug));
+    if (stat.isDirectory()) return scanDir(PROJECT_DIR, 'project', slug, normalized, queryLower);
+  } catch {}
+  return scanDir(GROUPS_DIR, 'project', slug, normalized, queryLower);
 }
 
-/** 全库检索：分类 + project + 分组 + 外部文档，按命中次数降序，最多 100 条 */
-export async function searchFullTextAll(q: string): Promise<FullTextHit[]> {
-  // 空关键词直接返回，避免 includes('') 恒真导致全部命中
-  if (!q.trim()) return [];
-  const scanCategoryRoot = async () => {
-    const hits: FullTextHit[] = [];
-    const entries = await fs.readdir(CATEGORIES_DIR, { withFileTypes: true }).catch(() => []);
-    for (const e of entries) {
-      if (!e.isDirectory()) continue;
-      hits.push(...(await scanDir(CATEGORIES_DIR, 'category', e.name, q)));
-    }
-    return hits;
-  };
-  const scanProjectRoot = async (baseDir: string) => {
-    const hits: FullTextHit[] = [];
+export async function searchFullTextAll(query: string): Promise<FullTextHit[]> {
+  const normalized = query.trim();
+  if (!normalized) return [];
+  const queryLower = normalized.toLowerCase();
+
+  const scanRoot = async (baseDir: string, kind: 'category' | 'project') => {
     const entries = await fs.readdir(baseDir, { withFileTypes: true }).catch(() => []);
-    for (const e of entries) {
-      if (!e.isDirectory()) continue;
-      hits.push(...(await scanDir(baseDir, 'project', e.name, q)));
-    }
-    return hits;
+    const batches = await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => scanDir(baseDir, kind, entry.name, normalized, queryLower)),
+    );
+    return batches.flat();
   };
 
-  const [catHits, projHits, groupHits, extHits] = await Promise.all([
-    scanCategoryRoot(),
-    scanProjectRoot(PROJECT_DIR),
-    scanProjectRoot(GROUPS_DIR),
-    scanExternal(q),
+  const [categoryHits, projectHits, groupHits, externalHits] = await Promise.all([
+    scanRoot(CATEGORIES_DIR, 'category'),
+    scanRoot(PROJECT_DIR, 'project'),
+    scanRoot(GROUPS_DIR, 'project'),
+    scanExternal(normalized, queryLower),
   ]);
 
-  return [...catHits, ...projHits, ...groupHits, ...extHits]
+  return [...categoryHits, ...projectHits, ...groupHits, ...externalHits]
     .sort((a, b) => b.count - a.count)
     .slice(0, 100);
+}
+
+export function getFulltextIndexStats() {
+  return { entries: documentIndex.size, indexedReads, cacheHits };
+}
+
+export function clearFulltextIndex() {
+  documentIndex.clear();
+  pendingReads.clear();
+  indexedReads = 0;
+  cacheHits = 0;
 }

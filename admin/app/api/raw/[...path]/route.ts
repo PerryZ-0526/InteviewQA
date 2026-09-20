@@ -17,10 +17,15 @@ const MIME: Record<string, string> = {
 // GET: 读取项目根目录下的静态文件（如图片），严格限制在 PROJECT_ROOT 内
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const abs = path.resolve(PROJECT_ROOT, ...(params.path || []));
+    const routeParams = await params;
+    const parts = routeParams.path || [];
+    if (!['categories', 'project', 'groups'].includes(parts[0])) {
+      return NextResponse.json({ success: false, error: '非法路径' }, { status: 400 });
+    }
+    const abs = path.resolve(PROJECT_ROOT, ...parts);
     if (abs === PROJECT_ROOT || !abs.startsWith(PROJECT_ROOT + path.sep)) {
       return NextResponse.json({ success: false, error: '非法路径' }, { status: 400 });
     }

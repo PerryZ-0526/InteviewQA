@@ -4,13 +4,17 @@ import path from 'path';
 import { PROJECT_ROOT } from '@/lib/fileUtils';
 import { getTask, reconcileTask, abandonTask } from '@/lib/taskManager';
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const task = await getTask(params.id);
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    return NextResponse.json({ success: false, error: '任务 ID 不合法' }, { status: 400 });
+  }
+  const task = await getTask(id);
   if (!task) {
     return NextResponse.json({ success: false, error: '任务不存在' }, { status: 404 });
   }
 
-  const current = (await reconcileTask(params.id)) ?? task;
+  const current = (await reconcileTask(id)) ?? task;
 
   let content: string | null = null;
   if (current.status === 'success' && current.resolvedCategory && current.filename) {
@@ -40,12 +44,16 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 }
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
-  const task = await getTask(params.id);
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    return NextResponse.json({ success: false, error: '任务 ID 不合法' }, { status: 400 });
+  }
+  const task = await getTask(id);
   if (!task) {
     return NextResponse.json({ success: false, error: '任务不存在' }, { status: 404 });
   }
-  const result = await abandonTask(params.id);
+  const result = await abandonTask(id);
   if (!result) {
     return NextResponse.json({ success: false, error: '任务不存在' }, { status: 404 });
   }

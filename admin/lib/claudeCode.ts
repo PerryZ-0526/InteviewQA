@@ -1,6 +1,4 @@
 import { spawn, ChildProcess } from 'child_process';
-import path from 'path';
-import fs from 'fs/promises';
 import fssync from 'fs';
 import { PROJECT_ROOT } from './fileUtils';
 
@@ -15,7 +13,7 @@ export const TASK_TIMEOUT_MS = 30 * 60 * 1000;
 export function spawnClaudeDetached(prompt: string, outputFile: string): ChildProcess {
   const outFd = fssync.openSync(outputFile, 'w');
   try {
-    const child = spawn('claude', ['-p', '--dangerously-skip-permissions', prompt], {
+    const child = spawn('claude', ['-p', prompt], {
       cwd: PROJECT_ROOT,
       env: { ...process.env },
       stdio: ['ignore', outFd, outFd],
@@ -39,7 +37,7 @@ export async function callClaudeCode(prompt: string): Promise<{
   error?: string;
 }> {
   return new Promise((resolve) => {
-    const child = spawn('claude', ['-p', '--dangerously-skip-permissions', prompt], {
+    const child = spawn('claude', ['-p', prompt], {
       cwd: PROJECT_ROOT,
       env: { ...process.env },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -66,8 +64,18 @@ export async function callClaudeCode(prompt: string): Promise<{
       }
     }, 15000);
 
+    const timeout = setTimeout(() => {
+      child.kill();
+      resolve({
+        success: false,
+        output: stdout,
+        error: '生成超时（30分钟），请简化题目描述或检查 Claude Code 是否正常运行',
+      });
+    }, TASK_TIMEOUT_MS);
+
     child.on('close', (code: number | null) => {
       clearInterval(heartbeat);
+      clearTimeout(timeout);
       console.log('[Claude Code] 进程结束, exit code:', code, ', 输出长度:', stdout.length);
       if (code === 0) {
         resolve({ success: true, output: stdout });
@@ -81,6 +89,8 @@ export async function callClaudeCode(prompt: string): Promise<{
     });
 
     child.on('error', (err: Error) => {
+      clearInterval(heartbeat);
+      clearTimeout(timeout);
       resolve({
         success: false,
         output: stdout,
@@ -88,15 +98,6 @@ export async function callClaudeCode(prompt: string): Promise<{
       });
     });
 
-    // 超时：1800秒（30分钟，复杂题目需要足够时间撰写+更新索引）
-    setTimeout(() => {
-      child.kill();
-      resolve({
-        success: false,
-        output: stdout,
-        error: '生成超时（30分钟），请简化题目描述或检查 Claude Code 是否正常运行',
-      });
-    }, 1800000);
   });
 }
 
@@ -130,7 +131,7 @@ export function buildGeneratePrompt(
     ? `\n\n**章节覆盖**（覆盖 CLAUDE.md 的默认要求）：\n${sectionOverride.map(s => `- ${s}`).join('\n')}`
     : '';
 
-  return `在 InteviewQA 项目中新增一道面试真题。
+  return `为 InteviewQA 项目生成一道面试真题。你只负责返回结构化结果，不得创建、修改或删除任何文件。
 
 请先调用 interview-qa skill（通过 Skill 工具），按照其中的撰写规范和质量标准来生成内容。
 
@@ -139,24 +140,17 @@ ${question}
 ${categoryStr}
 ${tagStr}${extraStr}${overrideStr}
 
-## 操作
-按项目根目录 CLAUDE.md 规范执行全部新增流程（确定序号、创建文件、更新索引、更新标签、更新导航、更新 README、添加时间元数据）。仅生成「## 面试直接答」和「## 详细解析」两个章节，不要生成「## 我的作答」章节。
+## 输出契约
+只输出以下两个标记区块，不要使用 Markdown 代码围栏，不要输出解释：
 
-**并发安全要求**（仓库里可能同时有其他任务在新增题目）：
-- 创建新文件前，重新读取目标分类的 00-index.md 确认最新序号；若计划使用的文件名已被占用，顺延到下一个空闲序号。
-- 修改任何既有文件（00-index.md、标签文件、README.md、前一题的题目导航）之前，必须先重新读取该文件的最新内容，再在其基础上修改，不要凭记忆覆盖。
-完成后输出：FILE_CREATED: categories/<分类>/<文件名>.md（必须与实际写入的文件名一致）`;
-}
+===META_START===
+{"category":"英文或连字符目录名","categoryDisplayName":"分类显示名","tags":["标签1","标签2"]}
+===META_END===
+===CONTENT_START===
+# 题目标题
 
-/**
- * 在生成完成后，找到新创建的文件路径
- */
-export async function findNewQuestionFile(
-  category: string,
-  beforeFiles: string[]
-): Promise<string | null> {
-  const categoriesDir = path.join(PROJECT_ROOT, 'categories', category);
-  const afterFiles = await fs.readdir(categoriesDir);
-  const newFiles = afterFiles.filter((f) => !beforeFiles.includes(f) && f.match(/^\d{3}-.+\.md$/));
-  return newFiles.length > 0 ? newFiles[0] : null;
+完整 Markdown 正文
+===CONTENT_END===
+
+正文按项目根目录 CLAUDE.md 规范撰写，但不要处理序号、文件名、题目导航、标签索引、README 或时间元数据；这些由应用代码统一维护。仅生成「## 面试直接答」和「## 详细解析」两个内容章节，不要生成「## 我的作答」章节。`;
 }

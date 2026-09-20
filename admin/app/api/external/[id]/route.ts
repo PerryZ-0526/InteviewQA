@@ -6,10 +6,11 @@ import { backupBeforeWriteAt } from '@/lib/backup';
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const result = await readExternalDocById(params.id);
+    const { id } = await params;
+    const result = await readExternalDocById(id);
     if (result === null) {
       return NextResponse.json({ success: false, error: '索引条目不存在' }, { status: 404 });
     }
@@ -24,19 +25,20 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { content } = await req.json();
     if (typeof content !== 'string') {
       return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
     }
     // 外部文档可能位于仓库外，按路径 hash 归档到 backups/external/<id>/
-    const current = await readExternalDocById(params.id);
+    const current = await readExternalDocById(id);
     if (current && !current.missing) {
-      await backupBeforeWriteAt(current.path, path.join('external', params.id), path.basename(current.path), content);
+      await backupBeforeWriteAt(current.path, path.join('external', id), path.basename(current.path), content);
     }
-    const result = await writeExternalDocById(params.id, content);
+    const result = await writeExternalDocById(id, content);
     if (!result.ok && !result.missing) {
       return NextResponse.json({ success: false, error: '索引条目不存在' }, { status: 404 });
     }

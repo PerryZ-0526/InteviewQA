@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listProjectDocs, createProjectSubdir } from '@/lib/fileUtils';
 import { logCreateProjectSubdir } from '@/lib/logger';
+import { isSafePathSegment } from '@/lib/safePath';
 
 export async function GET() {
   try {
@@ -14,8 +15,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const { slug, displayName } = await req.json();
-    if (!slug?.trim() || !displayName?.trim()) {
-      return NextResponse.json({ success: false, error: '目录名和显示名不能为空' }, { status: 400 });
+    if (!isSafePathSegment(slug?.trim()) || !displayName?.trim()) {
+      return NextResponse.json({ success: false, error: '目录名不合法或显示名为空' }, { status: 400 });
     }
     await createProjectSubdir(slug.trim(), displayName.trim());
     logCreateProjectSubdir(slug.trim());
