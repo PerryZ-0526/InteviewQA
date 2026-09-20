@@ -1,35 +1,39 @@
 'use client';
 
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
-import GenerateForm from '@/components/GenerateForm';
-import DocumentEditor from '@/components/DocumentEditor';
-import RandomQuestion from '@/components/RandomQuestion';
-import EditorToolbar from '@/components/EditorToolbar';
-import LogViewer from '@/components/LogViewer';
-import AnnotationPanel from '@/components/AnnotationPanel';
-import ProjectDocumentView from '@/components/ProjectDocumentView';
-import ExternalDocView from '@/components/ExternalDocView';
-import CreateEmptyModal from '@/components/CreateEmptyModal';
-import AIFloat from '@/components/AIFloat';
 import BackToTop from '@/components/BackToTop';
 import GoToBottom from '@/components/GoToBottom';
 import TocFloat from '@/components/TocFloat';
 import LinkInsertFloat from '@/components/LinkInsertFloat';
 import DocSearchFloat from '@/components/DocSearchFloat';
-import ScopeSearchPanel from '@/components/ScopeSearchPanel';
 import TagViewer from '@/components/TagViewer';
 import TabBar from '@/components/TabBar';
 import TabRestoreBar from '@/components/TabRestoreBar';
 import ScrollRestoreBar from '@/components/ScrollRestoreBar';
 import InboxView from '@/components/InboxView';
-import { CategoryInfo, TagInfo, ExternalDocInfo } from '@/lib/types';
 import { stripMdText } from '@/lib/stripText';
 import { dueEntries } from '@/lib/fsrsLogic';
 import { docScrollKey, getDocScroll, setDocScroll } from '@/lib/docScroll';
 import type { FsrsCardData, FsrsStore } from '@/lib/fsrsStore';
 import { loadTabSession, saveTabSession, clearTabSession } from '@/lib/tabSession';
 import { pushRecent } from '@/lib/recent';
+import { useKnowledgeData } from '@/lib/useKnowledgeData';
+import { BrowseView, ExternalBrowseView, HomeView, ProjectBrowseView } from '@/components/BrowseViews';
+import { reorderCategories, reorderProjectSubdirs } from '@/lib/reorderDocuments';
+import { useDocumentMove } from '@/lib/useDocumentMove';
+
+const GenerateForm = dynamic(() => import('@/components/GenerateForm'), { ssr: false });
+const DocumentEditor = dynamic(() => import('@/components/DocumentEditor'), { ssr: false });
+const RandomQuestion = dynamic(() => import('@/components/RandomQuestion'), { ssr: false });
+const EditorToolbar = dynamic(() => import('@/components/EditorToolbar'), { ssr: false });
+const LogViewer = dynamic(() => import('@/components/LogViewer'), { ssr: false });
+const AnnotationPanel = dynamic(() => import('@/components/AnnotationPanel'), { ssr: false });
+const ProjectDocumentView = dynamic(() => import('@/components/ProjectDocumentView'), { ssr: false });
+const ExternalDocView = dynamic(() => import('@/components/ExternalDocView'), { ssr: false });
+const CreateEmptyModal = dynamic(() => import('@/components/CreateEmptyModal'), { ssr: false });
+const AIFloat = dynamic(() => import('@/components/AIFloat'), { ssr: false });
 
 interface DocTab {
   id: string;
@@ -41,9 +45,45 @@ interface DocTab {
   label: string;
 }
 
+interface MoveResponse {
+  success: boolean;
+  error?: string;
+  noop: boolean;
+  moved: { from: { category: string; filename: string }; to: { category: string; filename: string } };
+  sourceRenames: Record<string, string>;
+  targetRenames: Record<string, string>;
+}
+
 export default function Home() {
-  const [categories, setCategories] = useState<CategoryInfo[]>([]);
-  const [tags, setTags] = useState<TagInfo[]>([]);
+  const {
+    categories,
+    setCategories,
+    tags,
+    projectSubdirs,
+    setProjectSubdirs,
+    projectStats,
+    externalDocs,
+    externalGroups,
+    inboxPending,
+    fsrsStore,
+    fsrsStoreRef,
+    applyFsrsStore,
+    loadBootstrap,
+    loadCategories,
+    loadTags,
+    loadProjectStats,
+    loadExternalDocs,
+    loadFsrsStore,
+    loadInboxPending,
+  } = useKnowledgeData();
+  const { move: moveCategoryRequest } = useDocumentMove<
+    { fromCategory: string; filename: string; toCategory: string; toIndex: number },
+    MoveResponse
+  >('/api/categories/move');
+  const { move: moveProjectRequest } = useDocumentMove<
+    { fromSubdir: string; filename: string; toSubdir: string; toIndex: number },
+    MoveResponse
+  >('/api/project/move');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProjectSubdir, setSelectedProjectSubdir] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -55,7 +95,6 @@ export default function Home() {
   const [browsingExternal, setBrowsingExternal] = useState(false);
   // 当前浏览的外部文档分组（'' = 未分组）；null = 浏览全部外部文档列表
   const [selectedExternalGroup, setSelectedExternalGroup] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -78,13 +117,6 @@ export default function Home() {
       window.localStorage.setItem('interviewqa:sidebar-collapsed', sidebarCollapsed ? '1' : '0');
     } catch {}
   }, [sidebarCollapsed]);
-  const [projectSubdirs, setProjectSubdirs] = useState<{ slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[]>([]);
-  const [projectStats, setProjectStats] = useState<{ subdirs: number; docs: number; groups: number }>({ subdirs: 0, docs: 0, groups: 0 });
-  const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
-  // FSRS 间隔重复卡片状态（评分回写后乐观更新 + PUT 持久化）
-  const [fsrsStore, setFsrsStore] = useState<FsrsStore>({ version: 1, cards: {} });
-  const fsrsStoreRef = useRef<FsrsStore>({ version: 1, cards: {} });
-  const applyFsrsStore = (s: FsrsStore) => { fsrsStoreRef.current = s; setFsrsStore(s); };
 
   // 多标签：已打开文档的工作集（文档内容自动保存到磁盘；标签集本身持久化到 localStorage，重启后可询问恢复）
   const [tabs, setTabs] = useState<DocTab[]>([]);
@@ -122,67 +154,6 @@ export default function Home() {
     selectedCategory: string | null;
     selectedFile: string | null;
   }>({ view: 'browse', selectedCategory: null, selectedFile: null });
-
-  const loadCategories = async () => {
-    try {
-      const res = await fetch('/api/categories');
-      const json = await res.json();
-      if (json.success) setCategories(json.data);
-    } catch (e) {
-      console.error('Failed to load categories:', e);
-    }
-  };
-
-  const loadTags = async () => {
-    try {
-      const res = await fetch('/api/tags');
-      const json = await res.json();
-      if (json.success) setTags(json.data);
-    } catch (e) {
-      console.error('Failed to load tags:', e);
-    }
-  };
-
-  const loadProjectStats = async () => {
-    try {
-      const res = await fetch('/api/project');
-      const json = await res.json();
-      if (json.success) {
-        const data = json.data as { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[];
-        setProjectSubdirs(data);
-        const normal = data.filter(d => !d.isGroup);
-        setProjectStats({
-          subdirs: normal.length,
-          docs: normal.reduce((s, d) => s + d.docs.length, 0),
-          groups: data.filter(d => d.isGroup).length,
-        });
-      }
-    } catch {}
-  };
-
-  const loadExternalDocs = async () => {
-    try {
-      const res = await fetch('/api/external');
-      const json = await res.json();
-      if (json.success) setExternalDocs(json.data);
-    } catch {}
-  };
-
-  const loadFsrsStore = async () => {
-    try {
-      const res = await fetch('/api/fsrs');
-      const json = await res.json();
-      if (json.success) applyFsrsStore(json.data);
-    } catch {}
-  };
-
-  useEffect(() => {
-    loadCategories();
-    loadTags();
-    loadProjectStats();
-    loadExternalDocs();
-    loadFsrsStore();
-  }, []);
 
   // 启动时读取上次标签会话：存在可恢复记录则在顶部栏弹出恢复询问条；否则放行常规持久化。
   // 必须定义在持久化 effect 之前——挂载时它先跑，才能在空工作集触发写入前把决策状态置为 pending
@@ -596,13 +567,7 @@ export default function Home() {
     setCategories((prev) => reorderCategories(prev, fromCat, filename, toCat, toIndex));
 
     try {
-      const res = await fetch('/api/categories/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromCategory: fromCat, filename, toCategory: toCat, toIndex }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || '移动失败');
+      const json = await moveCategoryRequest({ fromCategory: fromCat, filename, toCategory: toCat, toIndex });
       if (json.noop) {
         await loadCategories();
         return;
@@ -630,21 +595,13 @@ export default function Home() {
 
     setProjectSubdirs((prev) => reorderProjectSubdirs(prev, fromSubdir, filename, toSubdir, toIndex));
     try {
-      const res = await fetch('/api/project/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fromSubdir, filename, toSubdir, toIndex }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || '移动失败');
+      const json = await moveProjectRequest({ fromSubdir, filename, toSubdir, toIndex });
       if (!json.noop) remapProjectTabsAfterMove(json);
       await loadProjectStats();
-      setRefreshKey((key) => key + 1);
       loadFsrsStore();
       if (!json.noop) showToast(`已移动到 ${toSubdir}`, 'success');
     } catch (error: any) {
       await loadProjectStats();
-      setRefreshKey((key) => key + 1);
       showToast('移动失败: ' + (error?.message || '未知错误'), 'error');
     }
   };
@@ -795,7 +752,6 @@ export default function Home() {
         }
         showToast('删除成功！', 'success');
         await loadProjectStats(); // 刷新侧边栏 project/分组文档列表
-        setRefreshKey(k => k + 1);
         loadFsrsStore(); // 服务端已删除/改移 fsrs key，静默刷新内存态
       } else {
         showToast('删除失败: ' + json.error, 'error');
@@ -1125,10 +1081,14 @@ export default function Home() {
       <Sidebar
         categories={categories}
         tags={tags}
+        projectData={projectSubdirs}
+        externalData={externalDocs}
+        externalGroupsData={externalGroups}
+        inboxPending={inboxPending}
         selectedCategory={selectedCategory}
         selectedFile={selectedFile}
-        refreshKey={refreshKey}
-        onRefresh={async () => { await loadCategories(); await loadTags(); await loadProjectStats(); await loadExternalDocs(); setRefreshKey(k => k + 1); }}
+        onRefresh={loadBootstrap}
+        onInboxRefresh={loadInboxPending}
         onSelectCategory={(slug) => {
           deactivateTab();
           setSelectedCategory(slug);
@@ -1376,19 +1336,18 @@ export default function Home() {
                     subdir={tab.subdir}
                     filename={tab.filename}
                     onBack={closeActiveTab}
-                    onSaved={() => setRefreshKey(k => k + 1)}
+                    onSaved={loadProjectStats}
                     onSaveStatusChange={setEditorSaveStatus}
                     pendingAnchor={visible ? pendingAnchor : null}
                     onAnchorDone={() => setPendingAnchor(null)}
                   />
                 )}
                 {tab.kind === 'external' && tab.extId && (
-                  // 保存后除更新页面级外部文档列表（标签页标题）外，递增 refreshKey 让 Sidebar 立即重拉 /api/external，与 project 文档行为对齐
                   <ExternalDocView
                     id={tab.extId}
                     onBack={closeActiveTab}
                     onSaveStatusChange={setEditorSaveStatus}
-                    onSaved={() => { loadExternalDocs(); setRefreshKey(k => k + 1); }}
+                    onSaved={loadExternalDocs}
                   />
                 )}
                 {tab.kind === 'form' && (
@@ -1504,426 +1463,6 @@ export default function Home() {
           <GoToBottom />
         </>
       )}
-    </div>
-  );
-}
-
-/** 拖拽移动的乐观列表更新：把 filename 从 fromCat 移到 toCat 的 toIndex 槽位（移除后列表语义） */
-function reorderCategories(
-  prev: CategoryInfo[],
-  fromCat: string,
-  filename: string,
-  toCat: string,
-  toIndex: number,
-): CategoryInfo[] {
-  const moved = prev.find((c) => c.slug === fromCat)?.questions.find((q) => q.filename === filename);
-  if (!moved) return prev;
-  return prev.map((c) => {
-    if (c.slug === fromCat && c.slug === toCat) {
-      const qs = [...c.questions];
-      const qi = qs.findIndex((q) => q.filename === filename);
-      if (qi < 0) return c;
-      const [q] = qs.splice(qi, 1);
-      qs.splice(Math.max(0, Math.min(toIndex, qs.length)), 0, q);
-      return { ...c, questions: qs };
-    }
-    if (c.slug === fromCat) {
-      const qs = c.questions.filter((q) => q.filename !== filename);
-      return { ...c, questions: qs, questionCount: qs.length };
-    }
-    if (c.slug === toCat) {
-      const qs = [...c.questions];
-      qs.splice(Math.max(0, Math.min(toIndex, qs.length)), 0, moved);
-      return { ...c, questions: qs, questionCount: qs.length };
-    }
-    return c;
-  });
-}
-
-/** project/分组文档拖拽时的乐观列表更新。 */
-function reorderProjectSubdirs(
-  prev: { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[],
-  fromSubdir: string,
-  filename: string,
-  toSubdir: string,
-  toIndex: number,
-) {
-  const moved = prev.find((item) => item.slug === fromSubdir)?.docs.find((doc) => doc.filename === filename);
-  if (!moved) return prev;
-  return prev.map((item) => {
-    if (item.slug === fromSubdir && item.slug === toSubdir) {
-      const docs = [...item.docs];
-      const index = docs.findIndex((doc) => doc.filename === filename);
-      if (index < 0) return item;
-      const [doc] = docs.splice(index, 1);
-      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, doc);
-      return { ...item, docs };
-    }
-    if (item.slug === fromSubdir) return { ...item, docs: item.docs.filter((doc) => doc.filename !== filename) };
-    if (item.slug === toSubdir) {
-      const docs = [...item.docs];
-      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, moved);
-      return { ...item, docs };
-    }
-    return item;
-  });
-}
-
-function HomeView({
-  categories,
-  projectSubdirs,
-  externalDocs,
-  onSelectQuestion,
-  onSelectProjectDoc,
-  onSelectExternalDoc,
-  onExternalMissing,
-}: {
-  categories: CategoryInfo[];
-  projectSubdirs: { slug: string; name: string; isGroup?: boolean; docs: { filename: string; title: string; wordCount?: number }[] }[];
-  externalDocs: ExternalDocInfo[];
-  onSelectQuestion: (cat: string, filename: string) => void;
-  onSelectProjectDoc: (subdir: string, filename: string) => void;
-  onSelectExternalDoc: (id: string) => void;
-  onExternalMissing: (path: string) => void;
-}) {
-  const projectNormal = projectSubdirs.filter((s) => !s.isGroup);
-  const groups = projectSubdirs.filter((s) => s.isGroup);
-  const catDocs = categories.reduce((s, c) => s + c.questions.length, 0);
-  const projDocs = projectNormal.reduce((s, d) => s + d.docs.length, 0);
-  const groupDocs = groups.reduce((s, d) => s + d.docs.length, 0);
-
-  if (catDocs + projDocs + groupDocs + externalDocs.length === 0) {
-    return (
-      <div className="empty-state">
-        <h3>知识库为空</h3>
-        <p>从左侧边栏创建分类、添加外部文档，或点击「新建题目」开始</p>
-      </div>
-    );
-  }
-
-  let docIndex = 0;
-  const docRow = (filename: string, title: string, onClick: () => void, wordCount?: number) => {
-    docIndex += 1;
-    return (
-      <div key={filename} className="question-list-item" onClick={onClick} title={title}>
-        <span className="doc-index">{docIndex}.</span>
-        <span className="title">{title}</span>
-        <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
-          {wordCount != null ? wordCount.toLocaleString() + ' 字' : ''}
-        </span>
-      </div>
-    );
-  };
-
-  return (
-    <div className="home-view">
-      <div className="home-stats">
-        <span>{categories.length} 个分类 · {catDocs} 道题目</span>
-        <span>{projectNormal.length} 个 project · {projDocs} 篇文档</span>
-        <span>{groups.length} 个分组 · {groupDocs} 篇文档</span>
-        <span>{externalDocs.length} 个外部文档</span>
-      </div>
-
-      {categories.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-title">分类</div>
-          {categories.map((cat) => (
-            <div key={cat.slug} className="home-block">
-              <div className="home-block-title">
-                <span className="sidebar-cat-dot" />
-                <span className="home-block-name" title={cat.name}>{cat.name}</span>
-                <span className="home-block-count">{cat.questions.length}</span>
-              </div>
-              <div className="card" style={{ padding: 0, margin: 0 }}>
-                {cat.questions.map((q) =>
-                  docRow(q.filename, q.title, () => onSelectQuestion(cat.slug, q.filename), (q as { wordCount?: number }).wordCount)
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {projectNormal.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-title">project</div>
-          {projectNormal.map((sub) => (
-            <div key={sub.slug} className="home-block">
-              <div className="home-block-title">
-                <span className="sidebar-cat-dot" />
-                <span className="home-block-name" title={sub.slug}>{sub.name}</span>
-                <span className="home-block-count">{sub.docs.length}</span>
-              </div>
-              <div className="card" style={{ padding: 0, margin: 0 }}>
-                {sub.docs.map((doc) =>
-                  docRow(doc.filename, doc.title, () => onSelectProjectDoc(sub.slug, doc.filename), (doc as { wordCount?: number }).wordCount)
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {groups.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-title">其他分组</div>
-          {groups.map((sub) => (
-            <div key={sub.slug} className="home-block">
-              <div className="home-block-title">
-                <span className="sidebar-cat-dot" />
-                <span className="home-block-name" title={sub.slug}>{sub.name}</span>
-                <span className="home-block-count">{sub.docs.length}</span>
-              </div>
-              <div className="card" style={{ padding: 0, margin: 0 }}>
-                {sub.docs.map((doc) =>
-                  docRow(doc.filename, doc.title, () => onSelectProjectDoc(sub.slug, doc.filename), (doc as { wordCount?: number }).wordCount)
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {externalDocs.length > 0 && (
-        <div className="home-section">
-          <div className="home-section-title">外部文档</div>
-          <div className="card" style={{ padding: 0, margin: 0 }}>
-            {externalDocs.map((doc) => {
-              docIndex += 1;
-              return (
-              <div
-                key={doc.id}
-                className="question-list-item"
-                onClick={() => (doc.missing ? onExternalMissing(doc.path) : onSelectExternalDoc(doc.id))}
-                title={doc.path}
-              >
-                <span className="doc-index">{docIndex}.</span>
-                <span className="title" style={doc.missing ? { color: '#c92a2a' } : undefined}>
-                  {doc.missing ? '⚠ ' : ''}{doc.title}
-                </span>
-                <span
-                  className="external-path"
-                  style={{ flex: 1, margin: '0 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  {doc.path}
-                </span>
-                {doc.missing ? (
-                  <span style={{ fontSize: 11, color: '#c92a2a', flexShrink: 0 }}>索引失效</span>
-                ) : (
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
-                    {doc.wordCount.toLocaleString()} 字
-                  </span>
-                )}
-              </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BrowseView({
-  categories,
-  selectedCategory,
-  onSelectQuestion,
-  loading,
-}: {
-  categories: CategoryInfo[];
-  selectedCategory: string | null;
-  onSelectQuestion: (cat: string, filename: string) => void;
-  loading: boolean;
-}) {
-  const category = categories.find((c) => c.slug === selectedCategory);
-  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
-  const [searchActive, setSearchActive] = useState(false);
-
-  if (!selectedCategory) {
-    return (
-      <div className="empty-state">
-        <h3>选择一个分类</h3>
-        <p>从左侧边栏选择分类查看题目列表，或点击「新建题目」创建新题目</p>
-      </div>
-    );
-  }
-
-  if (!category) {
-    return (
-      <div className="empty-state">
-        <h3>分类不存在</h3>
-        <p>请选择其他分类</p>
-      </div>
-    );
-  }
-
-  if (category.questions.length === 0) {
-    return (
-      <div className="empty-state">
-        <h3>{category.name} — 暂无题目</h3>
-        <p>该分类下还没有题目，点击「新建题目」开始创建</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card" style={{ padding: 0 }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
-        {category.name} — {category.questions.length} 道题目
-      </div>
-      {loading && (
-        <div className="loading-overlay" style={{ padding: 20 }}>
-          <div className="loading-spinner" />
-        </div>
-      )}
-      {/* 分类内关键字检索：切换分类时重置检索状态 */}
-      <ScopeSearchPanel
-        key={selectedCategory}
-        scope="category"
-        slug={selectedCategory}
-        onOpen={(hit) => hit.filename && onSelectQuestion(selectedCategory, hit.filename)}
-        onActiveChange={setSearchActive}
-      />
-      {!searchActive && category.questions.map((q) => (
-        <div
-          key={q.filename}
-          className="question-list-item"
-          onClick={() => onSelectQuestion(selectedCategory, q.filename)}
-        >
-          <span className="filename">{q.filename}</span>
-          <span className="title">{q.title}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
-            {(q as { wordCount?: number }).wordCount?.toLocaleString() ?? ''} 字
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ProjectBrowseView({
-  subdirs,
-  selectedSubdir,
-  onSelectDoc,
-}: {
-  subdirs: { slug: string; name: string; docs: { filename: string; title: string }[] }[];
-  selectedSubdir: string | null;
-  onSelectDoc: (subdir: string, filename: string) => void;
-}) {
-  const subdir = subdirs.find(s => s.slug === selectedSubdir);
-  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
-  const [searchActive, setSearchActive] = useState(false);
-  if (!subdir) return null;
-
-  return (
-    <div className="card" style={{ padding: 0 }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
-        {subdir.name} — {subdir.docs.length} 篇文档
-      </div>
-      {/* 分组/子目录内关键字检索：切换目录时重置检索状态 */}
-      <ScopeSearchPanel
-        key={subdir.slug}
-        scope="project"
-        slug={subdir.slug}
-        onOpen={(hit) => hit.filename && onSelectDoc(subdir.slug, hit.filename)}
-        onActiveChange={setSearchActive}
-      />
-      {subdir.docs.length === 0 && !searchActive && (
-        <div className="empty-state" style={{ padding: 20 }}>
-          <p>暂无文档</p>
-        </div>
-      )}
-      {!searchActive && subdir.docs.map((doc) => (
-        <div
-          key={doc.filename}
-          className="question-list-item"
-          onClick={() => onSelectDoc(subdir.slug, doc.filename)}
-        >
-          <span className="filename">{doc.filename}</span>
-          <span className="title">{doc.title}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
-            {(doc as { wordCount?: number }).wordCount?.toLocaleString() ?? ''} 字
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function fmtMs(ms: number): string {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function ExternalBrowseView({
-  docs,
-  group,
-  onOpenDoc,
-  onMissing,
-}: {
-  docs: ExternalDocInfo[];
-  /** 当前浏览的外部文档分组（'' = 未分组）；null = 浏览全部外部文档 */
-  group?: string | null;
-  onOpenDoc: (id: string) => void;
-  onMissing: (path: string) => void;
-}) {
-  // 检索模式激活（有关键词）时隐藏完整列表，只显示命中结果
-  const [searchActive, setSearchActive] = useState(false);
-  const inGroup = group != null;
-  return (
-    <div className="card" style={{ padding: 0 }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 14 }}>
-        {inGroup ? `${group || '未分组'} — ${docs.length} 篇` : `外部文档 — ${docs.length} 篇（按修改时间倒序）`}
-      </div>
-      {/* 分组内关键字检索：切换分组时重置检索状态（仅分组视图提供，与分类/子目录列表一致） */}
-      {inGroup && (
-        <ScopeSearchPanel
-          key={group}
-          scope="external"
-          slug={group}
-          onOpen={(hit) => hit.extId && onOpenDoc(hit.extId)}
-          onActiveChange={setSearchActive}
-        />
-      )}
-      {docs.length === 0 && !searchActive && (
-        <div className="empty-state" style={{ padding: 20 }}>
-          <p>{inGroup ? '该分组下暂无文档' : '暂无外部文档，点击侧边栏「外部文档」旁的 + 从资源管理器选择'}</p>
-        </div>
-      )}
-      {!searchActive && docs.map((doc) => (
-        <div
-          key={doc.id}
-          className="question-list-item"
-          onClick={() => (doc.missing ? onMissing(doc.path) : onOpenDoc(doc.id))}
-          title={doc.path}
-        >
-          <span className="title" style={doc.missing ? { color: '#c92a2a' } : undefined}>
-            {doc.missing ? '⚠ ' : ''}{doc.title}
-            {doc.customTitle && !doc.missing && (
-              <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>原名：{doc.originalTitle}</span>
-            )}
-          </span>
-          <span
-            className="external-path"
-            style={{ flex: 1, margin: '0 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          >
-            {doc.path}
-          </span>
-          {doc.missing ? (
-            <span style={{ fontSize: 11, color: '#c92a2a', flexShrink: 0 }}>索引失效</span>
-          ) : (
-            <>
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0, marginRight: 12 }}>
-                {doc.wordCount.toLocaleString()} 字
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)', flexShrink: 0 }}>
-                {doc.mtimeMs != null ? fmtMs(doc.mtimeMs) : ''}
-              </span>
-            </>
-          )}
-        </div>
-      ))}
     </div>
   );
 }

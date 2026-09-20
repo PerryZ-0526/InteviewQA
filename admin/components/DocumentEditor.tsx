@@ -9,6 +9,7 @@ import { stripMdText } from '@/lib/stripText';
 import { scrollToAnchorPathPolling } from '@/lib/domScroll';
 import { useTocPref } from '@/lib/useTocPref';
 import type { Question } from '@/lib/types';
+import { useAutosave } from '@/lib/useAutosave';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -30,12 +31,6 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   const [parsed, setParsed] = useState<Question | null>(null);
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting' | 'error'>('saved');
-
-  useEffect(() => {
-    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
-    onSaveStatusChange?.(labels[saveStatus] || '');
-  }, [saveStatus, onSaveStatusChange]);
   const [answerLen, setAnswerLen] = useState(0);
   const [analysisLen, setAnalysisLen] = useState(0);
   const [notesLen, setNotesLen] = useState(0);
@@ -54,12 +49,43 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   const notesKeyRef = useRef(0);
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const doSaveRef = useRef<() => void>(() => {});
   const ownSaveContentsRef = useRef<Set<string>>(new Set());
-  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const editVersionRef = useRef(0);
-  const mountedRef = useRef(true);
+  const buildSaveValue = useCallback(() => {
+    if (!parsed) return null;
+    const updated: Question = {
+      ...parsed,
+      title,
+      question,
+      answer: hiddenSections.has('面试直接答') ? '' : answerRef.current,
+      analysis: hiddenSections.has('详细解析') ? '' : analysisRef.current,
+      notes: hiddenSections.has('我的作答') ? '' : notesRef.current,
+      customSections: customSections.map((section, index) => ({
+        title: section.title,
+        content: customRefs.current[index] || section.content,
+      })),
+      createdAt: createdAtRef.current,
+      updatedAt: formatDateTime(new Date()),
+    };
+    updatedAtRef.current = updated.updatedAt;
+    const nextMarkdown = generateMarkdown(updated);
+    ownSaveContentsRef.current.add(nextMarkdown);
+    return nextMarkdown;
+  }, [customSections, hiddenSections, parsed, question, title]);
+  const saveDocument = useCallback(async (nextMarkdown: string) => {
+    const success = await onSave(nextMarkdown, { category: category || '', filename: filename || '' });
+    if (!success) ownSaveContentsRef.current.delete(nextMarkdown);
+    return success;
+  }, [category, filename, onSave]);
+  const { status: saveStatus, schedule: scheduleSave, reset: resetSave } = useAutosave({
+    delay: AUTO_SAVE_DELAY,
+    buildValue: buildSaveValue,
+    save: saveDocument,
+  });
+
+  useEffect(() => {
+    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
+    onSaveStatusChange?.(labels[saveStatus] || '');
+  }, [saveStatus, onSaveStatusChange]);
 
   useEffect(() => {
     // 忽略本组件保存成功后的内容回传，避免旧请求覆盖正在编辑的界面
@@ -89,90 +115,36 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     if (!(q.notes || '').trim()) hidden.add('我的作答');
     setHiddenSections(hidden);
 
-    setSaveStatus('saved');
-  }, [markdown, filename]);
-
-  // Debounced auto-save (doSaveRef kept in sync below)
-  const triggerAutoSave = useCallback(() => {
-    editVersionRef.current += 1;
-    setSaveStatus('waiting');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      doSaveRef.current();
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  const doSave = useCallback(() => {
-    if (!parsed) return;
-    const editVersion = editVersionRef.current;
-    setSaveStatus('saving');
-    const updated: Question = {
-      ...parsed,
-      title,
-      question,
-      answer: hiddenSections.has('面试直接答') ? '' : answerRef.current,
-      analysis: hiddenSections.has('详细解析') ? '' : analysisRef.current,
-      notes: hiddenSections.has('我的作答') ? '' : notesRef.current,
-      customSections: customSections.map((s, i) => ({ title: s.title, content: customRefs.current[i] || s.content })),
-      createdAt: createdAtRef.current,
-      updatedAt: formatDateTime(new Date()),
-    };
-    updatedAtRef.current = updated.updatedAt;
-    const newMd = generateMarkdown(updated);
-    ownSaveContentsRef.current.add(newMd);
-
-    // 保存请求按触发顺序执行，避免较慢的旧请求覆盖较新的内容；
-    // 组件卸载后不再落盘，防止切换文档后延迟保存写入错误文件
-    const target = { category: category || '', filename: filename || '' };
-    saveQueueRef.current = saveQueueRef.current.then(async () => {
-      if (!mountedRef.current) return;
-      const success = await onSave(newMd, target);
-      if (!success) ownSaveContentsRef.current.delete(newMd);
-      if (editVersion === editVersionRef.current) {
-        setSaveStatus(success ? 'saved' : 'error');
-      }
-    });
-  }, [parsed, title, question, onSave, customSections, category, filename]);
-  doSaveRef.current = doSave;
+    resetSave();
+  }, [markdown, filename, resetSave]);
 
   const handleAnswerChange = useCallback((md: string) => {
     answerRef.current = md;
     setAnswerLen(md.length);
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleAnalysisChange = useCallback((md: string) => {
     analysisRef.current = md;
     setAnalysisLen(md.length);
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleTitleChange = useCallback((val: string) => {
     setTitle(val);
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleNotesChange = useCallback((md: string) => {
     notesRef.current = md;
     setNotesLen(md.length);
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleQuestionChange = useCallback((val: string) => {
     setQuestion(val);
-    triggerAutoSave();
-  }, [triggerAutoSave]);
-
-  // Auto-save is primary save mechanism (2s debounce). Ctrl+S now toggles strikethrough.
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, []);
+    scheduleSave();
+  }, [scheduleSave]);
 
   // 拉取反向引用
   useEffect(() => {
@@ -277,7 +249,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
               answerRef.current = '';
               setAnswerLen(0);
               setHiddenSections(prev => new Set([...prev, '面试直接答']));
-              triggerAutoSave();
+              scheduleSave();
             }} title="删除此章节">×</button>
           </div>
           <WysiwygEditor
@@ -304,7 +276,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
               analysisRef.current = '';
               setAnalysisLen(0);
               setHiddenSections(prev => new Set([...prev, '详细解析']));
-              triggerAutoSave();
+              scheduleSave();
             }} title="删除此章节">×</button>
           </div>
           <WysiwygEditor
@@ -331,7 +303,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
               notesRef.current = '';
               setNotesLen(0);
               setHiddenSections(prev => new Set([...prev, '我的作答']));
-              triggerAutoSave();
+              scheduleSave();
             }} title="删除此章节">×</button>
           </div>
           <WysiwygEditor
@@ -363,7 +335,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
                   next.delete(s);
                   return next;
                 });
-                triggerAutoSave();
+                scheduleSave();
               }}
             >恢复「{s}」</button>
           ))}
@@ -381,7 +353,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
                 const updated = [...customSections];
                 updated[i] = { ...updated[i], title: e.target.value };
                 setCustomSections(updated);
-                triggerAutoSave();
+                scheduleSave();
               }}
               placeholder="自定义章节标题..."
               spellCheck={false}
@@ -391,7 +363,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
               onClick={() => {
                 const updated = customSections.filter((_, j) => j !== i);
                 setCustomSections(updated);
-                triggerAutoSave();
+                scheduleSave();
               }}
               style={{ marginLeft: 8 }}
               title="删除此章节"
@@ -402,7 +374,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             initialMarkdown={s.content}
             onChange={(md: string) => {
               customRefs.current[i] = md;
-              triggerAutoSave();
+              scheduleSave();
             }}
             placeholder="自定义内容..."
             documentTitle={parsed?.title || ""}

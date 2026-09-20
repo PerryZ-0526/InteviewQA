@@ -232,7 +232,12 @@ export default function AIFloat() {
                             <pre>{entry.thinkingOutput}</pre>
                           </details>
                         )}
-                        <div className="ai-history-section"><strong>输出：</strong><div className="ai-history-output md" dangerouslySetInnerHTML={{ __html: (entry.resultOutput || entry.error || '') }} /></div>
+                        <div className="ai-history-section">
+                          <strong>输出：</strong>
+                          <div className="ai-history-output md" style={{ whiteSpace: 'pre-wrap' }}>
+                            {entry.resultOutput || entry.error || ''}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -7,6 +7,8 @@ import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { stripMdText } from '@/lib/stripText';
 import { scrollToAnchorPathPolling } from '@/lib/domScroll';
 import { useTocPref } from '@/lib/useTocPref';
+import { useAutosave } from '@/lib/useAutosave';
+import { useDocumentLoader } from '@/lib/useDocumentLoader';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -32,154 +34,121 @@ export default function ProjectDocumentView({ subdir, filename, onBack, onSaved,
   const [content, setContent] = useState('');
   const [frontmatter, setFrontmatter] = useState<Record<string, string>>({});
   const [displayTitle, setDisplayTitle] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
-
-  useEffect(() => {
-    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存' };
-    onSaveStatusChange?.(labels[saveStatus] || '');
-  }, [saveStatus, onSaveStatusChange]);
   // 目录显隐：按文档独立持久化，下次打开同一文档仍保持上次的状态
   const { showToc, toggleToc } = useTocPref(`project:${subdir}/${filename}`);
   const [createdAt, setCreatedAt] = useState('');
   const [updatedAt, setUpdatedAt] = useState('');
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const contentRef = useRef('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef('');
-  const doSaveRef = useRef<(md: string) => void>(() => {});
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
-  const mountedRef = useRef(true);
+  const buildSaveValue = useCallback(() => {
+    const now = fmtTime(new Date());
+    updatedAtRef.current = now;
+    const body = `# ${titleRef.current}\n\n${contentRef.current}\n\n<!-- created: ${createdAtRef.current} -->\n<!-- updated: ${now} -->`;
+    const frontmatterLines = Object.entries(frontmatter)
+      .filter(([key, value]) => key !== 'title' && key !== 'created' && key !== 'updated' && value)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
+    return frontmatterLines ? `---\n${frontmatterLines}\n---\n\n${body}` : body;
+  }, [frontmatter]);
+  const saveDocument = useCallback(async (full: string) => {
+    try {
+      const response = await fetch(`/api/project/${encodeURIComponent(subdir)}/${encodeURIComponent(filename)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: full }),
+      });
+      if (!response.ok) return false;
+      setUpdatedAt(updatedAtRef.current);
+      onSaved?.();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [filename, onSaved, subdir]);
+  const { status: saveStatus, schedule: scheduleSave, reset: resetSave } = useAutosave({
+    delay: AUTO_SAVE_DELAY,
+    buildValue: buildSaveValue,
+    save: saveDocument,
+  });
+  const loadDocument = useCallback(async (signal: AbortSignal) => {
+    const response = await fetch(`/api/project/${encodeURIComponent(subdir)}/${encodeURIComponent(filename)}`, { signal });
+    const json = await response.json();
+    if (!response.ok || !json.success) throw new Error(json.error || '文档加载失败');
+    return json as { data: string; mtimeMs: number | null; base: string };
+  }, [filename, subdir]);
+  const { data: loadedDocument, loading } = useDocumentLoader(`${subdir}/${filename}`, loadDocument);
+
+  useEffect(() => {
+    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
+    onSaveStatusChange?.(labels[saveStatus] || '');
+  }, [saveStatus, onSaveStatusChange]);
 
   useEffect(() => {
     setDisplayTitle('');
     setContent('');
     contentRef.current = '';
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/project/${encodeURIComponent(subdir)}/${encodeURIComponent(filename)}`);
-        const json = await res.json();
-        if (json.success) {
-          const raw = json.data as string;
-          const mtimeMs = json.mtimeMs as number | null;
-          if (typeof json.base === 'string') setDocBase(json.base);
-          let fm: Record<string, string> = {};
-          let body = raw;
-          let created = '';
-          let updated = '';
+  }, [subdir, filename, resetSave]);
 
-          // 解析已有时间元数据
-          const crMatch = raw.match(/<!--\s*created:\s*(.+?)\s*-->/);
-          const upMatch = raw.match(/<!--\s*updated:\s*(.+?)\s*-->/);
-          if (crMatch) created = crMatch[1].trim();
-          if (upMatch) updated = upMatch[1].trim();
+  useEffect(() => {
+    if (!loadedDocument) return;
+    const raw = loadedDocument.data;
+    const mtimeMs = loadedDocument.mtimeMs;
+    if (loadedDocument.base) setDocBase(loadedDocument.base);
+    let parsedFrontmatter: Record<string, string> = {};
+    let body = raw;
+    let created = raw.match(/<!--\s*created:\s*(.+?)\s*-->/)?.[1]?.trim() || '';
+    let updated = raw.match(/<!--\s*updated:\s*(.+?)\s*-->/)?.[1]?.trim() || '';
 
-          // 剥离 frontmatter
-          if (raw.startsWith('---')) {
-            const end = raw.indexOf('---', 3);
-            if (end > 0) {
-              const fmText = raw.slice(3, end).trim();
-              for (const line of fmText.split('\n')) {
-                const colon = line.indexOf(':');
-                if (colon > 0) fm[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-              }
-              body = raw.slice(end + 3).trimStart();
-              // frontmatter 中的 created 优先级低于 HTML 注释
-              if (!created && fm.created) created = fm.created;
-            }
-          }
-
-          // 若无 created，根据文件修改时间生成默认创建时间
-          if (!created && mtimeMs) {
-            created = fmtTime(new Date(mtimeMs));
-          }
-          if (!created) created = fmtTime(new Date());
-          if (!updated) updated = created;
-
-          // 剥离 H1 作为标题，编辑器内容不包含 H1
-          let title = filename;
-          body = body.trimStart();
-          const h1Match = body.match(/^#\s+(.+)/m);
-          if (h1Match) {
-            // 标题可能带颜色等内联 HTML（<span style>），显示前统一剥成纯文本
-            title = stripMdText(h1Match[1]);
-            body = body.slice(body.indexOf('\n', h1Match.index!) + 1).trimStart();
-          }
-
-          // 剥离已有的时间注释（避免编辑器内显示）
-          body = body.replace(/<!--\s*(?:created|updated):.+?-->\s*/g, '').trim();
-
-          setFrontmatter(fm);
-          setDisplayTitle(title);
-          titleRef.current = title;
-          setContent(body);
-          contentRef.current = body;
-          setCreatedAt(created);
-          setUpdatedAt(updated);
-          createdAtRef.current = created;
-          updatedAtRef.current = updated;
+    if (raw.startsWith('---')) {
+      const end = raw.indexOf('---', 3);
+      if (end > 0) {
+        const frontmatterText = raw.slice(3, end).trim();
+        for (const line of frontmatterText.split('\n')) {
+          const colon = line.indexOf(':');
+          if (colon > 0) parsedFrontmatter[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
         }
-      } catch {}
-      setLoading(false);
-    })();
-  }, [subdir, filename]);
+        body = raw.slice(end + 3).trimStart();
+        if (!created && parsedFrontmatter.created) created = parsedFrontmatter.created;
+      }
+    }
+    if (!created && mtimeMs) created = fmtTime(new Date(mtimeMs));
+    if (!created) created = fmtTime(new Date());
+    if (!updated) updated = created;
+
+    let title = filename;
+    body = body.trimStart();
+    const heading = body.match(/^#\s+(.+)/m);
+    if (heading) {
+      title = stripMdText(heading[1]);
+      body = body.slice(body.indexOf('\n', heading.index!) + 1).trimStart();
+    }
+    body = body.replace(/<!--\s*(?:created|updated):.+?-->\s*/g, '').trim();
+
+    setFrontmatter(parsedFrontmatter);
+    setDisplayTitle(title);
+    titleRef.current = title;
+    setContent(body);
+    contentRef.current = body;
+    setCreatedAt(created);
+    setUpdatedAt(updated);
+    createdAtRef.current = created;
+    updatedAtRef.current = updated;
+    resetSave();
+  }, [filename, loadedDocument, resetSave]);
 
   const handleTitleChange = useCallback((val: string) => {
     setDisplayTitle(val);
     titleRef.current = val;
-    setSaveStatus('waiting');
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      doSaveRef.current(contentRef.current);
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  const doSave = useCallback(async (md: string) => {
-    if (!mountedRef.current) return;
-    setSaveStatus('saving');
-    const now = fmtTime(new Date());
-    updatedAtRef.current = now;
-    setUpdatedAt(now);
-
-    const body = `# ${titleRef.current}\n\n${md}\n\n<!-- created: ${createdAtRef.current} -->\n<!-- updated: ${now} -->`;
-    const fmLines = Object.entries(frontmatter)
-      .filter(([k, v]) => k !== 'title' && k !== 'created' && k !== 'updated' && v)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
-    const full = fmLines ? `---\n${fmLines}\n---\n\n${body}` : body;
-    try {
-      const res = await fetch(`/api/project/${encodeURIComponent(subdir)}/${encodeURIComponent(filename)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: full }),
-      });
-      if (res.ok) { setSaveStatus('saved'); onSaved?.(); }
-      else setSaveStatus('saved');
-    } catch {
-      setSaveStatus('saved');
-    }
-  }, [subdir, filename, frontmatter]);
-
-  doSaveRef.current = doSave;
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleChange = useCallback((md: string) => {
     contentRef.current = md;
-    setSaveStatus('waiting');
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      doSaveRef.current(contentRef.current);
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [subdir, filename]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   // wiki 链接跳转：useLayoutEffect 在绘制前发起定位，rAF 轮询直到 Tiptap 标题渲染完成
   useLayoutEffect(() => {

@@ -6,10 +6,17 @@ import { CategoryInfo, TagInfo, ProjectSubdir, ExternalDocInfo } from '@/lib/typ
 import { useSidebarDrag } from './useSidebarDrag';
 import GlobalSearchModal from './GlobalSearchModal';
 import { getRecent, type RecentEntry } from '@/lib/recent';
+import { reorderExternalDocs, reorderProjectSubdirs } from '@/lib/reorderDocuments';
+import SidebarHeader from './SidebarHeader';
+import { ExternalAddModal, ExternalGroupModal, SidebarCreateModal } from './SidebarModals';
 
 interface Props {
   categories: CategoryInfo[];
   tags: TagInfo[];
+  projectData: ProjectSubdir[];
+  externalData: ExternalDocInfo[];
+  externalGroupsData: string[];
+  inboxPending: number;
   selectedCategory: string | null;
   selectedFile: string | null;
   onSelectCategory: (slug: string) => void;
@@ -35,8 +42,8 @@ interface Props {
   onToggleCollapse?: () => void;
   // 待入库题单入口（分类上方）
   onOpenInbox?: () => void;
+  onInboxRefresh?: () => void;
   inboxActive?: boolean;
-  refreshKey?: number;
   onMoveQuestion: (fromCat: string, filename: string, toCat: string, toIndex: number) => void;
   onMoveProjectDoc: (fromSubdir: string, filename: string, toSubdir: string, toIndex: number) => void;
 }
@@ -50,21 +57,13 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/[\/\\:*?"<>|]/g, '').replace(/\s+/g, '-').trim();
 }
 
-// 相对时间格式化：用于最近浏览列表（刚刚 / N 分钟前 / N 小时前 / 昨天 HH:mm / MM-DD HH:mm）
-function formatRelativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return '刚刚';
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)} 小时前`;
-  const d = new Date(ts);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  if (diff < 172800_000) return `昨天 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export default function Sidebar({
   categories,
   tags,
+  projectData,
+  externalData,
+  externalGroupsData,
+  inboxPending,
   selectedCategory,
   selectedFile,
   onSelectCategory,
@@ -85,8 +84,8 @@ export default function Sidebar({
   collapsed = false,
   onToggleCollapse,
   onOpenInbox,
+  onInboxRefresh,
   inboxActive,
-  refreshKey = 0,
   onMoveQuestion,
   onMoveProjectDoc,
 }: Props) {
@@ -94,10 +93,8 @@ export default function Sidebar({
   const [expandedProjectSubdirs, setExpandedProjectSubdirs] = useState<Set<string>>(new Set());
   // 栏目整体折叠状态：categories=分类栏目，project=project 栏目，tags=标签栏目
   const [collapsedSections, setCollapsedSections] = useState<Set<'categories' | 'project' | 'tags'>>(new Set());
-  const [projectSubdirs, setProjectSubdirs] = useState<ProjectSubdir[]>([]);
-  const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>([]);
-  // 待入库题单的未处理题数（入口徽标）
-  const [inboxPending, setInboxPending] = useState(0);
+  const [projectSubdirs, setProjectSubdirs] = useState<ProjectSubdir[]>(projectData);
+  const [externalDocs, setExternalDocs] = useState<ExternalDocInfo[]>(externalData);
   const [createForm, setCreateForm] = useState<CreateForm | null>(null);
   const [formName, setFormName] = useState('');
   const [formSlug, setFormSlug] = useState('');
@@ -111,7 +108,7 @@ export default function Sidebar({
   const [picking, setPicking] = useState<'file' | 'folder' | null>(null);
   const [externalError, setExternalError] = useState('');
   // 外部文档分组：分组名列表（注册顺序）、已折叠的分组（默认全部展开）
-  const [externalGroups, setExternalGroups] = useState<string[]>([]);
+  const [externalGroups, setExternalGroups] = useState<string[]>(externalGroupsData);
   const [collapsedExtGroups, setCollapsedExtGroups] = useState<Set<string>>(new Set());
   // 外部文档分组新建/改名弹窗状态
   const [extGroupModal, setExtGroupModal] = useState<{ mode: 'create' } | { mode: 'rename'; oldName: string } | null>(null);
@@ -125,41 +122,16 @@ export default function Sidebar({
   const [recentList, setRecentList] = useState<RecentEntry[]>([]);
   const recentMenuRef = useRef<HTMLDivElement>(null);
 
-  // 拉取待入库题单的未处理题数（用于入口徽标）
-  const loadInboxPending = useCallback(async () => {
-    try {
-      const res = await fetch('/api/inbox');
-      const json = await res.json();
-      if (json.success) setInboxPending(json.data?.unchecked ?? 0);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/project');
-        const json = await res.json();
-        if (json.success) setProjectSubdirs(json.data || []);
-      } catch {}
-    })();
-    (async () => {
-      try {
-        const res = await fetch('/api/external');
-        const json = await res.json();
-        if (json.success) {
-          setExternalDocs(json.data || []);
-          setExternalGroups(json.groups || []);
-        }
-      } catch {}
-    })();
-    loadInboxPending();
-  }, [refreshKey, loadInboxPending]);
+  useEffect(() => setProjectSubdirs(projectData), [projectData]);
+  useEffect(() => setExternalDocs(externalData), [externalData]);
+  useEffect(() => setExternalGroups(externalGroupsData), [externalGroupsData]);
 
   // 题单内容变化（加入新题 / 勾选入库）时刷新待处理徽标
   useEffect(() => {
-    window.addEventListener('inbox-changed', loadInboxPending);
-    return () => window.removeEventListener('inbox-changed', loadInboxPending);
-  }, [loadInboxPending]);
+    if (!onInboxRefresh) return;
+    window.addEventListener('inbox-changed', onInboxRefresh);
+    return () => window.removeEventListener('inbox-changed', onInboxRefresh);
+  }, [onInboxRefresh]);
 
   // 最近浏览下拉：点击菜单外部时自动关闭
   useEffect(() => {
@@ -737,120 +709,24 @@ export default function Sidebar({
 
   return (
     <aside className={`sidebar${collapsed ? ' sidebar-collapsed' : ''}`}>
-      <div className="sidebar-header">
-        {/* 顶部按钮组：返回首页 + 全库检索 + 操作日志 + 随机一题 + 最近浏览（折叠时竖排成一列） */}
-        <div ref={recentMenuRef} style={{ display: 'flex', flexDirection: collapsed ? 'column' : 'row', gap: 4, flexShrink: 0, position: 'relative' }}>
-          <button className="sidebar-home-btn" onClick={onGoHome} title="返回首页" aria-label="返回首页">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 10.5 12 3l9 7.5" />
-              <path d="M5 9.5V21h14V9.5" />
-              <path d="M10 21v-6h4v6" />
-            </svg>
-          </button>
-          {/* 全库关键字检索入口：与返回首页按钮并排 */}
-          <button
-            className="sidebar-home-btn"
-            onClick={() => setGlobalSearchOpen(true)}
-            title="全文档关键字检索"
-            aria-label="全文档关键字检索"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7" />
-              <line x1="20" y1="20" x2="16.5" y2="16.5" />
-            </svg>
-          </button>
-          {/* 操作日志入口：从右侧 header 迁移到侧边栏顶部 */}
-          <button
-            className="sidebar-home-btn"
-            onClick={onOpenLogs}
-            title="查看操作日志"
-            aria-label="查看操作日志"
-            disabled={!onOpenLogs}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 3" />
-            </svg>
-          </button>
-          {/* 随机一题入口：从右侧 header 迁移到侧边栏顶部 */}
-          <button
-            className="sidebar-home-btn"
-            onClick={onOpenRandom}
-            title="随机抽取一道题目进行练习"
-            aria-label="随机一题"
-            disabled={!onOpenRandom}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="4" width="16" height="16" rx="3" />
-              <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
-              <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
-          {/* 最近浏览入口：下拉展示最近打开过的文档（分类题目 / project 文档 / 外部文档，localStorage 记录，最多 10 条） */}
-          <button
-            className="sidebar-home-btn"
-            onClick={toggleRecent}
-            title="最近浏览"
-            aria-label="最近浏览"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-7.5 4" />
-              <path d="M3 3v4h4" />
-              <path d="M12 7v5l3 3" />
-            </svg>
-          </button>
-          {/* 最近浏览下拉列表：点击条目按文档类型一键跳回（分类题目 / project 文档 / 外部文档） */}
-          {recentOpen && (
-            <div className="sidebar-recent-dropdown">
-              {recentList.length === 0 ? (
-                <div className="sidebar-recent-empty">暂无浏览记录</div>
-              ) : (
-                recentList.map((item) => {
-                  // 按文档类型解析归属名称：分类题目取分类显示名，project 文档取子目录名，外部文档固定显示「外部文档」
-                  const scopeName =
-                    item.kind === 'project'
-                      ? projectSubdirs.find((s) => s.slug === item.category)?.slug || item.category
-                      : item.kind === 'external'
-                      ? '外部文档'
-                      : categories.find((c) => c.slug === item.category)?.name || item.category;
-                  return (
-                    <button
-                      key={`${item.kind}:${item.category}/${item.filename}`}
-                      className="sidebar-recent-item"
-                      onClick={() => {
-                        setRecentOpen(false);
-                        // 按文档类型分发跳转：分类题目 / project 文档 / 外部文档
-                        if (item.kind === 'project') onSelectProgram?.(item.category, item.filename);
-                        else if (item.kind === 'external') onSelectExternalDoc?.(item.filename);
-                        else onSelectQuestion(item.category, item.filename);
-                      }}
-                      title={`${item.title}（${scopeName}）`}
-                    >
-                      <span className="sidebar-recent-title">{item.title}</span>
-                      <span className="sidebar-recent-meta">{scopeName} · {formatRelativeTime(item.ts)}</span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
-        {/* 折叠/展开侧边栏：展开时收起为最左侧图标栏，折叠后点击图标栏按钮展开 */}
-        <button
-          className="sidebar-home-btn"
-          onClick={onToggleCollapse}
-          title={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-          aria-label={collapsed ? '展开侧边栏' : '折叠侧边栏'}
-          disabled={!onToggleCollapse}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <line x1="9" y1="4" x2="9" y2="20" />
-            <path d={collapsed ? 'm16 9-3 3 3 3' : 'm13 9 3 3-3 3'} />
-          </svg>
-        </button>
-      </div>
+      <SidebarHeader
+        collapsed={collapsed}
+        recentOpen={recentOpen}
+        recentList={recentList}
+        recentMenuRef={recentMenuRef}
+        categories={categories}
+        projectSubdirs={projectSubdirs}
+        onGoHome={onGoHome}
+        onOpenSearch={() => setGlobalSearchOpen(true)}
+        onOpenLogs={onOpenLogs}
+        onOpenRandom={onOpenRandom}
+        onToggleRecent={toggleRecent}
+        onToggleCollapse={onToggleCollapse}
+        onCloseRecent={() => setRecentOpen(false)}
+        onSelectQuestion={onSelectQuestion}
+        onSelectProgram={onSelectProgram}
+        onSelectExternalDoc={onSelectExternalDoc}
+      />
 
       {/* 折叠态只保留顶部功能按钮图标栏，以下栏目内容全部隐藏 */}
       {!collapsed && (
@@ -1153,148 +1029,46 @@ export default function Sidebar({
       </>
       )}
 
-      {/* 添加外部文档弹窗 */}
       {addExternalOpen && (
-        <div className="sidebar-modal-overlay" onClick={() => !addingExternal && !picking && setAddExternalOpen(false)}>
-          <div className="sidebar-modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
-            <div className="sidebar-modal-title">
-              索引外部 MD 文档
-              <span style={{ fontWeight: 400, color: '#8c7e9d' }}>
-                {addExternalGroup ? ` → 加入分组「${addExternalGroup}」` : ' → 加入未分组'}
-              </span>
-            </div>
-            <div className="sidebar-modal-body">
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <button
-                  className="btn btn-small btn-primary"
-                  onClick={() => pickFromDialog('file')}
-                  disabled={!!picking || addingExternal}
-                >
-                  {picking === 'file' ? '等待选择…' : '选择文件…'}
-                </button>
-                <button
-                  className="btn btn-small btn-primary"
-                  onClick={() => pickFromDialog('folder')}
-                  disabled={!!picking || addingExternal}
-                >
-                  {picking === 'folder' ? '等待选择…' : '选择文件夹…'}
-                </button>
-                {picking && (
-                  <span style={{ fontSize: 12, color: '#1971c2', alignSelf: 'center' }}>
-                    请在弹出的资源管理器窗口中完成选择
-                  </span>
-                )}
-              </div>
-              <label style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>
-                或手动粘贴 .md 文件/文件夹完整路径，每行一个（文件夹会递归扫描其中的 .md）
-              </label>
-              <textarea
-                className="sidebar-modal-input sidebar-modal-textarea"
-                value={externalPathsText}
-                onChange={(e) => setExternalPathsText(e.target.value)}
-                placeholder={'D:\\notes\\设计文档.md\nD:\\blog\\posts'}
-                autoFocus
-              />
-              <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-                文档保留在原位置，本项目仅记录路径。文件被移动或重命名后索引将失效并提示原位置。
-              </div>
-            </div>
-            {externalError && (
-              <div style={{ color: '#e03131', fontSize: 12, marginBottom: 8 }}>{externalError}</div>
-            )}
-            <div className="sidebar-modal-actions">
-              <button className="btn btn-small btn-secondary" onClick={() => setAddExternalOpen(false)} disabled={addingExternal || !!picking}>取消</button>
-              <button className="btn btn-small btn-primary" onClick={handleAddExternal} disabled={addingExternal || !!picking || !externalPathsText.trim()}>
-                {addingExternal ? '扫描中...' : '添加'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ExternalAddModal
+          group={addExternalGroup}
+          paths={externalPathsText}
+          busy={addingExternal}
+          picking={picking}
+          error={externalError}
+          onPathsChange={setExternalPathsText}
+          onPick={pickFromDialog}
+          onSubmit={handleAddExternal}
+          onClose={() => setAddExternalOpen(false)}
+        />
       )}
 
-      {/* 外部文档分组新建/改名弹窗 */}
       {extGroupModal && (
-        <div className="sidebar-modal-overlay" onClick={() => !extGroupBusy && setExtGroupModal(null)}>
-          <div className="sidebar-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="sidebar-modal-title">
-              {extGroupModal.mode === 'create' ? '新建外部文档分组' : '重命名分组'}
-            </div>
-            <div className="sidebar-modal-body">
-              <label style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 4 }}>
-                {extGroupModal.mode === 'create'
-                  ? '创建后可在侧边栏将外部文档拖拽进该分组'
-                  : '重命名后组内文档自动跟随，索引与文件均不受影响'}
-              </label>
-              <input
-                className="sidebar-modal-input"
-                value={extGroupName}
-                onChange={(e) => setExtGroupName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') submitExtGroup(); }}
-                placeholder="分组名称"
-                autoFocus
-              />
-            </div>
-            {extGroupError && (
-              <div style={{ color: '#e03131', fontSize: 12, marginBottom: 8 }}>{extGroupError}</div>
-            )}
-            <div className="sidebar-modal-actions">
-              <button className="btn btn-small btn-secondary" onClick={() => setExtGroupModal(null)} disabled={extGroupBusy}>取消</button>
-              <button className="btn btn-small btn-primary" onClick={submitExtGroup} disabled={extGroupBusy || !extGroupName.trim()}>
-                {extGroupBusy ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ExternalGroupModal
+          mode={extGroupModal.mode}
+          name={extGroupName}
+          busy={extGroupBusy}
+          error={extGroupError}
+          onNameChange={setExtGroupName}
+          onSubmit={submitExtGroup}
+          onClose={() => setExtGroupModal(null)}
+        />
       )}
 
-      {/* Create form modal */}
       {createForm && (
-        <div className="sidebar-modal-overlay" onClick={closeForm}>
-          <div className="sidebar-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="sidebar-modal-title">
-              {createForm.type === 'category' ? '新建分类' :
-               createForm.type === 'project-subdir' ? '新建 project 子目录' :
-               createForm.type === 'group' ? '新建分组' :
-               '新建文档'}
-            </div>
-            <div className="sidebar-modal-body">
-              {needsSlug && (
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 2 }}>目录名</label>
-                  <input
-                    className="sidebar-modal-input"
-                    value={formSlug}
-                    onChange={(e) => setFormSlug(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-                    placeholder={slugify(formName) || 'english-slug'}
-                  />
-                </div>
-              )}
-              <div>
-                <label style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 2 }}>
-                  {needsSlug ? '显示名' : '标题'}
-                </label>
-                <input
-                  className="sidebar-modal-input"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-                  placeholder={needsSlug ? '显示名称' : '文档标题'}
-                  autoFocus
-                />
-              </div>
-            </div>
-            {formError && (
-              <div style={{ color: '#e03131', fontSize: 12, marginBottom: 8 }}>{formError}</div>
-            )}
-            <div className="sidebar-modal-actions">
-              <button className="btn btn-small btn-secondary" onClick={closeForm} disabled={creating}>取消</button>
-              <button className="btn btn-small btn-primary" onClick={handleSubmit} disabled={creating || !formName.trim()}>
-                {creating ? '创建中...' : '创建'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SidebarCreateModal
+          title={createForm.type === "category" ? "新建分类" : createForm.type === "project-subdir" ? "新建 project 子目录" : createForm.type === "group" ? "新建分组" : "新建文档"}
+          needsSlug={needsSlug}
+          slug={formSlug}
+          slugPlaceholder={slugify(formName)}
+          name={formName}
+          busy={creating}
+          error={formError}
+          onSlugChange={setFormSlug}
+          onNameChange={setFormName}
+          onSubmit={handleSubmit}
+          onClose={closeForm}
+        />
       )}
 
       {/* 全库关键字检索弹窗 */}
@@ -1361,61 +1135,4 @@ export default function Sidebar({
       )}
     </aside>
   );
-}
-
-/** 外部文档拖拽移动时的乐观列表更新（docs 数组顺序即分组内显示顺序）。 */
-function reorderExternalDocs(
-  prev: ExternalDocInfo[],
-  docId: string,
-  toGroup: string,
-  toIndex: number,
-): ExternalDocInfo[] {
-  const idx = prev.findIndex((d) => d.id === docId);
-  if (idx < 0) return prev;
-  const moved = { ...prev[idx], group: toGroup };
-  const rest = prev.filter((d) => d.id !== docId);
-  // 目标分组剩余条目（保持原顺序）
-  const remaining = rest.filter((d) => (d.group || '') === toGroup);
-  const clamped = Math.max(0, Math.min(toIndex, remaining.length));
-  // 插入锚点：第 toIndex 条之前；追加则放同分组最后一条之后；分组为空则放列表末尾
-  let insertAt: number;
-  if (remaining.length === 0) {
-    insertAt = rest.length;
-  } else if (clamped < remaining.length) {
-    insertAt = rest.indexOf(remaining[clamped]);
-  } else {
-    insertAt = rest.indexOf(remaining[remaining.length - 1]) + 1;
-  }
-  const next = [...rest];
-  next.splice(insertAt, 0, moved);
-  return next;
-}
-
-/** project/分组文档拖拽时的乐观列表更新。 */
-function reorderProjectSubdirs(
-  prev: ProjectSubdir[],
-  fromSubdir: string,
-  filename: string,
-  toSubdir: string,
-  toIndex: number,
-): ProjectSubdir[] {
-  const moved = prev.find((item) => item.slug === fromSubdir)?.docs.find((doc) => doc.filename === filename);
-  if (!moved) return prev;
-  return prev.map((item) => {
-    if (item.slug === fromSubdir && item.slug === toSubdir) {
-      const docs = [...item.docs];
-      const index = docs.findIndex((doc) => doc.filename === filename);
-      if (index < 0) return item;
-      const [doc] = docs.splice(index, 1);
-      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, doc);
-      return { ...item, docs };
-    }
-    if (item.slug === fromSubdir) return { ...item, docs: item.docs.filter((doc) => doc.filename !== filename) };
-    if (item.slug === toSubdir) {
-      const docs = [...item.docs];
-      docs.splice(Math.max(0, Math.min(toIndex, docs.length)), 0, moved);
-      return { ...item, docs };
-    }
-    return item;
-  });
 }

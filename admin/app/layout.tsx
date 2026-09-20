@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './styles/editor.css';
+import './styles/workspace.css';
+import './styles/review.css';
+import './styles/navigation.css';
 
 export const metadata: Metadata = {
   title: '面试真题知识库 - 管理后台',

@@ -5,6 +5,8 @@ import WysiwygEditor from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import { stripMdText } from '@/lib/stripText';
 import { useTocPref } from '@/lib/useTocPref';
+import { useAutosave } from '@/lib/useAutosave';
+import { useDocumentLoader } from '@/lib/useDocumentLoader';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -27,29 +29,69 @@ interface Props {
 }
 
 export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSaved }: Props) {
-  const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
   const [path, setPath] = useState('');
   const [content, setContent] = useState('');
   const [frontmatter, setFrontmatter] = useState<Record<string, string>>({});
   const [displayTitle, setDisplayTitle] = useState('');
   const [mtimeMs, setMtimeMs] = useState<number | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
   // 目录显隐：按文档独立持久化，下次打开同一文档仍保持上次的状态
   const { showToc, toggleToc } = useTocPref(`external:${id}`);
   const contentRef = useRef('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useRef('');
-  const doSaveRef = useRef<(md: string) => void>(() => {});
-  const mountedRef = useRef(true);
+  const buildSaveValue = useCallback(() => {
+    const body = `# ${titleRef.current}\n\n${contentRef.current}`;
+    const frontmatterLines = Object.entries(frontmatter)
+      .filter(([key, value]) => key !== 'title' && value)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
+    return frontmatterLines ? `---\n${frontmatterLines}\n---\n\n${body}` : body;
+  }, [frontmatter]);
+  const saveDocument = useCallback(async (full: string) => {
+    try {
+      const response = await fetch(`/api/external/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: full }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (response.ok && json.success) {
+        setMtimeMs(Date.now());
+        onSaved?.();
+        return true;
+      }
+      if (json.path) {
+        setMissing(true);
+        setPath(json.path);
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [id, onSaved]);
+  const { status: saveStatus, schedule: scheduleSave, reset: resetSave } = useAutosave({
+    delay: AUTO_SAVE_DELAY,
+    buildValue: buildSaveValue,
+    save: saveDocument,
+  });
+  const loadDocument = useCallback(async (signal: AbortSignal) => {
+    const response = await fetch(`/api/external/${encodeURIComponent(id)}`, { signal });
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      const error = new Error(json.error || '文档加载失败') as Error & { path?: string };
+      error.path = json.path;
+      throw error;
+    }
+    return json as { data: string; path: string; mtimeMs: number | null };
+  }, [id]);
+  const { data: loadedDocument, loading, error: loadError } = useDocumentLoader(id, loadDocument);
 
   useEffect(() => {
-    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存' };
+    const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
     onSaveStatusChange?.(labels[saveStatus] || '');
   }, [saveStatus, onSaveStatusChange]);
 
   useEffect(() => {
-    setLoading(true);
     setMissing(false);
     setPath('');
     setContent('');
@@ -58,118 +100,56 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
     titleRef.current = '';
     setFrontmatter({});
     setMtimeMs(null);
-    setSaveStatus('saved');
-    (async () => {
-      try {
-        const res = await fetch(`/api/external/${encodeURIComponent(id)}`);
-        const json = await res.json();
-        if (res.ok && json.success) {
-          const raw = json.data as string;
-          let fm: Record<string, string> = {};
-          let body = raw;
+    resetSave();
+  }, [id, resetSave]);
 
-          // 剥离 frontmatter（保存时原样保留）
-          if (raw.startsWith('---')) {
-            const end = raw.indexOf('---', 3);
-            if (end > 0) {
-              const fmText = raw.slice(3, end).trim();
-              for (const line of fmText.split('\n')) {
-                const colon = line.indexOf(':');
-                if (colon > 0) fm[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-              }
-              body = raw.slice(end + 3).trimStart();
-            }
-          }
-
-          // 剥离 H1 作为标题，编辑器内容不包含 H1
-          let title = basename(json.path);
-          body = body.trimStart();
-          const h1Match = body.match(/^#\s+(.+)/m);
-          if (h1Match) {
-            // 标题可能带颜色等内联 HTML（<span style>），显示前统一剥成纯文本
-            title = stripMdText(h1Match[1]);
-            body = body.slice(body.indexOf('\n', h1Match.index!) + 1).trimStart();
-          }
-
-          setFrontmatter(fm);
-          setDisplayTitle(title);
-          titleRef.current = title;
-          setContent(body);
-          contentRef.current = body;
-          setPath(json.path);
-          setMtimeMs(json.mtimeMs ?? null);
-        } else {
-          setMissing(true);
-          setPath(json.path || '');
+  useEffect(() => {
+    if (loadError) {
+      setMissing(true);
+      setPath((loadError as Error & { path?: string }).path || '');
+      return;
+    }
+    if (!loadedDocument) return;
+    const raw = loadedDocument.data;
+    let parsedFrontmatter: Record<string, string> = {};
+    let body = raw;
+    if (raw.startsWith('---')) {
+      const end = raw.indexOf('---', 3);
+      if (end > 0) {
+        const frontmatterText = raw.slice(3, end).trim();
+        for (const line of frontmatterText.split('\n')) {
+          const colon = line.indexOf(':');
+          if (colon > 0) parsedFrontmatter[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
         }
-      } catch {
-        setMissing(true);
+        body = raw.slice(end + 3).trimStart();
       }
-      setLoading(false);
-    })();
-  }, [id]);
+    }
+    let title = basename(loadedDocument.path);
+    body = body.trimStart();
+    const heading = body.match(/^#\s+(.+)/m);
+    if (heading) {
+      title = stripMdText(heading[1]);
+      body = body.slice(body.indexOf('\n', heading.index!) + 1).trimStart();
+    }
+    setFrontmatter(parsedFrontmatter);
+    setDisplayTitle(title);
+    titleRef.current = title;
+    setContent(body);
+    contentRef.current = body;
+    setPath(loadedDocument.path);
+    setMtimeMs(loadedDocument.mtimeMs ?? null);
+  }, [loadError, loadedDocument]);
 
   const handleTitleChange = useCallback((val: string) => {
     setDisplayTitle(val);
     titleRef.current = val;
-    setSaveStatus('waiting');
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      doSaveRef.current(contentRef.current);
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  const doSave = useCallback(async (md: string) => {
-    if (!mountedRef.current) return;
-    setSaveStatus('saving');
-
-    // 外部文档写回：H1 + 正文 + 原样保留的 frontmatter，不注入任何时间注释
-    const body = `# ${titleRef.current}\n\n${md}`;
-    const fmLines = Object.entries(frontmatter)
-      .filter(([k, v]) => k !== 'title' && v)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
-    const full = fmLines ? `---\n${fmLines}\n---\n\n${body}` : body;
-    try {
-      const res = await fetch(`/api/external/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: full }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok && json.success) {
-        setSaveStatus('saved');
-        setMtimeMs(Date.now());
-        onSaved?.();
-      } else if (json.path) {
-        setMissing(true);
-        setPath(json.path);
-      } else {
-        setSaveStatus('waiting');
-      }
-    } catch {
-      setSaveStatus('waiting');
-    }
-  }, [id, frontmatter, onSaved]);
-
-  doSaveRef.current = doSave;
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleChange = useCallback((md: string) => {
     contentRef.current = md;
-    setSaveStatus('waiting');
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      doSaveRef.current(contentRef.current);
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [id]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   if (loading) {
     return (

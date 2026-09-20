@@ -7,6 +7,7 @@ import type { Question } from '@/lib/types';
 import { previewAllRatings, rateCard, getOrCreateCard, fromCard, type PreviewResult, type RateableRating } from '@/lib/fsrsLogic';
 import type { FsrsCardData, FsrsReviewEntry } from '@/lib/fsrsStore';
 import WysiwygEditor from './WysiwygEditor';
+import { useAutosave } from '@/lib/useAutosave';
 
 const AUTO_SAVE_DELAY = 2000;
 
@@ -24,7 +25,7 @@ interface Props {
   category: string;
   /** 分类 slug（category 为显示名，保存时需要 slug 定位文件） */
   categorySlug?: string;
-  onSave: (markdown: string, target: { category: string; filename: string }) => void;
+  onSave: (markdown: string, target: { category: string; filename: string }) => Promise<boolean>;
   onBack: () => void;
   imageBase?: string;
   uploadDir?: string;
@@ -40,7 +41,6 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
   const [showAnswer, setShowAnswer] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [userNotes, setUserNotes] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'waiting'>('saved');
   // FSRS 评分行：四个评分档的间隔预告；评分后禁用整行
   const [previews, setPreviews] = useState<PreviewResult[]>([]);
   const [rated, setRated] = useState(false);
@@ -51,11 +51,33 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
   const analysisKeyRef = useRef(0);
   const createdAtRef = useRef('');
   const updatedAtRef = useRef('');
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const doSaveRef = useRef<() => void>(() => {});
   const lastSavedMdRef = useRef('');
   const mountedRef = useRef(true);
+  const buildSaveValue = useCallback(() => {
+    if (!parsed) return null;
+    const updated: Question = {
+      ...parsed,
+      answer: answerRef.current,
+      analysis: analysisRef.current,
+      notes: userNotes,
+      createdAt: createdAtRef.current,
+      updatedAt: formatDateTime(new Date()),
+    };
+    updatedAtRef.current = updated.updatedAt;
+    const markdown = generateMarkdown(updated);
+    lastSavedMdRef.current = markdown;
+    return markdown;
+  }, [parsed, userNotes]);
+  const saveDocument = useCallback(
+    (markdown: string) => onSave(markdown, { category: categorySlug || category, filename }),
+    [category, categorySlug, filename, onSave],
+  );
+  const { status: saveStatus, schedule: scheduleSave, reset: resetSave } = useAutosave({
+    delay: AUTO_SAVE_DELAY,
+    buildValue: buildSaveValue,
+    save: saveDocument,
+  });
 
   useEffect(() => {
     if (markdown === lastSavedMdRef.current) return;
@@ -68,7 +90,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
     updatedAtRef.current = q.updatedAt;
     answerKeyRef.current += 1;
     analysisKeyRef.current += 1;
-    setSaveStatus('saved');
+    resetSave();
     setShowAnswer(false);
     setShowAnalysis(false);
 
@@ -81,53 +103,24 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
     // Load notes from file, fall back to localStorage
     setUserNotes(q.notes || localStorage.getItem(`random-notes-${filename}`) || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markdown, filename]);
-
-  // Debounced auto-save (for WYSIWYG content changes)
-  const triggerAutoSave = useCallback(() => {
-    setSaveStatus('waiting');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      doSaveRef.current();
-    }, AUTO_SAVE_DELAY);
-  }, []);
-
-  const doSave = useCallback(() => {
-    if (!parsed || !mountedRef.current) return;
-    setSaveStatus('saving');
-    const updated: Question = {
-      ...parsed,
-      answer: answerRef.current,
-      analysis: analysisRef.current,
-      notes: userNotes,
-      createdAt: createdAtRef.current,
-      updatedAt: formatDateTime(new Date()),
-    };
-    updatedAtRef.current = updated.updatedAt;
-    const newMd = generateMarkdown(updated);
-    lastSavedMdRef.current = newMd;
-    // 传入本组件捕获的文档定位，避免切换文档后延迟保存写入错误文件
-    onSave(newMd, { category: categorySlug || category, filename });
-    setSaveStatus('saved');
-  }, [parsed, onSave, userNotes, categorySlug, category, filename]);
-  doSaveRef.current = doSave;
+  }, [markdown, filename, resetSave]);
 
   const handleAnswerChange = useCallback((md: string) => {
     answerRef.current = md;
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   const handleAnalysisChange = useCallback((md: string) => {
     analysisRef.current = md;
-    triggerAutoSave();
-  }, [triggerAutoSave]);
+    scheduleSave();
+  }, [scheduleSave]);
 
   // Notes save to localStorage (instant) + md file (debounced)
   const handleNotesChange = useCallback((text: string) => {
     setUserNotes(text);
     localStorage.setItem(`random-notes-${filename}`, text);
-    triggerAutoSave();
-  }, [filename, triggerAutoSave]);
+    scheduleSave();
+  }, [filename, scheduleSave]);
 
   // FSRS 评分：基于当前卡片算出下一状态 → 回传父组件持久化 → 复习模式 1.2s 后自动下一题
   const handleRating = (rating: RateableRating) => {
@@ -149,9 +142,8 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
   useEffect(() => {
     mountedRef.current = true;
     return () => {
-      mountedRef.current = false;
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       if (nextTimerRef.current) clearTimeout(nextTimerRef.current);
+      mountedRef.current = false;
     };
   }, []);
 
@@ -171,6 +163,7 @@ export default function RandomQuestion({ markdown, filename, category, categoryS
             {saveStatus === 'saving' && '保存中...'}
             {saveStatus === 'waiting' && '待保存'}
             {saveStatus === 'saved' && '已保存'}
+            {saveStatus === 'error' && '保存失败'}
           </div>
           <div className="doc-time-info">
             {createdAtRef.current && <span>创建：{createdAtRef.current}</span>}
