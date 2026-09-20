@@ -1,4 +1,11 @@
 node_modules/
 .next/
+.next-build/
 admin/tasks/
+admin/.next-tmp/
+admin/backups/
+admin/link-meta/
+admin/*.jsonl
+admin/*.tsbuildinfo
+mobile/dist/
 ref_project/
