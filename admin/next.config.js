@@ -2,6 +2,8 @@
 const path = require('path');
 
 const nextConfig = {
+  // Keep production builds separate so `next build` cannot corrupt a running dev server.
+  distDir: process.env.NODE_ENV === 'production' ? '.next-build' : '.next',
   webpack: (config, { dev }) => {
     if (dev) {
       // categories/ tags/ project/ 是运行时 fs 读取的数据文件，写入时排除出 watcher
