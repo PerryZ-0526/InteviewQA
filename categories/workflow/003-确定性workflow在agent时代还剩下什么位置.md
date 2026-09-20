@@ -10,7 +10,7 @@ agentic workflow 收敛为 agent loop 之后，确定性 workflow 在 agent 时�
 
 ## 题目导航
 
-← [002-为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop) | [004-Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) →
+← [为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop.md) | [Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) →
 
 ## 面试直接答
 

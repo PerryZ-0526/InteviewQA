@@ -10,7 +10,7 @@ DeepSeek 最近开源了 Agent 框架 Harness（dsh），梳理一下它的架�
 
 ## 题目导航
 
-← 无 | [002-DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别) →
+← 无 | [DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别.md) →
 
 ## 面试直接答
 

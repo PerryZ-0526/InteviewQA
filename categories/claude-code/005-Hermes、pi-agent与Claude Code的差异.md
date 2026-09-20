@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← [004-Claude Code架构梳理](004-Claude Code架构梳理) | 无 →
+← [Claude Code架构梳理](004-Claude Code架构梳理.md) | 无 →
 
 ## 面试直接答
 

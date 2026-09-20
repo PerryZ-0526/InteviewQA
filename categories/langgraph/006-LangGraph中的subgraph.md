@@ -6,11 +6,11 @@
 
 ## 标签
 
-[TODO](../../tags/TODO.md)
+暂无
 
 ## 题目导航
 
-← [LangGraph搭建agent和直接使用claude-code+skill搭建agent相比的优势在哪？](LangGraph搭建agent和直接使用claude-code+skill搭建agent相比的优势在哪？) | [langGraph架构中，tool是作为一个函数，还是作为一个node？](007-langGraph架构中，tool是作为一个函数，还是作为一个node？.md) →
+← [LangGraph搭建agent和直接使用claude-code+skill搭建agent相比的优势在哪？](005-LangGraph搭建agent和直接使用claude-code+skill搭建agent相比的优势在哪？.md) | [langGraph架构中，tool是作为一个函数，还是作为一个node？](007-langGraph架构中，tool是作为一个函数，还是作为一个node？.md) →
 
 ## 面试直接答
 

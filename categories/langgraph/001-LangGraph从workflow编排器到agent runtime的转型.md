@@ -10,7 +10,7 @@ LangGraph 最初是 workflow 编排框架，后来转型为 agent runtime，谈�
 
 ## 题目导航
 
-← 无 | [langGraph中的command](langGraph中的command) →
+← 无 | [langGraph中的command](002-langGraph中的command.md) →
 
 ## 面试直接答
 

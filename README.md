@@ -40,7 +40,7 @@ InteviewQA/
 
 ### 管理后台（admin/）
 
-基于 Next.js 14 的 SPA，核心功能：
+基于 Next.js 15 的 SPA，核心功能：
 
 - **题库浏览**：左侧边栏按分类 + 标签 + project 分组展示
 - **文档编辑**：TipTap WYSIWYG 编辑器，支持自动保存、目录导航、文本批注
@@ -49,16 +49,16 @@ InteviewQA/
 
 ### 移动端（mobile/）
 
-基于 Capacitor 的纯静态 Web App，将题库打包为原生 APK。支持分类浏览、标签检索、全文搜索、离线访问。构建时将 `categories/`、`tags/`、`project/` 目录的静态快照打入安装包。
+基于 Capacitor 的纯静态 Web App，将题库打包为原生 APK。支持分类浏览、标签检索、全文搜索、离线访问。构建时生成轻量 `content-manifest.json`，题目答案、解析和 project 正文在打开时从包内 Markdown 按需加载。
 
 ### 内容生成流水线
 
 ```
 用户输入题目 → buildGeneratePrompt() → spawn('claude', ['-p', prompt])
   → Claude Code 加载 CLAUDE.md + interview-qa skill
-  → 生成 # H1 + 六段式内容 + 标签 + 导航
-  → 写入 categories/<分类>/<序号>-<标题>.md
-  → 更新 00-index.md + tags/*.md + README.md + 前后题导航链接
+  → 输出结构化元数据和 Markdown，不直接操作文件
+  → questionRepository 串行写入题目文件
+  → 应用代码更新 00-index.md + tags/*.md + README.md + 前后题导航链接
 ```
 
 ## 内容规范
@@ -75,81 +75,6 @@ InteviewQA/
 更多细节见 [CLAUDE.md](CLAUDE.md) 和 [.claude/skills/interview-qa/SKILL.md](.claude/skills/interview-qa/SKILL.md)。
 
 ## 分类
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
-
-### 新增
-
-- [${category}](categories/${category}/00-index.md)
-
 
 ### AI Agent / LLM 应用框架
 
@@ -170,6 +95,7 @@ InteviewQA/
 
 - [GraphRAG](categories/graphrag/00-index.md)
 - [LangChain](categories/langchain/00-index.md)
+- [Langfuse](categories/langfuse/00-index.md)
 - [LangGraph](categories/langgraph/00-index.md)
 - [LLM Wiki](categories/llm-wiki/00-index.md)
 - [RAG](categories/rag/00-index.md)
@@ -183,6 +109,7 @@ InteviewQA/
 
 ### 编程语言 / 计算机基础
 
+- [数据结构](categories/Data%20Structure/00-index.md)
 - [Python](categories/python/00-index.md)
 - [操作系统](categories/os/00-index.md)
 - [计算机网络](categories/compute-network/00-index.md)
@@ -190,20 +117,36 @@ InteviewQA/
 
 ### 软件工程 / 面试通用
 
+- [HR 面试](categories/HR/00-index.md)
 - [开发性问题（个人素养）](categories/behavioral/00-index.md)
 - [设计范式](categories/design-patterns/00-index.md)
 - [工程实践](categories/engineering-practice/00-index.md)
 
 ## 标签
 
-- [AI辅助开发](tags/AI辅助开发.md)
+- [并发](tags/并发.md)
+- [成本优化](tags/成本优化.md)
+- [代码审查](tags/代码审查.md)
+- [代码质量](tags/代码质量.md)
+- [工程实践](tags/工程实践.md)
+- [缓存](tags/缓存.md)
+- [记忆管理](tags/记忆管理.md)
+- [可靠性](tags/可靠性.md)
+- [面试考点](tags/面试考点.md)
+- [内存管理](tags/内存管理.md)
+- [上下文压缩](tags/上下文压缩.md)
+- [设计模式](tags/设计模式.md)
+- [数据结构](tags/数据结构.md)
+- [消息队列](tags/消息队列.md)
+- [效果评估](tags/效果评估.md)
+- [知识管理](tags/知识管理.md)
 - [Agent](tags/Agent.md)
+- [AI辅助开发](tags/AI辅助开发.md)
 - [C++](tags/C++.md)
 - [Claude Code](tags/Claude Code.md)
 - [DeepSeek Harness](tags/DeepSeek Harness.md)
 - [Harness](tags/Harness.md)
 - [Hermes](tags/Hermes.md)
-- [HTTP](tags/HTTP.md)
 - [Kafka](tags/Kafka.md)
 - [LangGraph](tags/LangGraph.md)
 - [LLM](tags/LLM.md)
@@ -216,25 +159,21 @@ InteviewQA/
 - [Redis](tags/Redis.md)
 - [Vibe Coding](tags/Vibe Coding.md)
 - [Workflow](tags/Workflow.md)
-- [上下文压缩](tags/上下文压缩.md)
-- [代码实现](tags/代码实现.md)
-- [代码审查](tags/代码审查.md)
-- [代码质量](tags/代码质量.md)
-- [内存管理](tags/内存管理.md)
-- [工程实践](tags/工程实践.md)
-- [成本优化](tags/成本优化.md)
-- [效果评估](tags/效果评估.md)
-- [数据结构](tags/数据结构.md)
-- [消息队列](tags/消息队列.md)
-- [并发](tags/并发.md)
-- [知识管理](tags/知识管理.md)
-- [缓存](tags/缓存.md)
-- [记忆管理](tags/记忆管理.md)
-- [设计模式](tags/设计模式.md)
-- [面试考点](tags/面试考点.md)
 
 ## 项目文档
 
 - [SETUP.md](SETUP.md) — 环境搭建与启动
 - [CLAUDE.md](CLAUDE.md) — 知识库内容规范
 - [admin/TODO.md](admin/TODO.md) — 开发待办
+
+## 内容维护
+
+在 `admin/` 目录运行：
+
+```bash
+npm run validate:content
+npm run rebuild:indexes
+npm run hooks:install
+```
+
+前两条命令负责检查和重建派生索引；第三条安装版本化 pre-commit 钩子。`admin/backups`、`admin/link-meta`、日志和 `mobile/dist` 均为本地生成物，不再由 Git 跟踪。

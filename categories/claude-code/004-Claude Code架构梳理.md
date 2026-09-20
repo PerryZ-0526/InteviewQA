@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← [003-Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制) | [005-Hermes、pi-agent与Claude Code的差异](005-Hermes、pi-agent与Claude Code的差异) →
+← [Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制.md) | [Hermes、pi-agent与Claude Code的差异](005-Hermes、pi-agent与Claude Code的差异.md) →
 
 ## 面试直接答
 

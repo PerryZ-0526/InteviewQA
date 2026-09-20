@@ -10,7 +10,7 @@ Claude Code 中有哪些子智能体？分别用在什么场景？Vibe Coding �
 
 ## 题目导航
 
-← 无 | [002-Claude Code与Codex架构区别](002-Claude Code与Codex架构区别) →
+← 无 | [Claude Code与Codex架构区别](002-Claude Code与Codex架构区别.md) →
 
 ## 面试直接答
 

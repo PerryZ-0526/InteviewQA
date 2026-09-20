@@ -415,7 +415,7 @@ Implement API endpoints. Follow the conventions and patterns from the preloaded 
 
 <span style="font-size: 1em">您无法预加载设置了</span> `disable-model-invocation: true` <span style="font-size: 1em">的技能，因为预加载来自 Claude 可以调用的相同技能集。如果列出的技能缺失或被禁用，Claude Code 会跳过它并向调试日志记录警告。</span>
 
-<span style="font-size: 1em">这与 \[在 subagent 中运行技能\]([https://code.claude.com/docs/zh-CN/skills#run-skills-in-a-subagent](https://code.claude.com/docs/zh-CN/skills#run-skills-in-a-subagent)) 相反。使用 subagent 中的 \`skills\`，subagent 控制系统提示并加载技能内容。使用技能中的 \`context: fork\`，技能内容被注入到您指定的代理中。两者都使用相同的底层系统。</span>
+<span style="font-size: 1em">这与 [在 subagent 中运行技能](https://code.claude.com/docs/zh-CN/skills#run-skills-in-a-subagent) 相反。使用 subagent 中的 \`skills\`，subagent 控制系统提示并加载技能内容。使用技能中的 \`context: fork\`，技能内容被注入到您指定的代理中。两者都使用相同的底层系统。</span>
 
 #### <span style="font-size: 1em">启用持久内存</span>
 
@@ -527,7 +527,7 @@ claude --disallowedTools "Agent(Explore)"
 
 <span style="font-size: 1em">直接在 subagent 的 markdown 文件中定义 hooks。这些 hooks 仅在该特定 subagent 活跃时运行，并在完成时清理。</span>
 
-<span style="font-size: 1em">Frontmatter hooks 在代理通过 Agent 工具或 @-mention 作为 subagent 生成时触发，以及当代理通过 \[\`--agent\`\](#%E6%98%BE%E5%BC%8F%E8%B0%83%E7%94%A8%20subagents) 或 \`agent\` 设置作为主会话运行时触发。在主会话情况下，它们与在 \[\`settings.json\`\]([https://code.claude.com/docs/zh-CN/hooks](https://code.claude.com/docs/zh-CN/hooks)) 中定义的任何 hooks 一起运行。</span>
+<span style="font-size: 1em">Frontmatter hooks 在代理通过 Agent 工具或 @-mention 作为 subagent 生成时触发，以及当代理通过 [\`--agent\`](#%E6%98%BE%E5%BC%8F%E8%B0%83%E7%94%A8%20subagents) 或 \`agent\` 设置作为主会话运行时触发。在主会话情况下，它们与在 [\`settings.json\`](https://code.claude.com/docs/zh-CN/hooks) 中定义的任何 hooks 一起运行。</span>
 
 <span style="font-size: 1em">所有 [hook events](https://code.claude.com/docs/zh-CN/hooks#hook-events) 都被支持。subagents 最常见的事件是：</span>
 
@@ -828,7 +828,7 @@ Continue that code review and now analyze the authorization logic
 
 ## <span style="font-size: 1em">分叉当前对话</span>
 
-<span style="font-size: 1em">分叉 subagents 需要 Claude Code v2.1.117 或更高版本。从 v2.1.161 开始，\`/fork\` 命令默认启用；在早期版本中，它需要将 \[\`CLAUDE\_CODE\_FORK\_SUBAGENT\`\]([https://code.claude.com/docs/zh-CN/env-vars](https://code.claude.com/docs/zh-CN/env-vars)) 环境变量设置为 \`1\`。让 Claude 本身生成分叉是实验性的，可能在未来版本中更改。此功能也可以在交互式会话中启用，作为分阶段推出的一部分。</span>
+<span style="font-size: 1em">分叉 subagents 需要 Claude Code v2.1.117 或更高版本。从 v2.1.161 开始，\`/fork\` 命令默认启用；在早期版本中，它需要将 [\`CLAUDE\_CODE\_FORK\_SUBAGENT\`](https://code.claude.com/docs/zh-CN/env-vars) 环境变量设置为 \`1\`。让 Claude 本身生成分叉是实验性的，可能在未来版本中更改。此功能也可以在交互式会话中启用，作为分阶段推出的一部分。</span>
 
 <span style="font-size: 1em">分叉是一个 subagent，它继承到目前为止的整个对话，而不是从头开始。这消除了 subagents 通常提供的输入隔离：分叉看到与主会话相同的系统提示、工具、模型和消息历史，因此您可以将其交给一个辅助任务而无需重新解释情况。分叉自己的工具调用仍然保持在您的对话之外，只有其最终结果返回，因此您的主 context window 保持干净。当命名 subagent 需要太多背景才能有用时，或当您想从相同的起点并行尝试多种方法时，使用分叉。</span>
 

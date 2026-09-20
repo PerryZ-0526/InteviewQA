@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← [004-Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) | 无 →
+← [Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) | 无 →
 
 ## 面试直接答
 

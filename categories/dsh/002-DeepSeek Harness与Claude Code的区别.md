@@ -10,7 +10,7 @@ DeepSeek Harness 和 Claude Code 有什么区别？
 
 ## 题目导航
 
-← [001-DeepSeek Harness架构设计](001-DeepSeek Harness架构设计) | [003-详述dsh的PTC](003-详述dsh的PTC) →
+← [DeepSeek Harness架构设计](001-DeepSeek Harness架构设计.md) | [详述dsh的PTC](003-详述dsh的PTC.md) →
 
 ## 面试直接答
 

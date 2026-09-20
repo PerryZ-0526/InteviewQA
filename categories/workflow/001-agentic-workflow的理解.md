@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← 无 | [002-为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop) →
+← 无 | [为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop.md) →
 
 ## 面试直接答
 

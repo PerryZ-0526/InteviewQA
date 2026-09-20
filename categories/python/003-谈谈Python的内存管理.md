@@ -6,11 +6,11 @@
 
 ## 标签
 
-[TODO](../../tags/TODO.md)
+暂无
 
 ## 题目导航
 
-← [Python与C++的区别](Python与C++的区别) | 无 →
+← [Python与C++的区别](002-Python与C++的区别.md) | [Python的语言特点](004-Python的语言特点.md) →
 
 ## 面试直接答
 

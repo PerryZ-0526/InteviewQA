@@ -10,7 +10,7 @@
 
 ## 题目导航
 
-← [002-DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别) | 无 →
+← [DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别.md) | 无 →
 
 ## 面试直接答
 

@@ -2,7 +2,7 @@
 
 ## 依赖
 
-- [Node.js](https://nodejs.org/) >= 18
+- [Node.js](https://nodejs.org/) >= 20
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)（新建题目时需要）
 
 ## 前端管理后台
@@ -14,6 +14,7 @@
 ```bash
 cd admin
 npm install
+npm run hooks:install
 npm run dev
 ```
 
@@ -25,6 +26,13 @@ npm run dev
 ```
 
 启动后浏览器访问 [http://localhost:3333](http://localhost:3333)。
+
+提交内容前可运行：
+
+```bash
+npm run typecheck
+npm run validate:content
+```
 
 ### 端口占用处理
 
@@ -58,7 +66,7 @@ npx cap open android  # 在 Android Studio 中打开，打包 APK
 
 ### 同步题库
 
-App 构建时会将当前 `categories/`、`tags/`、`project/` 的快照打入安装包。如需更新内容：
+App 构建时会生成轻量目录清单，并将当前 `categories/`、`tags/`、`project/`、`groups/` 的 Markdown 和图片打入安装包。正文打开时按需读取，不会全部塞入清单。如需更新内容：
 
 ```bash
 cd mobile
@@ -71,10 +79,10 @@ npx cap sync       # 同步到原生项目
 
 ```
 mobile/
-  src/              ← 纯 HTML/CSS/JS（ES modules + CDN marked.js）
+  src/              ← 纯 HTML/CSS/JS（ES modules）
   scripts/
     dev-server.mjs   ← 开发服务器（端口 4444）
-    build.mjs        ← 构建脚本
+    build.mjs        ← 构建脚本（同时生成 content-manifest.json）
     git-sync.mjs     ← git pull 更新
   dist/             ← 构建产物（Capacitor webDir 指向此处）
 ```

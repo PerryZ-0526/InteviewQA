@@ -6,11 +6,11 @@
 
 ## 标签
 
-[TODO](../../tags/TODO.md)
+暂无
 
 ## 题目导航
 
-← [Python的语言特点](Python的语言特点) | 无 →
+← [Python的语言特点](004-Python的语言特点.md) | 无 →
 
 ## 面试直接答
 

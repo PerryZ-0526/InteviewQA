@@ -10,7 +10,7 @@ Anthropic 提出过五种 workflow 模式（prompt chaining、routing、parallel
 
 ## 题目导航
 
-← [003-确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md) | [005-evaluator-optimizer模式的工程实现](005-evaluator-optimizer模式的工程实现.md) →
+← [确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md) | [evaluator-optimizer模式的工程实现](005-evaluator-optimizer模式的工程实现.md) →
 
 ## 面试直接答
 

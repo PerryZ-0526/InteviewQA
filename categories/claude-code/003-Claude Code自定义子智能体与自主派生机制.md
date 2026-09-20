@@ -10,7 +10,7 @@ Claude Code 除了内置子智能体外支持自定义子智能体吗？如何�
 
 ## 题目导航
 
-← [002-Claude Code与Codex架构区别](002-Claude Code与Codex架构区别) | [004-Claude Code架构梳理](004-Claude Code架构梳理) →
+← [Claude Code与Codex架构区别](002-Claude Code与Codex架构区别.md) | [Claude Code架构梳理](004-Claude Code架构梳理.md) →
 
 ## 面试直接答
 

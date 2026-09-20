@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: Node.js >= 20 is required" >&2
+  exit 1
+fi
+
+node scripts/validate-content.mjs

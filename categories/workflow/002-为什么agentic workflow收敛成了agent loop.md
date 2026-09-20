@@ -10,7 +10,7 @@ agentic workflow 是一个比较早的概念，为什么后来逐渐收敛为一
 
 ## 题目导航
 
-← [001-agentic-workflow的理解](001-agentic-workflow的理解) | [003-确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置) →
+← [agentic-workflow的理解](001-agentic-workflow的理解.md) | [确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md) →
 
 ## 面试直接答
 
