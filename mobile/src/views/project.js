@@ -1,20 +1,21 @@
 import { register } from '../router.js';
-import { marked } from '../store.js';
+import { loadProjectDocument, marked } from '../store.js';
+import { setSafeHtml, setSafeOuterHtml } from '../html.js';
 
-register('project', (container) => {
+register('project', (container, _params, navigation) => {
   const { projectDocs } = window.__appData || {};
 
-  container.innerHTML = `
+  setSafeHtml(container, `
     <div class="page">
       <header class="header">
-        <a class="back" data-nav="home" data-params='{}'>← 返回</a>
+        <a href="#" class="back" data-nav="home" data-params='{}'>← 返回</a>
         <h1>项目文档</h1>
         <span class="badge">${projectDocs.length} 篇</span>
       </header>
       <div class="list">
         ${projectDocs.length === 0 ? '<div class="empty"><p>暂无项目文档</p></div>' : ''}
         ${projectDocs.map(d => `
-          <a class="list-item" data-action="open-doc" data-base="${d.base || 'project'}" data-subdir="${d.subdir}" data-filename="${d.filename}">
+          <a href="#" class="list-item" data-action="open-doc" data-base="${d.base || 'project'}" data-subdir="${d.subdir}" data-filename="${d.filename}">
             <span class="q-prefix">${d.filename.slice(0, 3)}</span>
             <div>
               <span>${d.title}</span>
@@ -25,7 +26,7 @@ register('project', (container) => {
         `).join('')}
       </div>
     </div>
-  `;
+  `);
 
   container.querySelectorAll('[data-nav]').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -36,13 +37,17 @@ register('project', (container) => {
   });
 
   container.querySelectorAll('[data-action="open-doc"]').forEach(el => {
-    el.addEventListener('click', async () => {
+    el.addEventListener('click', async (event) => {
+      event.preventDefault();
       const base = el.dataset.base || 'project';
       const subdir = el.dataset.subdir;
       const fn = el.dataset.filename;
       try {
-        const res = await fetch(`/${base}/${subdir}/${fn}`);
-        const md = await res.text();
+        const doc = projectDocs.find((item) => item.base === base && item.subdir === subdir && item.filename === fn);
+        if (!doc) throw new Error('文档不存在');
+        setSafeOuterHtml(container.querySelector('.list'), '<div class="list loading"><div class="spinner"></div><p>加载文档…</p></div>');
+        const md = await loadProjectDocument(base, subdir, fn);
+        if (!navigation.isCurrent()) return;
         let content = md;
         if (md.startsWith('---')) {
           const end = md.indexOf('---', 3);
@@ -53,13 +58,16 @@ register('project', (container) => {
           if (/^(https?:|data:|blob:|\/)/i.test(src)) return m;
           return m.replace(`src=${quote}${src}${quote}`, `src=${quote}/${base}/${subdir}/${src.replace(/^\.\//, '')}${quote}`);
         });
-        container.querySelector('.list').outerHTML = `
+        setSafeOuterHtml(container.querySelector('.list'), `
           <div class="card">
             <div class="card-body md">${html}</div>
           </div>
-        `;
+        `);
       } catch {
-        alert('加载文档失败');
+        if (navigation.isCurrent()) {
+          const list = container.querySelector('.list');
+          if (list) setSafeOuterHtml(list, '<div class="empty"><p>加载文档失败</p></div>');
+        }
       }
     });
   });

@@ -1,9 +1,10 @@
 import { register } from '../router.js';
+import { setSafeHtml } from '../html.js';
 
 register('home', (container) => {
-  const { categories } = window.__appData || {};
+  const { categories, projectDocs } = window.__appData || {};
 
-  container.innerHTML = `
+  setSafeHtml(container, `
     <div class="page">
       <header class="header">
         <h1>面试真题</h1>
@@ -15,13 +16,20 @@ register('home', (container) => {
       </div>
 
       <div class="list">
-        <a class="list-item" data-nav="tags" data-params='{}'>
+        <a href="#" class="list-item" data-nav="tags" data-params='{}'>
           <span class="icon">🏷️</span>
           <span>标签浏览</span>
           <span class="arrow">›</span>
         </a>
+        ${projectDocs.length > 0 ? `
+        <a href="#" class="list-item" data-nav="project" data-params='{}'>
+          <span class="icon">📚</span>
+          <span>项目文档</span>
+          <span class="muted">${projectDocs.length} 篇</span>
+          <span class="arrow">›</span>
+        </a>` : ''}
         ${categories.map(c => `
-          <a class="list-item" data-nav="category" data-params='${JSON.stringify({ slug: c.slug })}'>
+          <a href="#" class="list-item" data-nav="category" data-params='${JSON.stringify({ slug: c.slug })}'>
             <span class="icon">📁</span>
             <div>
               <span>${c.name}</span>
@@ -32,7 +40,7 @@ register('home', (container) => {
         `).join('')}
       </div>
     </div>
-  `;
+  `);
 
   container.querySelectorAll('[data-nav]').forEach(el => {
     el.addEventListener('click', (e) => {

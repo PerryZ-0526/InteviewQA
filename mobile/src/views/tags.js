@@ -1,12 +1,13 @@
 import { register } from '../router.js';
+import { setSafeHtml } from '../html.js';
 
 register('tags', (container) => {
   const { tags } = window.__appData || {};
 
-  container.innerHTML = `
+  setSafeHtml(container, `
     <div class="page">
       <header class="header">
-        <a class="back" data-nav="home" data-params='{}'>← 返回</a>
+        <a href="#" class="back" data-nav="home" data-params='{}'>← 返回</a>
         <h1>标签浏览</h1>
         <span class="badge">${tags.length} 个标签</span>
       </header>
@@ -18,7 +19,7 @@ register('tags', (container) => {
         `).join('')}
       </div>
     </div>
-  `;
+  `);
 
   container.querySelectorAll('.tag').forEach(el => {
     el.addEventListener('click', () => {

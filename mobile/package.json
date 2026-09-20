@@ -2,6 +2,7 @@
   "name": "interview-qa-mobile",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "build": "node scripts/build.mjs",
@@ -11,9 +12,11 @@
     "cap:ios": "npx cap add ios"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0"
+    "@capacitor/cli": "^7.6.9"
   },
   "dependencies": {
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/core": "^7.6.9",
+    "dompurify": "^3.2.6",
+    "marked": "^18.0.7"
   }
 }

@@ -1,15 +1,26 @@
 import { register } from '../router.js';
-import { marked } from '../store.js';
+import { loadQuestion, marked } from '../store.js';
+import { setSafeHtml } from '../html.js';
 
-register('question', (container, { category, filename }) => {
+register('question', async (container, { category, filename }, navigation) => {
   const { categories } = window.__appData || {};
   const cat = categories.find(c => c.slug === category);
-  const q = cat?.questions.find(q => q.filename === filename);
+  const summary = cat?.questions.find(q => q.filename === filename);
 
-  if (!q) {
-    container.innerHTML = '<div class="empty"><p>题目不存在</p></div>';
+  if (!summary) {
+    setSafeHtml(container, '<div class="empty"><p>题目不存在</p></div>');
     return;
   }
+  setSafeHtml(container, '<div class="loading"><div class="spinner"></div><p>加载题目…</p></div>');
+
+  let q;
+  try {
+    q = await loadQuestion(category, filename);
+  } catch {
+    if (navigation.isCurrent()) setSafeHtml(container, '<div class="empty"><p>题目加载失败</p></div>');
+    return;
+  }
+  if (!navigation.isCurrent()) return;
 
   // 渲染 markdown 并将文档内相对图片路径 images/xxx.png 解析为 /categories/<category>/images/xxx.png
   const renderMd = (md) => {
@@ -21,10 +32,10 @@ register('question', (container, { category, filename }) => {
     });
   };
 
-  container.innerHTML = `
+  setSafeHtml(container, `
     <div class="page">
       <header class="header">
-        <a class="back" data-nav="category" data-params='${JSON.stringify({ slug: category })}'>← ${cat.name}</a>
+        <a href="#" class="back" data-nav="category" data-params='${JSON.stringify({ slug: category })}'>← ${cat.name}</a>
         <h1>${q.title}</h1>
         <div class="tags-row">${q.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
       </header>
@@ -52,7 +63,7 @@ register('question', (container, { category, filename }) => {
         <div class="card-body md">${renderMd(q.notes)}</div>
       </div>` : ''}
     </div>
-  `;
+  `);
 
   container.querySelectorAll('[data-nav]').forEach(el => {
     el.addEventListener('click', (e) => {
