@@ -40,6 +40,7 @@ export function parseQuestion(markdown: string, filename: string): Question {
   const lines = markdown.split('\n');
 
   let title = '';
+  let preamble = '';
   let question = '';
   const tags: string[] = [];
   let answer = '';
@@ -54,6 +55,7 @@ export function parseQuestion(markdown: string, filename: string): Question {
   let updatedAt = '';
   let notes = '';
   let inNotes = false;
+  let hasSeenTitle = false;
   const customSections: { title: string; content: string }[] = [];
   // null = 不在自定义章节内；'' = 未命名的自定义章节（真值判断无法区分，必须用 null 判断）
   let currentCustom: string | null = null;
@@ -71,6 +73,8 @@ export function parseQuestion(markdown: string, filename: string): Question {
         analysis += line + '\n';
       } else if (currentSection === '我的作答') {
         notes += line + '\n';
+      } else if (hasSeenTitle && currentCustom === null) {
+        preamble += line + '\n';
       }
       // Also accumulate in custom sections（未命名章节标题为 ''，须判 null 而非真值）
       if (currentCustom !== null && customSections.length > 0) {
@@ -85,6 +89,7 @@ export function parseQuestion(markdown: string, filename: string): Question {
     // 一级标题
     if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
       title = line.replace('# ', '').trim();
+      hasSeenTitle = true;
       continue;
     }
 
@@ -142,6 +147,15 @@ export function parseQuestion(markdown: string, filename: string): Question {
         break;
     }
 
+    if (
+      !currentSection
+      && currentCustom === null
+      && hasSeenTitle
+      && !/<!--\s*(?:created|updated):/.test(line)
+    ) {
+      if (line.trim() || preamble) preamble += line + '\n';
+    }
+
     // Accumulate custom section content (skip time metadata)
     // 未命名章节标题为 ''，须判 null 而非真值；纯元数据注释行整行跳过（同旧行为），
     // 历史格式中粘连在正文末行上的注释则剥离注释、保留正文部分
@@ -180,6 +194,7 @@ export function parseQuestion(markdown: string, filename: string): Question {
 
   return {
     title: title || question.trim().slice(0, 50),
+    preamble: trimOne(preamble),
     question: trimOne(question),
     tags,
     answer: trimOne(answer),
@@ -202,7 +217,10 @@ export function formatDateTime(date: Date): string {
 /**
  * 将结构化 Question 对象生成 Markdown，符合 CLAUDE.md 规范
  */
-export function generateMarkdown(q: Question): string {
+export function generateMarkdown(
+  q: Question,
+  options: { omitEmptyQuestion?: boolean } = {},
+): string {
   const tagLinks = q.tags
     .map((t) => `[${t}](../../tags/${t}.md)`)
     .join(' | ');
@@ -219,6 +237,10 @@ export function generateMarkdown(q: Question): string {
   const updated = now;
   const rtrim1 = (s: string) => s.replace(/\r?\n$/, '');
 
+  const preambleBlock = q.preamble?.trim() ? `${rtrim1(q.preamble)}\n\n` : '';
+  const questionBlock = options.omitEmptyQuestion && !q.question.trim()
+    ? ''
+    : `## 题目\n\n${rtrim1(q.question)}\n\n`;
   const answerBlock = q.answer?.trim() ? `## 面试直接答\n\n${rtrim1(q.answer)}\n\n` : '';
   const analysisBlock = q.analysis?.trim() ? `## 详细解析\n\n${rtrim1(q.analysis)}\n\n` : '';
   const notesBlock = q.notes?.trim() ? `## 我的作答\n\n${rtrim1(q.notes)}\n\n` : '';
@@ -230,11 +252,7 @@ export function generateMarkdown(q: Question): string {
 
   return `# ${q.title}
 
-## 题目
-
-${rtrim1(q.question)}
-
-## 标签
+${preambleBlock}${questionBlock}## 标签
 
 ${tagLinks}
 

@@ -17,6 +17,7 @@ export interface QuestionBrief {
 // 完整题目（从 MD 解析）
 export interface Question {
   title: string;
+  preamble: string;       // H1 与首个 H2 之间的前置正文
   question: string;
   tags: string[];       // 标签名列表
   answer: string;       // 面试直接答
