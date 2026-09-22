@@ -1,5 +1,20 @@
 'use client';
 
+import type { KeyboardEvent } from 'react';
+
+function submitOnEnter(event: KeyboardEvent<HTMLInputElement>, onSubmit: () => void) {
+  if (
+    event.key !== 'Enter'
+    || event.nativeEvent.isComposing
+    || event.nativeEvent.keyCode === 229
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+  onSubmit();
+}
+
 export function ExternalAddModal({
   group,
   paths,
@@ -97,7 +112,7 @@ export function ExternalGroupModal({
             className="sidebar-modal-input"
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
-            onKeyDown={(event) => { if (event.key === 'Enter') onSubmit(); }}
+            onKeyDown={(event) => submitOnEnter(event, onSubmit)}
             placeholder="分组名称"
             autoFocus
           />
@@ -151,7 +166,7 @@ export function SidebarCreateModal({
                 className="sidebar-modal-input"
                 value={slug}
                 onChange={(event) => onSlugChange(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') onSubmit(); }}
+                onKeyDown={(event) => submitOnEnter(event, onSubmit)}
                 placeholder={slugPlaceholder || 'english-slug'}
               />
             </div>
@@ -162,7 +177,7 @@ export function SidebarCreateModal({
               className="sidebar-modal-input"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter') onSubmit(); }}
+              onKeyDown={(event) => submitOnEnter(event, onSubmit)}
               placeholder={needsSlug ? '显示名称' : '文档标题'}
               autoFocus
             />
