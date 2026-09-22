@@ -6,7 +6,7 @@
 
 - [✅Claude Code 自定义子智能体与自主派生机制](../categories/claude-code/003-Claude Code自定义子智能体与自主派生机制.md)
 
-### Multi-Agent
+### Multi
 
 - [✅多 Agent 系统如何实现共享记忆？](../categories/mutil-agent/001-多agent系统如何实现共享记忆.md)
 - [多个智能体讨论起来没完没了，怎么让它停下来？](../categories/mutil-agent/002-多agent讨论如何终止.md)

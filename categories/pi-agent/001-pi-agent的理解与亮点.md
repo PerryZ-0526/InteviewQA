@@ -16,7 +16,9 @@
 
 > pi（Pi Agent Harness）是 Mario Zechner 发起、目前由 earendil-works 维护的 MIT 开源 TypeScript Agent Harness。它真正的核心不是“功能比 Claude Code 多”，而是相反：保持一个很小、很透明的 agent loop，把模型接入、上下文转换、工具执行、会话状态和 UI 都做成显式可组合的模块，再通过 Extensions、Skills 和 Pi Packages 把复杂能力放到核心之外。相对 Claude Code，pi 最有辨识度的亮点是多模型/多 provider、跨 provider 上下文交接、细粒度库化嵌入、强可扩展性和高度可观察的会话状态；代价是它刻意不内置 MCP、subagent、plan mode、运行时权限弹窗和 sandbox，安全与复杂工作流更多交给使用者自己组装。
 
-先把定位说准。pi 不是单纯的一个终端聊天工具，也不只是 `pi-agent-core` 这个包，而是一套从 LLM 适配层到 coding agent CLI 的分层 harness。官方仓库当前包含 `pi-ai`、`pi-agent-core`、`pi-coding-agent`、`pi-tui` 和 `pi-telemetry` 五个主要包。这里最重要的设计哲学不是“上下文是王道”这一句口号，而是 **minimal core + aggressive extensibility**：作者明确认为模型已经具备较强的 coding-agent 先验，因此核心默认只给 `read/write/edit/bash` 等少量能力，其余工作流尽量通过扩展、Skill、外部 CLI 或 tmux 组合，而不是不断往核心里塞特殊模式。
+先把定位说准。pi 不是单纯的一个终端聊天工具，也不只是 `pi-agent-core` 这个包，而是一套从 LLM 适配层到 coding agent CLI 的分层 harness。
+
+官方仓库当前包含 `pi-ai`、`pi-agent-core`、`pi-coding-agent`、`pi-tui` 和 `pi-telemetry` 五个主要包。这里最重要的设计哲学不是“上下文是王道”这一句口号，而是 **minimal core + aggressive extensibility**：作者明确认为模型已经具备较强的 coding-agent 先验，因此核心默认只给 `read/write/edit/bash` 等少量能力，其余工作流尽量通过扩展、Skill、外部 CLI 或 tmux 组合，而不是不断往核心里塞特殊模式。
 
 `pi-agent-core` 的源码非常适合理解一个最小但完整的 agent runtime。`Agent` 类持有 system prompt、model、tools、messages 等状态，并管理事件订阅、abort、steering queue 和 follow-up queue；真正的循环在 `agent-loop.ts`。源码里是一个双层循环：内层持续处理“LLM → tool calls → tool results → 下一轮 LLM”，并在每个 assistant turn 后检查 steering 消息；外层在 agent 原本准备结束时继续消费 follow-up 消息。也就是说它不是只写了一个简单的 `while(tool_calls)`，而是把用户中途打断、任务结束后的追加请求、流式事件和工具批处理都显式纳入 runtime。
 
@@ -202,5 +204,6 @@ GPT / Gemini 可接受的历史
 - [Claude Code Subagents 官方文档](https://code.claude.com/docs/en/sub-agents)
 
 
+
 <!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-21 18:20:00 -->
+<!-- updated: 2026-09-22 16:20:28 -->

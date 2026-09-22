@@ -419,4 +419,4 @@ Plan → Execute → Validate
 这会更符合你现在“Orchestrator + 四个 Domain ReAct Subgraph”的架构，因为 \*\*Domain ReAct 已经负责局部自治，<u style="text-decoration-color: rgb(230, 57, 70)">父层就没有必要再用一个高频大循环重复干预</u>；父层真正应该保留的是跨领域任务规划、依赖管理和异常情况下的全局纠偏。\*\*这也是我认为 gen-4.2 相比 gen-4.1 最实质的架构进步。
 
 <!-- created: 2026-08-11 16:54:54 -->
-<!-- updated: 2026-09-02 14:55:38 -->
+<!-- updated: 2026-09-22 16:17:47 -->

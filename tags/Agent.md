@@ -41,7 +41,7 @@
 
 - [✅LangGraph 从 workflow 编排器到 agent runtime 的转型](../categories/langgraph/001-LangGraph从workflow编排器到agent runtime的转型.md)
 
-### Multi-Agent
+### Multi
 
 - [多个智能体讨论起来没完没了，怎么让它停下来？](../categories/mutil-agent/002-多agent讨论如何终止.md)
 

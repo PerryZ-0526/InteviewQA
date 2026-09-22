@@ -122,12 +122,17 @@ InteviewQA/
 - [设计范式](categories/design-patterns/00-index.md)
 - [工程实践](categories/engineering-practice/00-index.md)
 
+### 其他
+
+- [memory](categories/memory/00-index.md)
+
 ## 标签
 
 - [并发](tags/并发.md)
 - [成本优化](tags/成本优化.md)
 - [代码审查](tags/代码审查.md)
 - [代码质量](tags/代码质量.md)
+- [多模态rag](tags/多模态rag.md)
 - [工程实践](tags/工程实践.md)
 - [缓存](tags/缓存.md)
 - [记忆管理](tags/记忆管理.md)
@@ -136,15 +141,20 @@ InteviewQA/
 - [内存管理](tags/内存管理.md)
 - [上下文压缩](tags/上下文压缩.md)
 - [设计模式](tags/设计模式.md)
+- [生产级多Agent避坑指南：断点续传、无感监控与彩虹部署](tags/生产级多Agent避坑指南：断点续传、无感监控与彩虹部署.md)
 - [数据结构](tags/数据结构.md)
 - [消息队列](tags/消息队列.md)
 - [效果评估](tags/效果评估.md)
 - [知识管理](tags/知识管理.md)
 - [Agent](tags/Agent.md)
+- [Agentic-RAG](tags/Agentic-RAG.md)
+- [agentic-rag-权限](tags/agentic-rag-权限.md)
+- [Agentic-RAG-如何进行构建](tags/Agentic-RAG-如何进行构建.md)
 - [AI辅助开发](tags/AI辅助开发.md)
 - [C++](tags/C++.md)
 - [Claude Code](tags/Claude Code.md)
 - [DeepSeek Harness](tags/DeepSeek Harness.md)
+- [grep](tags/grep.md)
 - [Harness](tags/Harness.md)
 - [Hermes](tags/Hermes.md)
 - [Kafka](tags/Kafka.md)
@@ -156,6 +166,7 @@ InteviewQA/
 - [OS](tags/OS.md)
 - [pi-agent](tags/pi-agent.md)
 - [Python](tags/Python.md)
+- [RAG-评测](tags/RAG-评测.md)
 - [Redis](tags/Redis.md)
 - [Vibe Coding](tags/Vibe Coding.md)
 - [Workflow](tags/Workflow.md)

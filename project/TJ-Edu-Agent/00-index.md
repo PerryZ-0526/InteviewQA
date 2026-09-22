@@ -10,3 +10,4 @@
 - [Redis 和 Kafka的使用](006-Redis-和-Kafka的使用.md) - Redis 和 Kafka的使用
 - [参考问题](007-参考问题.md) - 参考问题
 - [持久化-draft](008-持久化.md) - 待补充
+- [langfuse 评测 agent](009-langfuse.md) - 待补充
