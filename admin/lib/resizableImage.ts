@@ -3,18 +3,9 @@ import type { ResizableNodeViewDirection } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
 import type { ImageOptions } from '@tiptap/extension-image';
 
-// 当前文档的图片展示 URL 前缀（如 /api/raw/categories/agent）。
-// md 中保存的是相对路径 images/xxx.png，浏览器展示时通过该前缀解析。
-let currentImageBase = '';
-
-export function setImageBase(base: string) {
-  currentImageBase = base || '';
-}
-
-export function resolveImageSrc(src: string): string {
-  if (!src) return src;
-  if (/^(https?:|data:|blob:|\/)/i.test(src)) return src;
-  if (currentImageBase) return `${currentImageBase.replace(/\/+$/, '')}/${src.replace(/^\.\//, '')}`;
+export function resolveImageSrc(src: string, imageBase = ''): string {
+  if (!src || /^(https?:|data:|blob:|\/)/i.test(src)) return src;
+  if (imageBase) return `${imageBase.replace(/\/+$/, '')}/${src.replace(/^\.\//, '')}`;
   return src;
 }
 
@@ -34,6 +25,7 @@ function parseWidth(el: HTMLElement): number | null {
 }
 
 interface ResizableImageOptions extends Omit<ImageOptions, 'resize'> {
+  imageBase: string;
   resize: {
     enabled: boolean;
     directions: ResizableNodeViewDirection[];
@@ -52,6 +44,7 @@ export const ResizableImage = Image.extend<ResizableImageOptions>({
       inline: true,
       allowBase64: false,
       HTMLAttributes: {},
+      imageBase: '',
       resize: {
         enabled: true,
         directions: ['bottom-right'],
@@ -67,14 +60,15 @@ export const ResizableImage = Image.extend<ResizableImageOptions>({
   },
 
   addAttributes() {
+    const imageBase = this.options.imageBase;
     return {
       // 编辑器内复制粘贴图片时，HTML 中的 src 是解析后的 /api/raw/... 路径，剥离前缀还原为 md 相对路径
       src: {
         default: null,
         parseHTML: (el: HTMLElement) => {
           const raw = el.getAttribute('src') || '';
-          if (currentImageBase && raw.startsWith(`${currentImageBase}/`)) {
-            return raw.slice(currentImageBase.length + 1);
+          if (imageBase && raw.startsWith(`${imageBase}/`)) {
+            return raw.slice(imageBase.length + 1);
           }
           return raw;
         },
@@ -88,7 +82,7 @@ export const ResizableImage = Image.extend<ResizableImageOptions>({
 
   renderHTML({ HTMLAttributes }) {
     const attrs = { ...HTMLAttributes };
-    if (attrs.src) attrs.src = resolveImageSrc(attrs.src as string);
+    if (attrs.src) attrs.src = resolveImageSrc(attrs.src as string, this.options.imageBase);
     return ['img', mergeAttributes(this.options.HTMLAttributes, attrs)];
   },
 
@@ -107,6 +101,7 @@ export const ResizableImage = Image.extend<ResizableImageOptions>({
   addNodeView() {
     if (!this.options.resize?.enabled || typeof document === 'undefined') return null;
 
+    const { imageBase } = this.options;
     const { directions, min, preserveAspectRatio, className } = this.options.resize;
     const resizeManagedAttributes = new Set(['src', 'width', 'height']);
 
@@ -119,7 +114,7 @@ export const ResizableImage = Image.extend<ResizableImageOptions>({
       });
 
       const syncImageSource = (src: string) => {
-        const resolved = resolveImageSrc(src || '');
+        const resolved = resolveImageSrc(src || '', imageBase);
         if (typeof resolved === 'string' && resolved !== '') {
           if (el.getAttribute('src') !== resolved) el.src = resolved;
           return;

@@ -30,7 +30,7 @@ import { setActiveEditor } from '@/lib/activeEditor';
 import { mdToHtml } from '@/lib/markdown';
 import { stripMdText } from '@/lib/stripText';
 import { headingMatch, scrollElementIntoView, isVisibleInLayout, scrollToAnchorPathNow, scrollToAnchorPathPolling } from '@/lib/domScroll';
-import { ResizableImage, setImageBase } from '@/lib/resizableImage';
+import { ResizableImage } from '@/lib/resizableImage';
 import { getEditorColor, toColorAttr } from '@/lib/editorColors';
 import { AutoDetectLowlightPlugin, lowlight } from '@/lib/codeBlockHighlight';
 
@@ -644,7 +644,6 @@ interface Props {
 
 export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', onChange, readOnly = false, documentTitle = '', sectionName = '', backlinkMap, imageBase = '', uploadDir = '', docKey = '' }: Props) {
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
-  const initializedRef = useRef(false);
 
   // AI Rewrite state
   const [aiState, setAiState] = useState<'idle' | 'input' | 'loading' | 'done'>('idle');
@@ -656,8 +655,7 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
 
   const initialHtml = initialMarkdown ? mdToHtml(initialMarkdown) : '';
 
-  // 图片相对路径解析前缀：同一文档的所有编辑器共享同一目录，模块级注册即可
-  setImageBase(imageBase);
+  // 图片相对路径解析前缀由当前编辑器实例独立持有，避免多标签互相覆盖。
 
   const editor = useEditor({
     extensions: [
@@ -709,7 +707,7 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
       OrderedList,
       BulletList,
       ListItem,
-      ResizableImage,
+      ResizableImage.configure({ imageBase }),
       Markdown,
       Placeholder.configure({ placeholder }),
     ],
@@ -812,22 +810,18 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         return true;
       },
     },
-    // 编辑器只随标签页在客户端动态挂载（SSR 首屏不含编辑器），可安全同步渲染：
-    // 首次渲染即产生标题 DOM，锚点跳转的 useLayoutEffect 能在浏览器绘制前定位到标题，
-    // 消除"新标签先显示顶部、等编辑器异步挂载后才跳到标题"的闪烁与卡顿
-    immediatelyRender: true,
+    // Next.js 开发模式会重连副作用。延迟到客户端挂载后创建实例，避免副作用拿到
+    // 已创建但尚无 ProseMirror View 的编辑器并访问 editor.view.dom。
+    immediatelyRender: false,
   });
 
-  // Only set initial content once on mount. After that, the editor owns the state.
+  // 初始内容已由 useEditor 的 content 注入；此处只在挂载后解析 wiki 链接。
+  // 不要在 React effect 中再次 setContent，React NodeView 会因此触发 flushSync 警告。
   useEffect(() => {
-    if (editor && !initializedRef.current && initialMarkdown) {
-      initializedRef.current = true;
-      const html = mdToHtml(initialMarkdown);
-      editor.commands.setContent(html);
-      // 解析 wiki 链接状态：模型级更新（改名渲染文本、失效标红），避免直接改 DOM 破坏 ProseMirror
-      const timer = setTimeout(() => resolveWikiLinks(), 100);
-      return () => clearTimeout(timer);
-    }
+    if (!editor || editor.isDestroyed || !initialMarkdown) return;
+    // 模型级更新 wiki 链接（改名渲染文本、失效标红），避免直接改 DOM 破坏 ProseMirror。
+    const timer = setTimeout(() => resolveWikiLinks(), 100);
+    return () => clearTimeout(timer);
   }, [editor, initialMarkdown]);
 
   // 通过事务在编辑器模型内更新 wiki 链接：改名 → 文本收敛为新路径；失效 → 标记 broken 标红
@@ -888,24 +882,24 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
 
   // Register as active editor on focus, tagging with section name
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const handler = () => setActiveEditor(editor, sectionName, uploadDir);
     editor.on('focus', handler);
     return () => { editor.off('focus', handler); };
   }, [editor, sectionName, uploadDir]);
   // Set as active on mount if this is the first editor
   useEffect(() => {
-    if (editor) {
-      const el = editor.view.dom;
-      const handler = () => setActiveEditor(editor, sectionName, uploadDir);
-      el.addEventListener('focusin', handler);
-      return () => el.removeEventListener('focusin', handler);
-    }
+    if (!editor || editor.isDestroyed) return;
+    const el = editor.view.dom;
+    const handler = () => setActiveEditor(editor, sectionName, uploadDir);
+    el.addEventListener('focusin', handler);
+    return () => el.removeEventListener('focusin', handler);
   }, [editor, sectionName, uploadDir]);
 
   // Tag editor DOM with section name for annotation targeting
   useEffect(() => {
-    if (editor) editor.view.dom.setAttribute('data-section', sectionName || '');
+    if (!editor || editor.isDestroyed) return;
+    editor.view.dom.setAttribute('data-section', sectionName || '');
   }, [editor, sectionName]);
 
   // 同步反向索引数据到插件，并触发 decorations 重算
@@ -918,8 +912,9 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
 
   // 从批注卡片定位对应原文，用指纹（前5字+选中+后5字）唯一匹配
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const handler = (event: Event) => {
+      if (editor.isDestroyed) return;
       const d = (event as CustomEvent<{ quote?: string; fingerPrint?: string; quoteOffset?: number }>).detail;
       const key = d?.fingerPrint || d?.quote;
       const offset = d?.quoteOffset || 0;
@@ -967,8 +962,9 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
   const [hasSelection, setHasSelection] = useState(false);
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const check = () => {
+      if (editor.isDestroyed) return;
       const { from, to } = editor.state.selection;
       const has = from !== to;
       if (has !== hasSelection) setHasSelection(has);
@@ -992,12 +988,12 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
   const toggleMode = useCallback(() => {
     setMode((prev) => {
       const next = prev === 'edit' ? 'read' : 'edit';
-      if (editor) editor.setEditable(next === 'edit' && !readOnly);
+      if (editor && !editor.isDestroyed) editor.setEditable(next === 'edit' && !readOnly);
       return next;
     });
   }, [editor, readOnly]);
 
-  if (!editor) {
+  if (!editor || editor.isDestroyed) {
     return <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>加载编辑器...</div>;
   }
 
