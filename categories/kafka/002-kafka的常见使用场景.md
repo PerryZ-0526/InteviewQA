@@ -1,19 +1,18 @@
-# kafka的常见使用场景
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: kafka的常见使用场景
+tags: []
+created: 2026-08-13 18:59:54
+updated: 2026-08-21 10:43:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [mq概览](001-mq概览.md) | [kafka为什么快？](003-kafka为什么快？.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 消息队列的典型应用场景：
 
 - 1）`系统解耦`：<span style="background-color: rgb(255, 243, 205)">服务间通过消息通信</span>，无需直接依赖。
@@ -306,5 +305,7 @@ Replay
 你可以压缩成这一段：
 
 > Kafka 和传统 MQ 都能做异步、解耦和削峰，但 Kafka 更核心的定位是`分布式事件日志`。消息被消费以后不会立即删除，而是按照保留策略持久化保存，消费者通过 `offset` 独立维护消费进度，因此天然支持多个消费组、历史事件回放和下游状态重建；再加上`Partition` 带来的`水平扩展`能力，所以 Kafka 特别适合`事件总线`、日志埋点、大规模数据管道和实时流计算。反过来，如果只是普通异步任务、复杂路由或者延迟消息，RabbitMQ、RocketMQ 等往往会更直接。
-<!-- created: 2026-08-13 18:59:54 -->
-<!-- updated: 2026-08-21 10:43:28 -->
+<!-- interviewqa:end -->
+
+<!-- interviewqa:section analysis -->
+<!-- interviewqa:end -->

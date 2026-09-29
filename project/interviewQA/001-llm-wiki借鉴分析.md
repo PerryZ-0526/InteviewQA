@@ -1,5 +1,10 @@
-
-# llm-wiki 借鉴分析
+---
+schema: interviewqa/v2
+kind: document
+title: llm-wiki 借鉴分析
+created: 2026-09-14 15:07:10
+updated: 2026-09-14 15:07:10
+---
 
 ## 背景
 
@@ -32,7 +37,7 @@ llm-wiki 是 Andrej Karpathy 博客中提出的「LLM 维护的知识库」概�
 
 ### 2. YAML frontmatter 替换 HTML 注释（P0）
 
-当前用 `<!-- created: -->` 存时间元数据，脆弱且不规范。改为 YAML frontmatter：
+当前用 `` 存时间元数据，脆弱且不规范。改为 YAML frontmatter：
 ```yaml
 ---
 title: 如何降低 Agent 的运营成本？

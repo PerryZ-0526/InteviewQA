@@ -1,14 +1,14 @@
-# Agentic RAG 如何进行构建
+---
+schema: interviewqa/v2
+kind: document
+body_schema: interviewqa/freeform-v1
+title: Agentic RAG 如何进行构建
+tags: []
+created: 2026-09-22 18:10:34
+updated: 2026-09-28 12:03:02
+---
 
 > 亲自编写
-
-## 标签
-
-
-
-## 题目导航
-
-← [Agentic-RAG](005-Agentic-RAG.md) | [agentic-rag-权限](007-agentic-rag-权限.md) →
 
 ## 一、先讲最简单、最高效的构建方式
 
@@ -96,6 +96,3 @@ TRAE、Codex、Claude Code 这类 Runtime 已经替你提供了最难搭的一�
 但它解决的是“智能执行层”。生产级 Agentic RAG 的真正壁垒，会逐渐转移到：
 
 > 领域知识如何组织、工具如何设计、检索如何评测、权限如何控制，以及系统如何证明自己的答案可靠。
-
-<!-- created: 2026-09-22 18:10:34 -->
-<!-- updated: 2026-09-22 18:22:48 -->

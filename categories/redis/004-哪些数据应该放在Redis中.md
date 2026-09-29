@@ -1,19 +1,18 @@
-# 哪些数据应该放在Redis中
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 哪些数据应该放在Redis中
+tags: []
+created: 2026-08-31 18:49:03
+updated: 2026-09-01 15:18:34
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 哪些数据应该放在Redis中，哪些数据应该放在MySQL中
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [谈谈你对Redis架构的理解](003-谈谈你对Redis架构的理解.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > 我一般按“数据是否需要`长期可靠保存`、是否要求`事务一致性`、`访问频率和时效性`”来区分。
 >
 > - Redis 适合<u style="text-decoration-color: rgb(230, 57, 70)">高频访问、短生命周期、可重建的数据</u>；
@@ -38,15 +37,8 @@ Redis 更适合`高频读写但生命周期比较短`的数据。例如<u style=
 Redis 擅长 Key-Value、Hash、Sorted Set 这类简单高性能访问，比如排行榜、计数器、最近访问列表；MySQL 更适合<u style="text-decoration-color: rgb(230, 57, 70)">多字段筛选、Join、聚合、分页以及事务</u>。例如我要查“过去一个月所有审批失败且属于某个用户的任务”，显然 MySQL 更合适，而不是把这类关系型查询硬塞进 Redis。
 
 > 所以我的判断原则可以概括为：长期、重要、不可丢、需要事务和复杂查询的数据放 MySQL；高频、临时、可过期、可重建的数据放 Redis。工程上最好让 MySQL 保证正确性，让 Redis 提升性能，而不是为了追求速度把所有状态都放进 Redis。
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 (暂无)
-
-
-
-
-
-<!-- created: 2026-08-31 18:49:03 -->
-<!-- updated: 2026-09-01 15:18:34 -->
+<!-- interviewqa:end -->

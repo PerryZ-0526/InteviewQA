@@ -1,24 +1,21 @@
-# Agent 评测
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Agent 评测
+tags: []
+created: 2026-09-02 11:01:47
+updated: 2026-09-02 11:01:47
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [如何防止prompt注入](008-如何防止prompt注入.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 (暂无)
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 (暂无)
-
-<!-- created: 2026-09-02 11:01:47 -->
-<!-- updated: 2026-09-02 11:01:47 -->
+<!-- interviewqa:end -->

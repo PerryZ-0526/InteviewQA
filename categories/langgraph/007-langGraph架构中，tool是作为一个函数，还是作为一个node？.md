@@ -1,23 +1,22 @@
-# langGraph架构中，tool是作为一个函数，还是作为一个node？-draft
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: langGraph架构中，tool是作为一个函数，还是作为一个node？-draft
+tags: []
+created: 2026-08-31 19:15:50
+updated: 2026-09-02 16:39:04
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [LangGraph中的subgraph](006-LangGraph中的subgraph.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 (暂无)
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 可以，但要把“实现形式”和“架构角色”分开看。\*\*最准确的结论是：Tool 本质上不是 Node；Tool 通常是一个可调用的函数/对象。但在 LangGraph 的工程设计里，你既可以把 Tool 作为独立函数交给统一的 `ToolNode` 执行，也可以专门做一个 Node，在这个 Node 内部执行某个 Tool。\*\*所以从“架构角色”上说，Tool ≠ Node；从“工作流组织方式”上说，一个 Tool 完全可以被一个独立 Node 包装和执行。官方当前文档也是把 `ToolNode` 定义为“执行 tools 的预构建 node”，而普通 Node 本身通常就是 Python 函数。([Docs by LangChain](https://docs.langchain.com/oss/python/langchain/tools?utm_source=chatgpt.com "Tools - Docs by LangChain"))
 
 最常见、也是最标准的方式是：**Tool 作为独立函数存在，多个 Tool 放进一个 Tool 注册表，由一个** `ToolNode` **统一执行。**
@@ -270,7 +269,4 @@ GenerateAnswer Node
 **Tool 是“能做什么”，Node 是“什么时候做、流程走到哪里”。**
 
 这句话基本可以作为你以后判断“这里应该设计成 Tool 还是 Node”的标准。
-
-
-<!-- created: 2026-08-31 19:15:50 -->
-<!-- updated: 2026-09-02 16:39:04 -->
+<!-- interviewqa:end -->

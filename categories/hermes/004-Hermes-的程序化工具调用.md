@@ -1,19 +1,18 @@
-# ✅Hermes 的程序化工具调用
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅Hermes 的程序化工具调用
+tags: []
+created: 2026-08-24 10:28:54
+updated: 2026-08-25 17:09:18
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [Hermes-的-Honcho-辩证式用户建模](003-Hermes-的-Honcho-辩证式用户建模.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 我理解 Hermes 的 Programmatic Tool Calling，本质上是在解决传统 ReAct Agent 的一个效率问题：很多多工具任务中，真正需要 LLM 做判断的只有开始的任务规划和最后的结果总结，中间大量步骤其实只是循环、过滤、排序、重试、批量抓取这类确定性控制流。如果这些步骤也全部走“LLM 推理一次—调用 Tool—Tool Result 回填上下文—LLM 再推理”的模式，不仅模型调用次数多，而且<u style="text-decoration-color: rgb(230, 57, 70)">大量中间结果会不断占用上下文</u>。
 
 所以 Hermes 在 `execute_code` 里提供了一种<u style="text-decoration-color: rgb(230, 57, 70)">代码化的工具编排方式</u>：模型先一次性生成 Python 脚本，把整个多步流程表达成程序，然后由 Python 负责执行循环、条件判断和数据处理，最终只把整理后的结果返回给模型。
@@ -45,9 +44,9 @@ Hermes 会根据当前会话允许使用的工具动态生成 `hermes_tools.py`�
 ---
 
 对我来说，Hermes 这部分最核心的一句话就是：**不要让 LLM 充当低效的流程解释器，而是<u style="text-decoration-color: rgb(230, 57, 70)">让 LLM 写流程，让程序跑流程</u>。**
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 根据 Hermes 当前源码，这句话的核心不是“Python 能调用工具”，而是：
 
 > **把原本需要 LLM 连续参与的多轮 ReAct 工具链，改写成一次** `execute_code` **调用，让 Python 在子进程里自己完成循环、分支、过滤和多次工具调用，最后只把压缩后的结果返回给 LLM。**
@@ -725,5 +724,4 @@ Runtime 根本不知道什么叫 `web_search`、`read_file`，只知道“给我
 
 - Hermes 更像“已有一堆普通 Tool，再额外注册一个特殊的 `execute_code` Tool，里面通过 `hermes_tools.py + RPC` 去调用其中一部分工具”；
 - 而 dsh 是“Tool Registry 天生就支持 native/code/both 三种暴露方式”，<u style="text-decoration-color: rgb(230, 57, 70)">Code Mode 被做到</u>`工具系统的架构层`<u style="text-decoration-color: rgb(230, 57, 70)">，而不是一个外挂能力。</u>
-<!-- created: 2026-08-24 10:28:54 -->
-<!-- updated: 2026-08-25 17:09:18 -->
+<!-- interviewqa:end -->

@@ -1,19 +1,18 @@
-# ✅LangGraph搭建agent和直接使用claude code+skill搭建agent相比的优势在哪？
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅LangGraph搭建agent和直接使用claude code+skill搭建agent相比的优势在哪？
+tags: []
+created: 2026-08-25 15:50:31
+updated: 2026-08-25 17:13:01
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
  LangGraph搭建agent和直接使用claude code+skill、mcp、hook等机制来搭建agent相比的优势在哪？一段话回答我
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [LangGraph-中的-send](004-LangGraph-中的-send.md) | [LangGraph中的subgraph](006-LangGraph中的subgraph.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > 相比直接用 Claude Code + Skill + MCP + Hook 搭 Agent，LangGraph 的核心优势不是“能力更强”，而是**编排更显式、状态更可控，更适合生产级复杂 Agent**：
 >
 > - Claude Code 本质上更像一个成熟的 Agent Harness，Skill 提供领域知识与操作规范，MCP 扩展外部工具，Hook 在关键生命周期插入规则，很多任务编排仍由模型根据上下文动态决定，因此<u style="text-decoration-color: #e63946">开发快、灵活性高，但复杂流程容易变得隐式</u>；
@@ -53,9 +52,9 @@ LangGraph 本质上是程序框架，你可以把它嵌入 FastAPI，与 Redis�
 - LangGraph 的优势则是当 Agent 从“一个会调用工具的智能助手”发展成`“一个需要长期运行、流程稳定、状态可恢复、行为可审计的业务系统”`时，你能够<u style="text-decoration-color: #e63946">把控制权从 Prompt 和模型判断重新拿回到程序架构中</u>。
 
 面试里如果让我一句话概括，我会说：**Claude Code 更擅长把 Agent 本身做强，而 LangGraph 更擅长把<u style="text-decoration-color: #e63946">复杂 Agent 系统管住</u>。**
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 更详细地看，LangGraph 和“Claude Code + Skill + MCP + Hook + Subagent”其实不是同一层级的东西。Claude Code 更像一个已经封装好的 Agent Harness：它把模型、工具调用循环、上下文管理、子智能体、权限、扩展机制等都替你搭好了；LangGraph 则更像一个 Agent 工作流运行时，你自己决定状态是什么、节点是什么、节点之间怎么跳转。因此二者真正的区别不是“谁能做更多事情”，而是：**Claude Code 更强调把自主决策权交给模型，LangGraph 更强调<u style="text-decoration-color: rgb(230, 57, 70)">开发者对 Agent 执行过程拥有结构化控制权</u>。**
 
 ### 1. 最核心的区别：隐式编排和显式编排
@@ -645,6 +644,4 @@ Skill + MCP + Tools
 > **此 Claude Code 的优势是自主性和开箱即用，LangGraph 的优势则是复杂业务下的状态管理、流程控制、持久化恢复和可审计性。真正生产级的复杂 Agent，往往不是二选一，而是外层用类似 LangGraph 的工作流控制系统，内层节点再运行 Claude Code 风格的 Agent Loop。**
 
 你可以用一个判断题检验是否理解：**如果一个系统只是“模型不断选择工具直到完成任务”，你认为它最缺 LangGraph 的哪项能力——工具扩展能力，还是显式业务状态与执行控制？**
-
-<!-- created: 2026-08-25 15:50:31 -->
-<!-- updated: 2026-08-25 17:13:01 -->
+<!-- interviewqa:end -->

@@ -7,3 +7,7 @@
 - [✅Claude Code 自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制.md) - 配置文件式自定义、自然语言定义与主智能体的当场派生能力
 - [Claude Code 架构梳理](004-Claude Code架构梳理.md) - harness 分层、工具调用循环、权限与 hooks、上下文管理与检查点
 - [Hermes、pi-agent 与 Claude Code 的差异](005-Hermes、pi-agent与Claude Code的差异.md) - 记忆与学习机制、运行位置、扩展模型与权限取舍三线对比
+- [✅CC上下文压缩](006-Claude-Code上下文压缩.md) - Compact instructions
+- [Claude Code记忆机制](007-Claude-Code记忆机制.md) - Claude Code记忆机制
+- [✅Claude code agent loop](008-Claude-code-agent-loop.md) - Claude code agent loop
+- [Claude Code tools](009-Claude-Code-tools.md) - Claude Code tools

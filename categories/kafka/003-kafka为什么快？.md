@@ -1,19 +1,18 @@
-# kafka为什么快？
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: kafka为什么快？
+tags: []
+created: 2026-08-13 19:03:19
+updated: 2026-08-17 10:36:25
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 面试官问，Kafka为什么这么快？
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [kafka的常见使用场景](002-kafka的常见使用场景.md) | [kafka为什么会出现重复消费](004-kafka为什么会出现重复消费.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > [https://v.douyin.com/EKdE5fK8V30/](https://v.douyin.com/EKdE5fK8V30/)
 
 1）`批处理机制`
@@ -33,9 +32,9 @@
 Kafka生产者发送消息是通过`主线程`和`Sender线程`各自处理不同的业务逻辑，以提升整体消息发送吞吐量）
 
 5）`压缩机制`当生产者把消息攒成批次之后，它会先进行压缩，发送到Broker端；当消费者从Broker端读取消息之后，再进行解压缩并进行最后的业务处理。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 答，因为Kafka消息是顺序落盘的，所以它非常快。废话，消息队列这种先进先出的场景，不顺序落盘难道还随机落盘吗？如果你这么回答，肯定直接出门左转。
 
 接下来我们来看一下Kafka之所以快的五大原因：
@@ -89,11 +88,4 @@ Kafka生产者发送消息是通过主线程和Sender线程各自处理不同的
 我们可以选择一个合适的压缩算法，比如说gzip、snappy、lz4、zstd，其中zstd的压缩比是最高的，适用于对磁盘和网络比较敏感的一种场景，而lz4它的压缩和解压是最快的，适用于高并发的业务场景。
 
 在Kafka当中，其实它的消息压缩是在生产者进行处理的，当生产者把消息攒成批次之后，它会先进行压缩，发送到Broker端，而Broker端是直接进行存储的，不会进行解压缩，只有当消费者从Broker端读取消息之后，再进行解压缩并进行最后的业务处理。
-
-
-
- 
-
-
-<!-- created: 2026-08-13 19:03:19 -->
-<!-- updated: 2026-08-17 10:36:25 -->
+<!-- interviewqa:end -->

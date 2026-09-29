@@ -1,4 +1,10 @@
-# ✅并行运行代理-概述
+---
+schema: interviewqa/v2
+kind: document
+title: ✅并行运行代理-概述
+created: 2026-08-13 18:20:10
+updated: 2026-08-27 17:07:42
+---
 
 > 比较 Claude Code 同时处理多个任务的方式：子代理、代理视图、代理团队和动态工作流。
 
@@ -91,6 +97,3 @@ Cross-session Messaging
 - [编排代理团队](004-agent-teams.md)：设置主导者和队友、分配任务并审查他们的工作。
 - [编排动态工作流](005-workflows.md)：运行捆绑的工作流或让 Claude 编写一个运行许多子代理并相互验证其发现的工作流。
 - [使用 worktrees 运行并行会话](006-worktrees.md)：在隔离的检出中启动 Claude、控制复制的内容并在之后清理。
-
-<!-- created: 2026-08-13 18:20:10 -->
-<!-- updated: 2026-08-27 17:07:42 -->

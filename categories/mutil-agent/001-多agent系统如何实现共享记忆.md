@@ -1,19 +1,20 @@
-# ✅多 Agent 系统如何实现共享记忆？
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅多 Agent 系统如何实现共享记忆？
+tags:
+  - Multi-Agent
+  - 记忆管理
+created: 2026-08-05 14:00:00
+updated: 2026-09-22 14:57:48
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 多个 Agent 之间如何实现共享记忆？有哪些架构方案和一致性问题？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Multi-Agent](../../tags/Multi-Agent.md) | [记忆管理](../../tags/记忆管理.md)
-
-## 题目导航
-
-← 无 | [多agent讨论如何终止](002-多agent讨论如何终止.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 ### 1. 原生回答
 
 ---
@@ -112,9 +113,9 @@ Agent 输出 → 临时结果 → 验证 → 共享状态
 ```
 
 这其实才是你这版回答最有价值的地方。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、三类数据
 
 
@@ -201,7 +202,4 @@ B 重新读取后发现验收已变化，<span style="background-color: #fff3cd"
 黑板适合`多个角色围绕同一任务异步贡献`，尤其是目标和中间产物可结构化时。
 
 它不自动解决写冲突、权限和垃圾数据；规模很小且步骤固定的流程，显式消息和工作流状态可能更简单。
-
-
-<!-- created: 2026-08-05 14:00:00 -->
-<!-- updated: 2026-09-22 14:57:48 -->
+<!-- interviewqa:end -->

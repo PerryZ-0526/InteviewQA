@@ -1,4 +1,10 @@
-# 使用 agent view 管理多个代理
+---
+schema: interviewqa/v2
+kind: document
+title: 使用 agent view 管理多个代理
+created: 2026-08-19 12:59:32
+updated: 2026-08-19 13:17:45
+---
 
 > 从一个屏幕调度和管理多个 Claude Code 会话。Agent view 显示每个会话正在做什么以及哪些会话需要你的输入。
 
@@ -730,9 +736,3 @@ Agent view 在研究预览期间发展迅速。如果你使用较旧的 Claude C
 | v2.1.142 | `claude agents` 接受 `--permission-mode`、`--model`、`--effort`、`--dangerously-skip-permissions`、`--settings`、`--add-dir`、`--plugin-dir`、`--mcp-config` 和 `--strict-mcp-config`。                                                                                                                                                                                                                                                                                                                                                                  |
 | v2.1.141 | `claude agents` 接受 `--cwd` 以将列表范围限定到一个项目。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | v2.1.139 | Agent view 作为研究预览版引入。                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-
-
-
-
-<!-- created: 2026-08-19 12:59:32 -->
-<!-- updated: 2026-08-19 13:17:45 -->

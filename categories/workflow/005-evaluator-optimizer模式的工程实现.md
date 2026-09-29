@@ -1,19 +1,21 @@
-# evaluator-optimizer 模式的工程实现
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: evaluator-optimizer 模式的工程实现
+tags:
+  - Workflow
+  - LLM
+  - 效果评估
+created: 2026-08-16 04:09:07
+updated: 2026-08-16 04:09:07
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈 evaluator-optimizer 模式的工程实现：LLM-as-judge 的评测器设计、评分校准、收敛条件，以及评测器被攻破的风险。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Workflow](../../tags/Workflow.md) | [LLM](../../tags/LLM.md) | [效果评估](../../tags/效果评估.md)
-
-## 题目导航
-
-← [Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > evaluator-optimizer 是生成与评估分离的迭代模式，工程核心不在生成器而在评测器：LLM-as-judge 的可靠性靠结构化 rubric、去偏差校准与外部客观信号兜底，收敛靠显式终止条件与预算，而评测器本身是最大攻击面——它决定了这个模式的效果上限，也必须成为被防护的对象。
 
 评测器设计有三种形态，按可信度排序。程序化 judge 最强：编译、单元测试、正则校验、数值断言，这些是确定性信号，没有模型不确定性。模型 judge 次之：用 LLM 按 rubric 评分或做成对比较，适用于主观维度——相关性、流畅度、风格。混合形态最常见：模型 judge 评主观分，程序化门做硬门槛，任何一票否决。设计模型 judge 有四个要点：rubric 必须可操作化，把「回答质量好」拆成「引用准确、无幻觉、覆盖问题的三个子问」；输出必须结构化，强制分数加理由的 JSON，方便统计与审计；judge 与 generator 必须隔离，不同模型或至少独立上下文，否则就是自评；关键评分要有参考锚点，给出黄金标准示例让 judge 对标。2026 年的一个可靠结论是：推理模型是更强的 judge，指令遵循更好、对抗鲁棒性更高，但仍带偏差，学术界的 PlanJudge 策略——先让 judge 生成显式评估计划再打分——能在保留准确率的同时缓解偏差。
@@ -23,9 +25,9 @@
 收敛条件是工程护栏。必须显式设定：最大轮数防死循环、分数阈值定合格线、连续 N 轮无改进即停止、token 与墙钟预算兜底。最重要的纪律是客观门不可被平均分抵消——编译不过就是不过，单测挂了分数再高也不收敛，这条原则与 Hermes 自进化项目里「约束门独立于奖励」的设计完全一致。同时要警惕收敛方向错误：优化器可能在评测器上过拟合——generator 学会的不是把任务做好，而是讨好这个特定的 judge。
 
 评测器被攻破的风险是这道题的高潮。最经典的机制是 Goodhart 定律：当一个指标成为优化目标，它就不再是好指标——generator 会学会长度灌水、堆砌 rubric 关键词、模仿参考锚点的表面特征。随和偏差则让 judge 变成橡皮图章，无效输出照样放行，上面的真阴率 25% 就是证据。防护措施四件：judge 与 generator 隔离，防止评测标准泄漏进生成上下文；客观信号优先，能程序化验证的维度不交给模型 judge；对评测器做红队，构造对抗样本检验 judge 的拒绝能力；保留独立测试集，反复在同一评测集上迭代本身就是污染——这几点与 hermes 分类 001 题讲的评测设计完全同构。演变到今天，evaluator-optimizer 一分为二：任务侧的迭代内化为 agent 的 test-driven loop——coding agent 跑测试、读失败、改代码，评测器换成了真实环境；基础设施侧，LLM-as-judge 成为 agent 轨迹评估的事实标准，评的不再是单个输出而是整个工具调用轨迹的合理性。总结来说，这个模式的本质从来不是「迭代」而是「评测」：谁能把 judge 校准得更可信，谁就拥有这个模式的上限。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。偏差数据与校准方法基于 2025-2026 年公开研究（NUS AICET 大规模偏差研究、EvalEval 2026、ICML 2026、PLOS ONE 2026），模式定义基于 Anthropic《Building effective agents》。
 
 ### 一、结构图
@@ -106,6 +108,4 @@ def evaluator_optimizer(task, max_rounds=5, budget_tokens=50_000):
 - [NUS AICET：LLM-as-a-Judge 大规模偏差研究（arXiv:2510.11822，2025）](https://arxiv.org/abs/2510.11822)
 - [Huang et al.：Reasoning Model Is Superior LLM-Judge, Yet Suffers from Biases（EvalEval，ACL 2026）](https://aclanthology.org/2026.evaleval-1.13/)
 - [Wiese：Human-anchored longitudinal comparison with a bias-calibrated LLM-as-judge（PLOS ONE，2026）](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0339920)
-
-<!-- created: 2026-08-16 04:09:07 -->
-<!-- updated: 2026-08-16 04:09:07 -->
+<!-- interviewqa:end -->

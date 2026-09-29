@@ -1,19 +1,20 @@
-# 深入讲讲 Python 中的进程、线程、协程
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 深入讲讲 Python 中的进程、线程、协程
+tags:
+  - Python
+  - 并发
+created: 2026-08-16 00:07:12
+updated: 2026-09-02 16:42:02
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 深入讲讲 Python 中的进程、线程、协程？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Python](../../tags/Python.md) | [并发](../../tags/并发.md)
-
-## 题目导航
-
-← [进程线程协程的理解](001-进程线程协程的理解.md) | [为什么要有线程和协程](003-为什么要有线程和协程.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > CPython 并发的核心约束是 `GIL`：<u style="text-decoration-color: rgb(230, 57, 70)">同一时刻只有一个线程能执行字节码</u>，所以线程模型只对 IO 密集任务有效，CPU 密集必须走 multiprocessing 多进程；asyncio 用单线程事件循环加协程实现万级并发 IO，绕开了线程与锁的全部开销。Python 3.13 起 free-threaded 构建让无 GIL 成为可选项，3.14 起该构建正式受支持，并引入了 PEP 734 子解释器，这套格局正在被官方逐步改写。
 
 ### 先讲 GIL
@@ -49,10 +50,9 @@ CPU 密集任务在 CPython 里线程无效，唯一正途是 `multiprocessing` 
 Python 3.13 引入实验性的 **free-threaded 构建**（PEP 703，编译参数 `--disable-gil`），3.14 起转为正式支持特性，以独立二进制 `python3.14t` 发行：单线程性能损失降到 5%\~10%，4 线程下多核扩展约 4 倍。注意两点：C 扩展必须声明 `Py_mod_gil` 标记自己 GIL 安全，否则导入时**静默退回全局 GIL 模式**；即使无 GIL，内置容器也不承诺线程安全，锁依然要自己加。同版本还落地了 **PEP 734** 的 `concurrent.interpreters` 模块——同一进程内多个独立解释器，各自持有独立 GIL，通过 channel 传数据，比多进程轻、比多线程隔离性好，适用于插件系统、沙箱和 CPU 并行任务。
 
 > IO 密集低并发用线程，CPU 密集用进程，`高并发网络 IO` 用 asyncio；free-threading 和子解释器是官方给出的新选项，但在 C 扩展生态全面兼容之前，多进程仍是 CPU 密集任务的稳妥答案。
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 1. GIL 的工作原理
 
 ```
@@ -168,7 +168,4 @@ async def main(urls):
 - [multiprocessing — Contexts and start methods（官方文档）](https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods)
 - [asyncio — Coroutines and Tasks（官方文档）](https://docs.python.org/3/library/asyncio-task.html)
 - [concurrent.futures — 线程池与进程池（官方文档）](https://docs.python.org/3/library/concurrent.futures.html)
-
-
-<!-- created: 2026-08-16 00:07:12 -->
-<!-- updated: 2026-09-02 16:42:02 -->
+<!-- interviewqa:end -->

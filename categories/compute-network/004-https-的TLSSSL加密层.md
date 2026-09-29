@@ -1,19 +1,18 @@
-# ✅HTTPS 的 TLS 加密层
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅HTTPS 的 TLS 加密层
+tags: []
+created: 2026-09-02 10:12:28
+updated: 2026-09-02 16:44:19
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [http-和-https-的区别](003-http-和-https-的区别.md) | [反向代理](005-反向代理.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > HTTPS 本质上是 HTTP + TLS。TLS 握手主要完成三件事：`协商加密算法`、`验证服务器身份`、通过非对称加密或密钥交换`生成会话密钥`；之后真正的 HTTP 数据使用`对称加密传输`，兼顾安全性和性能。
 
 ### 一、HTTPS 的整体加密思路
@@ -147,7 +146,7 @@ TLS 1.3 的关键优化是：**客户端在第一次 Client Hello 中，就提�
 面试中可以这么概括：**TLS 1.3 之所以从 TLS 1.2 常见的 2-RTT 降到 1-RTT，核心是把密钥交换需要的信息提前放进第一次 Client Hello 中，减少了一轮“服务器先返回参数、客户端再进行密钥交换”的交互。**
 
 至于 **0-RTT**，它主要用于以前已经连接过该服务器的会话恢复场景。客户端可以利用上一次连接保存的密钥材料，在第一次 Client Hello 发出去时就顺便发送加密的 HTTP 数据，因此理论上不需要等待服务器响应就开始传业务数据。不过 0-RTT 存在重放攻击风险，所以并不是所有请求都适合使用。
+<!-- interviewqa:end -->
 
-
-<!-- created: 2026-09-02 10:12:28 -->
-<!-- updated: 2026-09-02 16:44:19 -->
+<!-- interviewqa:section analysis -->
+<!-- interviewqa:end -->

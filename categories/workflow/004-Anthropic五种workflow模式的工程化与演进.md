@@ -1,19 +1,21 @@
-# Anthropic 五种 workflow 模式的工程化与演进
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Anthropic 五种 workflow 模式的工程化与演进
+tags:
+  - Workflow
+  - Agent
+  - LLM
+created: 2026-08-16 04:09:07
+updated: 2026-08-16 04:09:07
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 Anthropic 提出过五种 workflow 模式（prompt chaining、routing、parallelization、orchestrator-workers、evaluator-optimizer），逐个谈谈它们的工程实现，以及它们在 agent 时代的演变。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Workflow](../../tags/Workflow.md) | [Agent](../../tags/Agent.md) | [LLM](../../tags/LLM.md)
-
-## 题目导航
-
-← [确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md) | [evaluator-optimizer模式的工程实现](005-evaluator-optimizer模式的工程实现.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > 五种模式是 Anthropic 2024 年 12 月《Building effective agents》给出的确定性编排工具箱，共同前提是「控制流图能在模型运行前画出来」，每种模式都只有 10 到 15 行代码的量级；到 2026 年它们没有消失而是分化——简单模式内化为模型行为或单次调用，复杂模式演化为 agent 的基础设施，答题框架应是「原始定义 → 失败模式 → 今天在哪」。
 
 先讲最直白的两个。prompt chaining 是线性管道，一次调用的输出作为下一次的输入，典型例子是文档生成——大纲、正文、审校串成三步，步骤之间可以加程序化闸门，比如正文长度不合格就拦下。它的失败模式是错误累积：上游偏差被下游放大，链越长可靠性越低；成本结构是步数乘以单次调用成本，延迟是各步之和。它今天的处境最有代表性：模型能力提升后，多数「大纲到成文」的链条用单次调用就能完成，chaining 退到了必须有中间人工检查点或步骤间输入输出契约严格的场景，也就是数据流水线——RAG 预处理里的切分、清洗、嵌入、入库。routing 是分类器分流，先让一个 LLM 判断输入类别，再交给对应下游处理器，适合类别差异大的场景，比如客服工单分流到账单、技术、退款三个专员。它的失败模式是分类错误导致全链路走错，且分类器本身也是一次 token 支出；它今天的演变最精彩——从「业务路由」演化为「模型路由」：用便宜快速的模型做分类与反思，强模型只处理关键生成，这正是现在成本优化的主线（详见 agent 分类的成本题），同时 agent 内部模型自主选择工具路径，本质就是 routing 的内化。
@@ -25,9 +27,9 @@ orchestrator-workers 是编排者动态分解任务、派发给 worker、汇总�
 evaluator-optimizer 是生成-评估迭代，一个 LLM 生成、另一个评估，迭代到评估通过，评估标准越客观越有效——代码任务用单测和编译结果，写作任务用审稿标准。失败模式是评测器本身不可靠：评测器被生成器讨好、评估标准漂移、迭代不收敛；成本是生成加评估乘以轮数，是最贵的模式。它今天的演变一分为二：任务侧的迭代内化为 agent 的 test-driven loop——coding agent 跑测试、看失败、改代码的循环就是它；基础设施侧的 LLM-as-judge 沉淀为评测管线，成为 agent 轨迹评估的事实标准。这道题我单独展开讲，见本分类 005 题。
 
 总结来说，五种模式的共同命运是「模式过时、机制留存」：chaining 和 routing 内化为模型行为与模型分级路由，parallelization 成为框架的并行工具执行，orchestrator-workers 演化为子智能体委派，evaluator-optimizer 分裂为 test-driven loop 与评测基础设施。面试里逐模式讲「原始定义、失败模式、今天在哪」三段，既展示了概念功底，又接上了本分类 002 题的收敛叙事。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。模式定义基于 Anthropic《Building effective agents》；演变部分基于本分类 002/003 题已核验的各框架机制（dsh 事件系统、pi 工具执行、Claude Code 子智能体）。
 
 ### 一、五模式总览与 2026 位置
@@ -88,6 +90,4 @@ for _ in range(max_rounds):
 - [Claude Code 子智能体文档](https://code.claude.com/docs/en/sub-agents)
 - [DeepSeek Harness 架构文档（事件分发模式）](https://github.com/deepseek-ai/deepseek-harness/blob/main/docs/architecture.md)
 - [pi-agent-core 包文档（工具执行模式）](https://www.npmjs.com/package/@earendil-works/pi-agent-core)
-
-<!-- created: 2026-08-16 04:09:07 -->
-<!-- updated: 2026-08-16 04:09:07 -->
+<!-- interviewqa:end -->

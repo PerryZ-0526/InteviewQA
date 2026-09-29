@@ -1,19 +1,20 @@
-# 谈谈你对 Redis 集群的理解
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 谈谈你对 Redis 集群的理解
+tags:
+  - Redis
+  - 缓存
+created: 2026-08-15 19:47:43
+updated: 2026-08-18 06:44:48
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 Redis 集群的理解？请介绍 Redis Cluster 的架构设计、数据分片机制、故障转移流程与一致性保证，并与主从 + 哨兵等方案做对比。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Redis](../../tags/Redis.md) | [缓存](../../tags/缓存.md)
-
-## 题目导航
-
-← [Redis分布式锁](001-Redis分布式锁.md) | [谈谈你对Redis架构的理解](003-谈谈你对Redis架构的理解.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Redis 集群通常指 Redis Cluster，它是 Redis 官方提供的分布式方案：用 CRC16 将 key 映射到 16384 个哈希槽实现数据分片，节点间通过 gossip 协议去中心化地维护集群状态，主节点故障时由从节点投票选举自动接管，兼顾水平扩展与高可用。它的核心边界是：异步复制决定了它只能提供最终一致、故障转移可能丢写，且跨槽的多 key 操作受限。
 
 理解 Redis 集群，先看`单机 Redis` 的瓶颈：内存容量有上限、单实例处理能力有限、而且它是单点。
@@ -33,9 +34,9 @@
 必须讲清一致性边界。主从之间是异步复制，主节点不等待从节点确认就返回客户端，所以主节点宕机时，最近一段时间的写入可能丢失；WAIT 命令可以让客户端阻塞等待指定数量的从节点确认收到，提高故障转移后写入被保留的概率，但官方文档明确说明 WAIT 并不能让 Redis 成为强一致存储，因为强一致还要求故障转移时只能选举持有全部已确认写入的节点，而 Redis 的选举是尽力而为的。另外，集群模式下多 key 命令要求所有 key 在同一个槽，否则返回 CROSSSLOT 错误，Lua 脚本和事务同样受此约束；pipeline 本身可用，smart client 会按节点自动拆分，但跨节点没有原子性；集群只支持 db 0；pub/sub 默认是全局广播，每个节点都会转发，订阅规模大时开销明显，Redis 7 引入的 sharded pub/sub 把频道绑定到槽上缓解了这个问题。
 
 和主从加 Sentinel 相比，Cluster 的根本差异在分片：Sentinel 方案每个节点持有全量数据，容量受单机内存限制，但运维简单、客户端不用感知拓扑；Cluster 适合数据量大、写吞吐要求高、需要水平扩展的场景，代价是运维复杂度和客户端复杂度上升，以及跨槽操作的约束。总结来说，Redis 集群是以哈希槽分片为数据模型、gossip 协议为控制面、类 Raft 选举为高可用手段的最终一致分布式缓存，选型时要重点评估数据量级、跨 key 操作的需求和对一致性缺失的容忍度，强一致诉求的场景应当换用基于多数派提交的存储。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、架构总览
 ```
                    ┌────────────────────── Redis Cluster ──────────────────────┐
@@ -246,7 +247,4 @@ currentEpoch 自增，广播 FAILOVER_AUTH_REQUEST 拉票
 - [Redis 7.2 redis.conf（默认配置与参数注释）](https://github.com/redis/redis/blob/7.2/redis.conf)
 - [src/cluster.c（keyHashSlot、故障检测与选举实现）](https://github.com/redis/redis/blob/7.2/src/cluster.c)
 - [src/cluster.h（CLUSTER\_SLOTS=16384、默认超时常量）](https://github.com/redis/redis/blob/7.2/src/cluster.h)
-
-
-<!-- created: 2026-08-15 19:47:43 -->
-<!-- updated: 2026-08-18 06:44:48 -->
+<!-- interviewqa:end -->

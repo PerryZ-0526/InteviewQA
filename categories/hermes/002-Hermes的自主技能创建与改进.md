@@ -1,19 +1,18 @@
-# Hermes的自主技能创建与改进
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Hermes的自主技能创建与改进
+tags: []
+created: 2026-08-21 18:41:50
+updated: 2026-08-21 18:45:48
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [Hermes的理解与亮点](001-Hermes的理解与亮点.md) | [Hermes-的-Honcho-辩证式用户建模](003-Hermes-的-Honcho-辩证式用户建模.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 Hermes 的“自主技能创建与改进”本质上不是模型参数自学习，而是把任务执行经验持续沉淀成可复用的 `SKILL.md`，再在后续任务中按需加载、验证和修正，形成“执行任务—后台复盘—生成/更新 Skill—再次复用—继续修正”的程序性记忆闭环。
 
 从源码来看，Hermes 在任务执行过程中会累计工具调用迭代次数，达到一定阈值后触发 skill review。它不会直接让主 Agent 在当前上下文里做总结，而是启动一个隔离的后台 review agent，把当前会话快照交给它，并只开放 `skill_view`、`skills_list`、`skill_manage` 这类与技能管理相关的工具。这个后台 Agent 会判断刚才的任务中有没有具有长期复用价值的经验，例如一个复杂问题的稳定解决流程、某个容易踩坑的步骤，或者现有 Skill 中已经过时、不完整的部分。
@@ -23,9 +22,9 @@ Hermes 的“自主技能创建与改进”本质上不是模型参数自学习�
 Skill 落盘后，本质上就是带 YAML 元数据的 Markdown 文件，可以附带 `references`、`scripts`、`templates`。后续 Agent 不会把所有 Skill 全量塞进上下文，而是先只暴露名称和 description，模型判断相关后再通过 `skill_view` 加载完整内容，这是一种渐进式上下文加载。
 
 所谓“使用中继续自我改进”，就是下一次执行同类任务时，如果 Agent 发现旧 Skill 的某一步已经失效、缺少边界条件，或者用户纠正了它，它可以直接修改这个 Skill。长期来看，Hermes 还通过 Curator 记录 Skill 的使用次数、修改次数和活跃度，对长期不用的技能做 stale 或 archive 管理，并可选地做技能合并。所以它真正的亮点不是“会生成 Skill”，而是把 Skill 当成一种可以由 Agent 自己创建、复用、修正和治理的长期程序性知识。其格式兼容 agentskills.io，意味着这些技能有跨 Agent 工具迁移的基础，但不能理解成完全无损迁移。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 根据当前 Hermes 源码，这个过程可以拆成两条路径：**前台 Agent 主动沉淀** + **后台 review 自动复盘**。真正体现“自主技能创建与改进”的主要是第二条。
 
 ### 1. 先判断“这次经历值不值得变成 Skill”
@@ -332,6 +331,4 @@ Curator 做 stale / archive / 可选 consolidation
 > **Hermes 把任务执行轨迹当作经验来源，用周期性后台 Agent 将成功经验抽象成程序性 Skill；未来任务按需加载这些 Skill，并把新的纠正和实践结果再次反写进去，从而形成“执行 → 反思 → Skill → 复用 → 修正”的闭环。**
 
 而所谓兼容 `agentskills.io`，主要是指 `SKILL.md` **的文件格式和组织规范兼容**，因此有较好的迁移基础；不能理解成“任何 Agent 平台拿过去一定可以完全无损运行”。([GitHub](https://github.com/NousResearch/hermes-agent/blob/main/tools/skills_tool.py?utm_source=chatgpt.com "hermes-agent/tools/skills_tool.py at main · NousResearch/hermes-agent · GitHub"))
-
-<!-- created: 2026-08-21 18:41:50 -->
-<!-- updated: 2026-08-21 18:45:48 -->
+<!-- interviewqa:end -->

@@ -1,19 +1,18 @@
-# ✅Python 与 C++ 的区别
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅Python 与 C++ 的区别
+tags: []
+created: 2026-08-17 17:29:03
+updated: 2026-08-18 06:10:48
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [谈谈-Python-中的垃圾回收机制](001-谈谈-Python-中的垃圾回收机制.md) | [谈谈Python的内存管理](003-谈谈Python的内存管理.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Python 和 C++ 都能做通用软件开发，但 C++ 把更多控制权交给程序员，以复杂度换性能和可控性；Python 把大量底层细节交给运行时，以一定性能成本换取更高的开发效率。实际 AI 和后端系统中，两者往往不是替代关系，而是 Python 做`上层编排`、C++ 做`底层高性能实现`。
 
 Python 和 C++ 都属于通用编程语言，两者都支持面向对象、函数式编程的一些特性，也都有非常成熟的标准库和第三方生态，因此都可以完成后端开发、算法实现、网络编程等任务。
@@ -292,5 +291,7 @@ asyncio.run(main())
 例如一个 `asyncio` 事件循环里即使有 1 万个协程，通常也还是一个线程在执行 Python 代码。
 
 > 它之所以能处理大量请求，是++因为网络任务大部分时间都在等待++，协程通过 `await` 把这些等待时间利用了起来。([Python documentation](https://docs.python.org/3/library/asyncio-eventloop.html?utm_source=chatgpt.com "Event loop — Python 3.14.6 documentation"))
-<!-- created: 2026-08-17 17:29:03 -->
-<!-- updated: 2026-08-18 06:10:48 -->
+<!-- interviewqa:end -->
+
+<!-- interviewqa:section analysis -->
+<!-- interviewqa:end -->

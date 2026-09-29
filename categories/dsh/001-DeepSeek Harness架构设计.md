@@ -1,19 +1,21 @@
-# DeepSeek Harness 架构设计
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: DeepSeek Harness 架构设计
+tags:
+  - DeepSeek Harness
+  - Agent
+  - Harness
+created: 2026-08-16 01:43:31
+updated: 2026-08-16 19:54:57
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 DeepSeek 最近开源了 Agent 框架 Harness（dsh），梳理一下它的架构设计。
+<!-- interviewqa:end -->
 
-## 标签
-
-[DeepSeek Harness](../../tags/DeepSeek Harness.md) | [Agent](../../tags/Agent.md) | [Harness](../../tags/Harness.md)
-
-## 题目导航
-
-← 无 | [DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > DeepSeek Harness（dsh）是 DeepSeek 于 2026 年 8 月以 MIT 协议开源的首款 Agent 框架，核心架构是`「一切皆插件」`：
 >
 > 模型适配器、工具、会话日志、沙箱乃至 agent loop 本身全部是插件，由 vendor 引入的 `Cordis 微内核`负责装载与生命周期管理，<span style="background-color: rgb(255, 243, 205)">插件之间通过 ctx 服务键和类型化事件协同</span>；应用边界是它处于开发者预览阶段，定位是框架而非开箱即用的产品。
@@ -163,10 +165,9 @@ preset 则是给不同会话配的「工具套装」；为了保证历史日志�
 1. 学习与调试成本高（行为散落在各插件的注册副作用里）
 2. 开发者预览期兼容性不稳定；
 3. 社区插件生态治理存在不确定性——灵活性是用复杂度换来的。
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 内容基于 2026-08-16 克隆的 `deepseek-ai/deepseek-harness` 仓库源码与官方文档核验。
 
 ### 一、整体结构图
@@ -500,5 +501,4 @@ Subagent 的替换核心在于 `ctx.subagents` 这个服务接口。
 - **极薄的内核**：dsh 的内核非常精简，本身只包含最基础的骨架。
 - <span style="background-color: rgb(255, 243, 205)">**能力接缝 (Seam)**：所有扩展功能都以“能力接缝”的形式存在</span>。一个 Seam 定义了“接口（interface）”、“实现（implementation）”和“消费者（consumer）”三个角色。更换其中的“实现”，就能整体替换掉这块能力。
 - **声明式依赖**：插件通过稳定的 key（如 `ctx.subagents`）来声明自己需要什么、提供什么，框架会自动处理依赖关系。
-<!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-16 19:54:57 -->
+<!-- interviewqa:end -->

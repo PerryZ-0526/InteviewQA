@@ -1,19 +1,21 @@
-# ✅Hermes 的理解与亮点
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅Hermes 的理解与亮点
+tags:
+  - Hermes
+  - Agent
+  - Claude Code
+created: 2026-08-16 01:43:31
+updated: 2026-08-25 11:11:34
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 Hermes 的理解，着重谈其区别于 Claude Code 的亮点。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Hermes](../../tags/Hermes.md) | [Agent](../../tags/Agent.md) | [Claude Code](../../tags/Claude Code.md)
-
-## 题目导航
-
-← 无 | [Hermes的自主技能创建与改进](002-Hermes的自主技能创建与改进.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > `Hermes` Agent 是 Nous Research 的`开源自改进 agent`，核心竞争力不在工具循环而在`闭环学习`：`从经验沉淀技能`、使用中自我改进、跨会话记忆检索、用户画像建模，叠加单一 gateway 的多平台常驻与七种终端后端；
 >
 > 相对 Claude Code 的亮点是学习闭环、云端常驻与模型自由，短板是成熟度与内置权限体系。
@@ -68,9 +70,9 @@ Python 脚本通过 RPC 调用工具，把多步流水线折叠成一次执行�
 ---
 
 总结来说：Claude Code 是把编码工作流做到极致的终端产品，Hermes 是把 agent 变成常驻个人助手的实验性探索——它的自进化叙事有真实机制支撑，但落地程度必须逐项核实，面试中把「机制存在」和「效果验证」分开表述，是理解 Hermes 的关键。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 内容基于 2026-08-16 核验的 NousResearch/Hermes-Agent 仓库 README 与官方文档。
 
 ### 一、学习闭环结构图
@@ -182,5 +184,4 @@ Claude Code 的 skills 是<u style="text-decoration-color: rgb(230, 57, 70)">人
 有 → 调 memory tool 写 MEMORY.md / USER.md
 无 → 什么都不写
 ```
-<!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-25 11:11:34 -->
+<!-- interviewqa:end -->

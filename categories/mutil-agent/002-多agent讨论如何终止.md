@@ -1,27 +1,28 @@
-# 多个智能体讨论起来没完没了，怎么让它停下来？
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 多个智能体讨论起来没完没了，怎么让它停下来？
+tags:
+  - Multi-Agent
+  - Agent
+created: 2026-08-05 14:00:00
+updated: 2026-08-11 10:30:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 多个 Agent 讨论无法自然终止时，如何设计可靠的停止条件？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Multi-Agent](../../tags/Multi-Agent.md) | [Agent](../../tags/Agent.md)
-
-## 题目导航
-
-← [多agent系统如何实现共享记忆](001-多agent系统如何实现共享记忆.md) | [G-Memory多智能体的共享与进化记忆](003-G-Memory多智能体的共享与进化记忆.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 多 Agent 不会自动知道什么时候该停，根因不是“模型天生爱说话”，而是控制器持续调用、任务没有外显完成条件、Agent 没有终止动作，或奖励只鼓励继续提出内容。因此终止必须是运行时协议，而不是一句“达成共识后停止”。
 
 首先把目标转成可验证的完成条件、必须覆盖的问题和允许保留的分歧。每轮记录新证据、状态变化、未解决项和动作重复度；满足客观验收时成功结束，连续无进展时结束为停滞，预算耗尽时暂停并交付当前结论。开放问题允许“未达成共识”作为合法结果。
 
 共识、语义相似度、投票和自报置信度只能作为辅助信号，因为多个 Agent 可能共享同一个错误。仲裁 Agent 也只是概率模型，不能替代测试、环境状态或人工决策。系统始终需要轮数、时间、Token 和费用硬上限，避免任何软条件失效后无限运行。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、终止状态
 
 - SUCCEEDED：客观验收条件满足。
@@ -86,10 +87,8 @@ AutoGen、CrewAI 等终止 API 会随版本变化，文档应记录版本并把�
 ### 十四、终止器自身的故障
 
 终止器可能误把合法迭代判为重复，也可能在软信号永不满足时漏停。因此硬预算必须位于独立控制层，终止决策也要记录触发信号和状态快照，便于离线复盘误停与漏停。
+<!-- interviewqa:end -->
 
-## 我的作答
-
+<!-- interviewqa:section notes -->
 (暂无作答记录)
-
-<!-- created: 2026-08-05 14:00:00 -->
-<!-- updated: 2026-08-11 10:30:28 -->
+<!-- interviewqa:end -->

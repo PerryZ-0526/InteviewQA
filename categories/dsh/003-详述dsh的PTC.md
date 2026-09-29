@@ -1,19 +1,22 @@
-# 详述 dsh 的 PTC
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 详述 dsh 的 PTC
+tags:
+  - DeepSeek Harness
+  - Agent
+  - 上下文压缩
+  - 成本优化
+created: 2026-08-16 05:12:43
+updated: 2026-08-16 19:57:12
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 面试官问：DeepSeek Harness（dsh）里的 PTC（程序化工具调用 / Code Mode）是什么机制？请详述它的设计、执行流程与边界。
+<!-- interviewqa:end -->
 
-## 标签
-
-[DeepSeek Harness](../../tags/DeepSeek Harness.md) | [Agent](../../tags/Agent.md) | [上下文压缩](../../tags/上下文压缩.md) | [成本优化](../../tags/成本优化.md)
-
-## 题目导航
-
-← [DeepSeek Harness与Claude Code的区别](002-DeepSeek Harness与Claude Code的区别.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > PTC（Programmatic Tool Calling，dsh 内部称 Code Mode）是 dsh 里把工具调用的编排权交给程序的一种交互模式：模型不再逐次发起原生工具调用，而是针对当前会话可见工具集自动生成的 SDK 编写一段 TypeScript 程序，由宿主的 worker 线程整体执行，中间数据留在程序内部，只有打印日志与最终返回值回到模型上下文；核心收益是把 N 次工具往返压缩为一次模型往返，边界是 worker 运行时提供的是遏制（containment）而非安全隔离。
 
 首先明确 PTC 在 dsh 中的定位：它不是内核机制，而是工具注册表的一种呈现模式。工具注册表本身始终运行在宿主侧，agent preset 通过 tool-presentation 这一行配置声明 mode: code，让挂在该 preset 下的 agent 的模型只看到 run\_code 这一个工具；官方随发行版提供的 code preset 就是 standard preset 原样加上这一行，其注释写得很直接——「本来要五次往返的序列变成一次往返」。code 模式下原生工具的 schema 不再进入模型请求，取而代之的是 tools:sdk 提示词段：注册表按词法序把会话可见工具的参数与返回类型确定性生成一份 declare const tools 的 TypeScript 声明，同一工具集下字节级稳定，因此可以利用提供商的前缀缓存摊销每次组装的成本；提示词里同时有一条 order 99 的显式规则——run\_code 是唯一可直接调用的工具，直接调用其他工具名会失败。
@@ -25,9 +28,9 @@
 第四是预算与失败语义。每次运行受四重预算约束：computeMs 用事件循环利用率计量实际忙碌时间（等待慢工具不扣费，热循环躲不掉），maxWallMs 用定时器兜底总时长，堆内存有 resourceLimits 上限，外层输出（logs 加返回值）默认 64 MiB。程序异常、预算耗尽、中止或 worker 死亡统一收敛为 CodeRunFailedError（code: CODE\_RUN\_FAILED），由执行流水线转成结构化 isError 结果返回给模型，模型可以读错误信息自行修正。
 
 最后必须讲清边界。官方在 worker 运行时模块的文档注释里明确定位：这是遏制而非安全边界，模型代码可达 Node API，权限与 bash 工具同级；worker.terminate() 只能终止线程，停不掉程序派生的 OS 进程。需要硬多租户边界时，必须把 codeRuntime 这个 seam 换成容器级后端。工程上还有两点提醒：一是 PTC 一次执行可以放大副作用（一段程序可能读写大量文件），上线时应为 run\_code 单独考虑审批与预算策略；二是 SDK 提示词段本身要占上下文，工具数量多时体积可能超过原生 schema，省 token 的前提是任务确实需要多步工具编排。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 内容基于 2026-08-16 克隆至 `ref_project/deepseek-harness` 的仓库源码（master）核验，关键结论均标注对应源码文件。
 
 ### 一、PTC 在 dsh 里的准确位置
@@ -187,5 +190,5 @@ worker 后端模块注释的官方定位原文："This is containment, not a sec
 
 它是怎么实现的？模型写的是 TypeScript 程序（也支持 Python），系统会先把当前能用的所有工具自动生成一份 SDK 说明书，程序里按说明书写 await tools.xxx() 就能调用工具。程序在独立线程里跑，每次跑都开一个新线程，跑完就销毁。程序里调工具不是真的直接调用，而是通过消息通道把请求传回主程序，主程序照常走审批、执行、记录这套流程——所以换成程序调用，安全管控一点没放松。
 
-有什么坑？最大的一条：官方明说这个线程环境只算「关禁闭」不算「保险柜」——程序里的代码能摸到 Node 的能力，权限跟直接执行 bash 命令一样大；线程可以被掐死，但它派生出去的系统进程掐不死。真要严格隔离，得把整个执行环境换成容器方案。另外 AI 写的程序一口气可能改很多东西，比单次工具调用更需要盯紧审批和预算。<!-- created: 2026-08-16 05:12:43 -->
-<!-- updated: 2026-08-16 19:57:12 -->
+有什么坑？最大的一条：官方明说这个线程环境只算「关禁闭」不算「保险柜」——程序里的代码能摸到 Node 的能力，权限跟直接执行 bash 命令一样大；线程可以被掐死，但它派生出去的系统进程掐不死。真要严格隔离，得把整个执行环境换成容器方案。另外 AI 写的程序一口气可能改很多东西，比单次工具调用更需要盯紧审批和预算。
+<!-- interviewqa:end -->

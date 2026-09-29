@@ -1,4 +1,10 @@
-# 创建自定义 subagents
+---
+schema: interviewqa/v2
+kind: document
+title: 创建自定义 subagents
+created: 2026-08-13 18:20:12
+updated: 2026-09-08 10:54:55
+---
 
 > <span style="font-size: 1em">在 Claude Code 中创建和使用专门的 AI subagents，用于特定任务的工作流和改进的上下文管理。</span>
 
@@ -1070,6 +1076,3 @@ chmod +x ./scripts/validate-readonly-query.sh
 - <span style="font-size: 1em">[使用 plugins 分发 subagents](https://code.claude.com/docs/zh-CN/plugins) 以在团队或项目中共享 subagents</span>
 - <span style="font-size: 1em">[以编程方式运行 Claude Code](https://code.claude.com/docs/zh-CN/headless)，使用 Agent SDK 进行 CI/CD 和自动化</span>
 - <span style="font-size: 1em">[使用 MCP 服务器](https://code.claude.com/docs/zh-CN/mcp) 为 subagents 提供对外部工具和数据的访问</span>
-
-<!-- created: 2026-08-13 18:20:12 -->
-<!-- updated: 2026-09-08 10:54:55 -->

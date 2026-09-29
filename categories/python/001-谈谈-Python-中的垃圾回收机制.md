@@ -1,19 +1,20 @@
-# ✅谈谈 Python 中的垃圾回收机制
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅谈谈 Python 中的垃圾回收机制
+tags:
+  - Python
+  - 内存管理
+created: 2026-08-15 23:40:32
+updated: 2026-09-02 16:42:02
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈 Python 中的垃圾回收机制。请区分语言语义与 CPython 实现，并说明引用计数、循环 GC、代际模型与常见调优误区。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Python](../../tags/Python.md) | [内存管理](../../tags/内存管理.md)
-
-## 题目导航
-
-← 无 | [Python与C++的区别](002-Python与C++的区别.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Python 语言规范并未规定唯一的垃圾回收算法，面试语境下默认讨论 CPython
 
 > CPython 以引用计数作为主要内存回收机制，通过分代循环垃圾回收解决引用环问题。
@@ -53,9 +54,9 @@
 ---
 
 最后要承认边界：这套机制是 CPython 的实现细节，PyPy 使用分代追踪 GC 而没有引用计数，Jython 依赖 JVM 的 GC。判断「对象何时释放」不能跨实现泛化，资源管理应优先用 with 上下文和显式 close 保证确定性，而不是依赖 GC。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、引用计数：机制与源码对应
 
 **引用计数**是 CPython 的默认回收机制。`Include/object.h` 中 `PyObject` 结构体的第一个字段就是 `ob_refcnt`（`Py_ssize_t`），所有引用变更都通过 `Py_INCREF`/`Py_DECREF` 宏完成；计数归零后进入 `_Py_Dealloc`，最终调用类型对象的 `tp_dealloc` 释放内存。
@@ -272,7 +273,4 @@ print("after collect")
 - [CPython 源码 Objects/obmalloc.c（pymalloc：arena/pool/block 与 512 字节阈值）](https://github.com/python/cpython/blob/main/Objects/obmalloc.c)
 - [Memory Management（C-API 文档：arena 大小 64 位 1MiB / 32 位 256KiB）](https://docs.python.org/3.14/c-api/memory.html)
 - [tracemalloc — Trace memory allocations（官方文档）](https://docs.python.org/3.14/library/tracemalloc.html)
-
-
-<!-- created: 2026-08-15 23:40:32 -->
-<!-- updated: 2026-09-02 16:42:02 -->
+<!-- interviewqa:end -->

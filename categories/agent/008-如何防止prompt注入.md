@@ -1,19 +1,18 @@
-# ✅如何防止prompt注入
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅如何防止prompt注入
+tags: []
+created: 2026-08-18 08:42:58
+updated: 2026-08-28 10:13:26
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [agent沙箱的理解与实现](007-agent沙箱的理解与实现.md) | [Agent-评测](009-Agent-评测.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > <span style="color: rgb(74, 74, 74)">Prompt 注入的核心问题是</span> <span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">LLM 没有</span>`硬编码`<span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">的机制来<u>区分指令和数据</u></span><span style="color: rgb(74, 74, 74)">。</span>
 
 <span style="color: rgb(74, 74, 74)">传统软件里 SQL 有参数化查询可以做隔离，但 LLM 把 System Prompt、用户输入、外部检索内容全部拼成一段文本处理，</span><span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">模型只能靠</span>`语义`<span style="color: rgb(74, 74, 74); background-color: rgb(251, 245, 203)">来猜哪些是指令哪些是数据，<u style="text-decoration-color: rgb(230, 57, 70)">这个猜测过程就可以被攻击者操纵</u>。</span>
@@ -233,8 +232,7 @@
 <span style="color: rgb(74, 74, 74)">一些研究者提出了可能的长期解决方向：比如让模型在架构层面区分不同来源的输入（类似于给不同来源的 token 打上权限标签），或者开发专门的"指令遵循层"让模型只遵循特定格式/签名的指令。但这些方案目前都还在研究阶段，短期内我们仍然只能依赖纵深防御的工程策略。</span>
 
 <img src="images/1787013925537-9fpf19.png" alt="" width="641">
+<!-- interviewqa:end -->
 
-
-
-<!-- created: 2026-08-18 08:42:58 -->
-<!-- updated: 2026-08-28 10:13:26 -->
+<!-- interviewqa:section analysis -->
+<!-- interviewqa:end -->

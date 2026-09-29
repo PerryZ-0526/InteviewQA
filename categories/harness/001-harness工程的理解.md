@@ -1,27 +1,29 @@
-# Harness 工程的理解
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Harness 工程的理解
+tags:
+  - Harness
+  - Agent
+  - 工程实践
+created: 2026-08-03 15:10:25
+updated: 2026-08-11 10:30:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 Agent Harness 工程的理解。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Harness](../../tags/Harness.md) | [Agent](../../tags/Agent.md) | [工程实践](../../tags/工程实践.md)
-
-## 题目导航
-
-← 无 | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 在 Agent 语境中，Harness 首先指包裹在模型外部的运行时脚手架，而不是单纯的评测工具。模型负责理解语义和提出候选动作，Harness 负责组装上下文、驱动模型—工具循环、校验权限和参数、管理状态与预算、执行工具、验证结果、压缩上下文、记录轨迹并决定何时停止。没有 Harness，模型只能生成文本；有了 Harness，模型才被约束成一个能够持续完成工作的系统。
 
 评测 Harness 是另一个相关概念，它负责批量运行任务、收集轨迹并用确定性断言、人评或校准后的模型评分。两者可以组合：Agent Harness 产生受控执行轨迹，Evaluation Harness 衡量结果。但不能把 LangSmith、Braintrust 之类的评测/可观测平台直接等同于完整 Agent Harness。
 
 成熟 Harness 的关键不是组件越多，而是概率决策和确定性控制边界清晰。权限、预算、幂等、副作用提交、恢复和最终验收应由程序控制；LLM Judge 只用于难以客观断言的质量维度，并经过人工金标校准。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、核心组件
 
 | 组件 | 责任 |
@@ -90,10 +92,8 @@ Agent 系统仍包含大量确定性代码、接口、安全和状态不变量�
 ### 十三、Harness 与业务代码的边界
 
 通用 Harness 负责循环、权限、状态和可观测性；业务域仍应提供明确工具契约、不变量和验收器。把所有业务规则塞进系统提示会失去确定性，把所有流程写死又失去 Agent 的语义适应能力。边界设计的核心是让模型处理开放决策，让程序守住不可协商的规则。
+<!-- interviewqa:end -->
 
-## 我的作答
-
+<!-- interviewqa:section notes -->
 (暂无作答记录)
-
-<!-- created: 2026-08-03 15:10:25 -->
-<!-- updated: 2026-08-11 10:30:28 -->
+<!-- interviewqa:end -->

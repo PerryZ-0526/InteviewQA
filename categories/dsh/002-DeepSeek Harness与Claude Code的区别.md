@@ -1,19 +1,21 @@
-# ✅DeepSeek Harness 与 Claude Code 的区别
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅DeepSeek Harness 与 Claude Code 的区别
+tags:
+  - DeepSeek Harness
+  - Claude Code
+  - Agent
+created: 2026-08-16 01:43:31
+updated: 2026-08-16 20:51:57
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 DeepSeek Harness 和 Claude Code 有什么区别？
+<!-- interviewqa:end -->
 
-## 标签
-
-[DeepSeek Harness](../../tags/DeepSeek Harness.md) | [Claude Code](../../tags/Claude Code.md) | [Agent](../../tags/Agent.md)
-
-## 题目导航
-
-← [DeepSeek Harness架构设计](001-DeepSeek Harness架构设计.md) | [详述dsh的PTC](003-详述dsh的PTC.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > 两者的根本区别是产品形态：Claude Code 是绑定 Anthropic 模型的`垂直整合闭源产品`，把 harness 藏在固定扩展点后面；DeepSeek Harness 是 MIT 开源的`元框架`，把 agent loop 本身都做成可替换插件，模型、工具、沙箱、会话日志全部可重组；差异主线是架构开放性、扩展机制、权限模型与工程成熟度。
 
 ### 先从定位说起
@@ -62,10 +64,9 @@ dsh 把沙箱和审批也做成插件：fs 与进程提供方共享同一执行�
 Claude Code 是经过多年迭代的生产级产品，覆盖终端、桌面、IDE 与 Web，权限系统、检查点、并行子智能体都经过了真实工程考验。dsh 2026 年 8 月才发布开发者预览版，官方明确承诺未来有破坏性变更，插件生态刚起步，社区对第三方插件长期可维护性存在质疑。选型上，团队要开箱即用的生产工具选 Claude Code；<span style="background-color: rgb(255, 243, 205)">要构建自己的 Agent 产品、需要替换核心行为或复用多产品能力栈，dsh 的插件化架构价值更大，但需要接受预览期风险和自建安全策略的成本</span>。
 
 > dsh 的 `Code Mode` 这类 token 优化创新值得关注，但架构优势不等同于当下任务完成率优势，最终还是要用真实任务基准说话。
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 内容基于 2026-08-16 核验：dsh 侧引用 `deepseek-ai/deepseek-harness` 源码与官方文档；Claude Code 侧引用官方文档与工程博客的公开信息，不涉及未公开的内部实现。
 
 ### 一、逐项对比
@@ -173,7 +174,4 @@ Claude Code 侧对应的是`子智能体隔离上下文`与 `background tasks �
 - [Anthropic 工程博客：How we built Claude Code](https://www.anthropic.com/engineering/building-claude-code)
 - [Claude Code hooks 文档](https://code.claude.com/docs/en/hooks)
 - [Claude Code IAM 权限文档](https://code.claude.com/docs/en/iam)
-
-
-<!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-16 20:51:57 -->
+<!-- interviewqa:end -->

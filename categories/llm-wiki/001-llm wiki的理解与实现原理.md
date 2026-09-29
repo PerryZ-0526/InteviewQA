@@ -1,19 +1,20 @@
-# LLM Wiki 的理解与实现原理
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: LLM Wiki 的理解与实现原理
+tags:
+  - LLM
+  - 知识管理
+created: 2026-08-05 14:00:00
+updated: 2026-08-16 00:15:00
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 你如何理解 LLM Wiki？它与传统 RAG 有什么区别，应该如何实现？
+<!-- interviewqa:end -->
 
-## 标签
-
-[LLM](../../tags/LLM.md) | [知识管理](../../tags/知识管理.md)
-
-## 题目导航
-
-← 无 | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > LLM Wiki 是 Karpathy 在 2026 年 gist 中提出的<span style="background-color: #fff3cd">知识库组织模式：Agent 按 schema 把不可变原始资料增量编译成一层可浏览、可 lint、可重建的 Wiki</span>，解决传统 RAG 每次查询临时拼碎片、知识无法积累的问题，适用边界是中小规模、以综合阅读为主的个人或团队知识库。
 
 首先说它要解决什么问题。传统 RAG 的流程是把文件上传后切块索引，查询时检索相关片段、现场生成答案。这种方式能用，但模型在每一个问题上都从零重新发现知识：问一个需要综合五份文档的细节问题，每次都要重新找到并拼装相关片段，没有任何积累。LLM Wiki 反其道而行——当新来源加入时，Agent 不是只把它索引起来等检索，而是读取它、抽取关键信息、整合进已有 Wiki：更新实体页面、修订主题总结、标注新数据与旧论断的矛盾，知识被编译一次然后持续保鲜，而不是每次查询重新推导。Karpathy 的原文把这一点概括为 persistent, compounding artifact：交叉引用已经就位、矛盾已经被标注、综合已经反映了读过的所有内容，Wiki 随每个新来源和每个新问题不断变厚。
@@ -27,9 +28,9 @@
 第五讲实现不是唯一的。gist 明确声明它是抽象的 idea file 而非产品规格，目录结构、页面格式、工具选型都取决于领域和所用的 Agent。开源实现 jackwener/llm-wiki 的形态是 CLI 加四套 Agent skills（ingest、query、lint、research），核心原则是工具本身不调用 LLM，只提供符合 Agent Skills 规范的 SKILL.md 文件，让 Claude Code、Codex 等任何 Agent 来操作 Wiki，Obsidian 作为人类浏览界面。向量库、知识图谱、静态站点都只是可选组件，不是 LLM Wiki 的定义。
 
 最后讲质量与边界。事实可信度来自可追溯引用和原文回查，不来自模型自报置信度，因为置信度通常未校准；冲突也不能简单按「新来源覆盖旧来源」处理，要考虑权威性、生效版本和适用范围。增量更新省成本，但长期在旧生成文本上改写会累积错误，所以系统要保留从原始来源和 schema 重建 Wiki 的能力。这一思想可以追溯到 Vannevar Bush 1945 年的 Memex——关联路径与文档本身同样重要，当年无法解决「谁来承担维护成本」的问题，现在由 LLM 承担了。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 版本核验：2026-08-16 直接查证 Karpathy gist 原文与 jackwener/llm-wiki README（main 分支）。
 
 ### 一、整体架构图
@@ -130,7 +131,4 @@ Wiki 页面是「综合层」，价值在压缩与关联，不是替代原文。
 - [jackwener/llm-wiki](https://github.com/jackwener/llm-wiki)
 - [qmd — 本地 markdown 混合检索（BM25/向量/LLM 重排）](https://github.com/tobi/qmd)
 - [Agent Skills 规范](https://agentskills.io/specification)
-
-
-<!-- created: 2026-08-05 14:00:00 -->
-<!-- updated: 2026-08-16 00:15:00 -->
+<!-- interviewqa:end -->

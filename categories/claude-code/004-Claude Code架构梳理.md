@@ -1,19 +1,21 @@
-# Claude Code 架构梳理
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Claude Code 架构梳理
+tags:
+  - Claude Code
+  - Agent
+  - Harness
+created: 2026-08-16 01:43:31
+updated: 2026-08-18 07:05:16
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 梳理一下 Claude Code 的架构。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Claude Code](../../tags/Claude Code.md) | [Agent](../../tags/Agent.md) | [Harness](../../tags/Harness.md)
-
-## 题目导航
-
-← [Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制.md) | [Hermes、pi-agent与Claude Code的差异](005-Hermes、pi-agent与Claude Code的差异.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Claude Code 是 Anthropic 的终端优先 agentic coding 产品，架构本质是一个确定性 harness 包裹模型推理：工具系统、权限门控、钩子、子智能体、上下文管理与检查点构成执行层，模型只负责决策，两者通过工具调用循环耦合；应用边界是内部推理实现不公开，架构描述只能基于可观察行为与官方披露。
 
 先从整体形态讲。Claude Code 本身是 Node.js/TypeScript 程序，通过 npm 包或原生二进制分发，覆盖 CLI、桌面应用、IDE 扩展和 Web 入口。它自己就是「用 Claude 构建 Claude Code」的产物——Anthropic 工程博客披露，harness 代码量在十万行量级，测试也主要由 Claude 编写，这本身就是 agentic 开发可行性的一个案例。它的定位是 coding agent 而不是代码补全工具：能读代码、跑命令、改文件、验证结果，并且用 todo 追踪任务、用检查点保护文件状态。
@@ -27,9 +29,9 @@
 扩展体系是第四层。MCP 让外部工具与数据源以统一协议接入，和内置工具走同一套权限裁决；skills 以 SKILL.md 形式按需注入领域知识与操作流程；subagents 通过配置文件定义或主智能体自然语言当场派生；plugins 按厂商聚合工具、技能与子智能体。这些扩展点的共同特点是：扩展的是「能力」，不是「循环」——agent loop 本身不可替换，这与 DeepSeek Harness 的一切皆插件形成鲜明对比。
 
 最后是边界。Claude Code 的内部推理循环细节没有完整公开，不能武断归类为纯 ReAct 或带内部规划的某种结构；工程博客确认的公开事实是「harness 决定工具使用、上下文投影与权限语义」。面试时应当按可观察行为描述架构——工具调用模式、权限语义、上下文管理策略——而不是宣称知道内部实现。Claude Code 的架构优势在于垂直整合的调优深度与产品成熟度，代价是核心循环的封闭性，这正是它与 Codex、dsh 等产品比较时的主线。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。内部实现以官方披露为限，不臆断未公开的调度算法。
 
 ### 一、分层结构图
@@ -141,7 +143,4 @@ hooks 是「拦截与策略」——不新增能力，而是校验、注入、�
 - [Claude Code IAM 权限文档](https://code.claude.com/docs/en/iam)
 - [Claude Code 子智能体文档](https://code.claude.com/docs/en/sub-agents)
 - [Anthropic 工程博客：Claude Code 最佳实践](https://www.anthropic.com/engineering/claude-code-best-practices)
-
-
-<!-- created: 2026-08-16 01:43:31 -->
-<!-- updated: 2026-08-18 07:05:16 -->
+<!-- interviewqa:end -->

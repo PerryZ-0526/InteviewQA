@@ -1,19 +1,20 @@
-# kafka如何保证消息不丢失？
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: kafka如何保证消息不丢失？
+tags:
+  - Kafka
+  - 可靠性
+created: 2026-08-13 19:11:55
+updated: 2026-08-20 12:29:01
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 Kafka 如何保证消息不丢失？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Kafka](../../tags/Kafka.md) | [可靠性](../../tags/可靠性.md)
-
-## 题目导航
-
-← [kafka为什么会出现重复消费](004-kafka为什么会出现重复消费.md) | [kafka如何保证顺序消费](006-kafka如何保证顺序消费.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 Kafka 保证消息不丢失不是一个开关，而是生产端、Broker 端、消费端三段配置共同拼出的「至少一次」投递语义：生产端用 acks=all 配合幂等重试确保消息确实落入多个副本，Broker 端用多副本 ISR 机制与禁止 unclean 选举确保已确认的消息扛得住节点故障，消费端用「先处理、后提交位移」确保崩溃后可以重放；代价是消息必然可能重复，需要业务幂等兜底，这是该方案的明确适用边界。
 
 生产端的关键是确认机制与重试。acks 参数决定 Broker 何时向生产者确认：acks=0 是发完即忘，消息在网络上丢失对生产者完全无感知；acks=1 只等 leader 落盘即确认，若 leader 在副本同步完成前宕机，已确认的消息同样丢失；acks=all（即 -1）要求 ISR 中所有副本都写入成功才确认，这是不丢的前提。Kafka 3.0 起 acks 默认值已改为 all、幂等默认开启（KIP-679），retries 自 2.1 起默认 Integer.MAX_VALUE，由 delivery.timeout.ms（默认 120 秒）约束重试总时长。幂等生产者为每个生产者分配 PID 并为每条消息分配序列号，Broker 据此丢弃重复批次，使重试不会产生重复消息；Kafka 2.5 的 KIP-360 还修复了日志截断导致生产者状态丢失、进而报 UnknownProducerId 的可靠性问题。生产者还必须处理 send 回调中的异常并做补偿，而不是把失败消息静默吞掉。
@@ -23,9 +24,9 @@ Broker 端的不丢靠副本与选举策略。生产环境通常设置 replicati
 消费端的不丢取决于位移提交时机。默认 enable.auto.commit=true 会每 5 秒、在下一次 poll 之前自动提交位移，如果业务处理较慢或异步执行，就会把尚未处理完的位移提交出去，进程崩溃后这些消息被跳过，这是消费端丢消息最常见的原因。正确做法是关闭自动提交，在业务处理成功之后手动 commitSync 或 commitAsync，提交失败需要重试或记录，不能忽略。rebalance 同样会打断处理，应在 ConsumerRebalanceListener 的 onPartitionsRevoked 回调中提交或保存当前进度。auto.offset.reset=latest 意味着新消费组从最新位置开始，历史消息本就不在保障范围内。先处理后提交带来的是重复消费：处理成功但提交前崩溃，重启后会重放这段消息，因此消费端必须做幂等，例如唯一业务键加去重表，或依赖数据库唯一约束。
 
 总结来说，三层机制拼出的是 at-least-once，这是 Kafka 默认的投递语义；若要进一步消除重复，Kafka 0.11 引入的幂等生产者加事务（KIP-98）可以在 Kafka 内部实现端到端 exactly-once：事务通过事务协调器与 __transaction_state 主题实现跨分区原子写入，消费端用 read_committed 隔离级别过滤未提交数据，KIP-447 又解决了海量分区下生产者 ID 的扩展问题。但即便开启事务，一旦链路涉及 Kafka 之外的数据库等外部系统，精确一次仍需 Outbox 或本地消息表等模式配合——「不丢」最终要放在整条业务链路上统筹设计，而不是指望某一个参数。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、消息在哪几个环节会丢
 
 一条消息从产生到被业务处理，经过三个环节，每个环节都有独立的丢失场景：
@@ -226,7 +227,4 @@ try {
 - [KIP-106 - Change Default unclean.leader.election.enabled from True to False](https://cwiki.apache.org/confluence/display/KAFKA/KIP-106+-+Change+Default+unclean.leader.election.enabled+from+True+to+False)
 - [KIP-360 - Improve reliability of idempotent producer](https://cwiki.apache.org/confluence/display/KAFKA/KIP-360+-+Improve+reliability+of+idempotent+producer)
 - [KIP-447 - Producer scalability for exactly once semantics](https://cwiki.apache.org/confluence/display/KAFKA/KIP-447+-+Producer+scalability+for+exactly+once+semantics)
-
-
-<!-- created: 2026-08-13 19:11:55 -->
-<!-- updated: 2026-08-20 12:29:01 -->
+<!-- interviewqa:end -->

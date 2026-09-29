@@ -1,19 +1,21 @@
-# Agentic Workflow 的理解
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Agentic Workflow 的理解
+tags:
+  - Agent
+  - LLM
+  - Workflow
+created: 2026-08-16 01:19:28
+updated: 2026-08-19 12:49:14
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 agentic workflow 的理解
+<!-- interviewqa:end -->
 
-## 标签
-
-[Agent](../../tags/Agent.md) | [LLM](../../tags/LLM.md) | [Workflow](../../tags/Workflow.md)
-
-## 题目导航
-
-← 无 | [为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Agentic workflow 是把「单次零样本推理」改造成`「多轮迭代执行流程」`的智能体设计范式，核心机制是让模型在循环中反思、调用工具、规划与协作，用更多 token 和延迟换取任务成功率；其应用边界清晰——复杂、开放、可验证的任务收益最大，简单确定性任务反而被引入不必要的成本和延迟。
 
 ### Andrew Ng 在 2024 年 3 月 Sequoia 的演讲中给出了最经典的定义对比
@@ -52,9 +54,9 @@ agentic workflow 在 2024 年是独立范式，到 2026 年已收敛为 agent lo
 ---
 
 总结来说，agentic workflow 的本质是用`结构化迭代`放大单次推理的能力，`反思、工具、规划、协作`是四种基本杠杆，workflow 与 agent 的边界取决于控制流图的归属。回答时能讲出 Ng 的效果数据、Anthropic 的工程分类、成本与失败模式的清醒认识，还能说清这个概念 2024 到 2026 年的收敛去向，就真正超出了背定义的层次。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、概念起源：从「零样本」到「迭代」
 
 **Agentic workflow** 一词由 Andrew Ng 在 2024 年 3 月 Sequoia AI Ascent 的演讲「What's next for AI agentic workflows」中推向主流，随后他在 DeepLearning.AI 的 The Batch 通讯《How Agents Can Improve LLM Performance》中系统阐述了这一概念。
@@ -247,7 +249,4 @@ Claude Code 属于 agent——模型在运行时动态决定读哪个文件、�
 - [How Agents Can Improve LLM Performance - The Batch, Andrew Ng](https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance/)
 - [Building effective agents - Anthropic](https://www.anthropic.com/engineering/building-effective-agents)
 - [LangGraph Documentation - LangChain](https://langchain-ai.github.io/langgraph/)
-
-
-<!-- created: 2026-08-16 01:19:28 -->
-<!-- updated: 2026-08-19 12:49:14 -->
+<!-- interviewqa:end -->

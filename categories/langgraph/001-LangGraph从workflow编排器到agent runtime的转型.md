@@ -1,19 +1,21 @@
-# ✅LangGraph 从 workflow 编排器到 agent runtime 的转型
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅LangGraph 从 workflow 编排器到 agent runtime 的转型
+tags:
+  - LangGraph
+  - Agent
+  - LLM
+created: 2026-08-16 03:21:11
+updated: 2026-08-21 17:52:45
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 LangGraph 最初是 workflow 编排框架，后来转型为 agent runtime，谈谈这次转型，以及状态、checkpoint、人机协作这些抽象为什么留了下来。
+<!-- interviewqa:end -->
 
-## 标签
-
-[LangGraph](../../tags/LangGraph.md) | [Agent](../../tags/Agent.md) | [LLM](../../tags/LLM.md)
-
-## 题目导航
-
-← 无 | [langGraph中的command](002-langGraph中的command.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > LangGraph 的转型是「agentic workflow 收敛为 agent loop」在框架层的同构证据：它从 2024 年初的 workflow 编排库，重新定位为 2025 年 10 月 1.0 的 `agent runtime`——图的抽象从业务流水线变成 `agent 状态机`，而状态、checkpoint 与 human-in-the-loop 这三个为 workflow 设计的机制，恰恰是 agent loop 工程化最需要的运行时能力。
 
 先讲出身。LangGraph 是 LangChain 公司在 2024 年 1 月发布的库，核心抽象是 `StateGraph`：节点是 LLM 调用或工具执行，边是状态转移，条件边根据状态决定下一步走向，底层用 Pregel/BSP 超步模型执行 —— 每个超步内节点并行执行，超步之间同步状态。当时的卖点是「把 workflow 画成图」：prompt chaining、routing、orchestrator-workers 这些 Anthropic 枚举的模式都能显式建模，checkpoint 支持`时间旅行调试`，interrupt 支持人工审批。这些机制在「编排」名义下被设计出来，但它们的真实身份是持久执行的基础设施。
@@ -37,9 +39,9 @@ LangGraph 最初是 workflow 编排框架，后来转型为 agent runtime，谈�
 三者的共同结构都是「确定性骨架包住模型自由决策」——LangGraph 用显式图加 checkpoint，dsh 用插件树加仅追加事件日志，Claude Code 用 harness 加文件快照，抽象不同，职责相同。
 
 边界也要讲清楚。第一，图的抽象没有过时——它只是从「业务流程图」变成`「agent 状态机」`，Pregel 超步执行的确定性并发仍是优点。第二，1.0 的稳定性承诺（无破坏性变更、checkpoint 后端生产就绪）说明 durable execution 已经是被验证的真需求，不是叙事。第三，LangGraph 的图式显性控制与 Claude Code 式的隐藏循环代表两种哲学：前者<span style="background-color: rgb(255, 243, 205)">把循环暴露给开发者挂护栏</span>，后者把循环藏进产品靠 hooks 拦截，选型时要分清自己需要的是「可编程的运行时」还是「开箱即用的产品」。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。版本日期经 GitHub 发布标签核验（1.0.0a2 = 2025-09-02，1.0.0 = 2025-10-17，1.2.0 = 2026-05-12，最新 1.2.11）；API 迁移、checkpoint 后端、durability 模式、interrupt 语义与生产用户案例均基于官方文档（releases/langgraph-v1、checkpointers、interrupts、pregel、case-studies）。
 
 ### 一、转型时间线
@@ -138,7 +140,4 @@ graph = builder.compile(checkpointer=checkpointer)
 - [LangChain 官方博客：LangGraph 1.0 GA](https://www.langchain.com/blog/langchain-langgraph-1dot0)
 - [LangChain 官方博客：1.0 alpha 发布](https://www.langchain.com/blog/langchain-langchain-1-0-alpha-releases)
 - [LangGraph GitHub 仓库](https://github.com/langchain-ai/langgraph)
-
-
-<!-- created: 2026-08-16 03:21:11 -->
-<!-- updated: 2026-08-21 17:52:45 -->
+<!-- interviewqa:end -->

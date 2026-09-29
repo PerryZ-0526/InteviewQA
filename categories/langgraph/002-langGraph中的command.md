@@ -1,19 +1,21 @@
-# langGraph 中的 command
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: langGraph 中的 command
+tags: []
+created: 2026-08-20 17:58:57
+updated: 2026-08-27 16:58:45
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
+<!-- interviewqa:section answer -->
+<!-- interviewqa:end -->
 
-暂无
-
-## 题目导航
-
-← [LangGraph从workflow编排器到agent runtime的转型](001-LangGraph从workflow编排器到agent runtime的转型.md) | [LangGraph-构建多智能体系统的核心范式](003-LangGraph-构建多智能体系统的核心范式.md) →
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 1. 什么是 Command
 
 Command 是 LangGraph 中的一个特殊返回类型，当一个节点函数返回 Command 时，它<span style="background-color: #fff3cd">不仅能更新图的状态，还能直接指定下一步要执行哪个节点</span>。
@@ -227,16 +229,16 @@ class State(MessagesState):
 def dynamic_router_node(state: State) -> Command:
     # 1. 让LLM进行推理（分析用户最后一句话）
     response: RouteIntent = llm.invoke(state["messages"])
-    
+
     # 2. 动态映射表：将LLM推理出的意图，映射为图中实际的节点名称
     intent_to_node = {
         "refund": "refund_expert",    # 退款专家节点
         "technical": "tech_support",  # 技术支持节点
         "general": "chat_replier"     # 通用聊天节点
     }
-    
+
     target_node = intent_to_node[response.intent]
-    
+
     # 3. 返回Command：跳转到目标节点，并把推理理由存入状态供后续节点使用
     print(f"🤖 LLM推理结果: {response.reasoning} -> 跳转至 {target_node}")
     return Command(
@@ -277,7 +279,7 @@ graph = builder.compile()
 
 # 测试 1：涉及退款
 result = graph.invoke({"messages": [{"role": "user", "content": "我刚买的商品坏了，我要退货退钱！"}]})
-print(result["messages"][-1]["content"]) 
+print(result["messages"][-1]["content"])
 # 输出：退款专员：请提供您的订单号，马上为您办理。
 
 # 测试 2：涉及技术
@@ -302,7 +304,7 @@ tools = [
 def llm_router(state):
     llm_with_tools = ChatOpenAI(model="gpt-4o").bind_tools(tools)
     response = llm_with_tools.invoke(state["messages"])
-    
+
     # 如果LLM调用了工具，直接取出工具名作为goto目标，无需映射表！
     if response.tool_calls:
         target = response.tool_calls[0]["name"]  # 直接得到 "finance_agent"
@@ -318,7 +320,4 @@ def llm_router(state):
 2. 错误兜底（Fallback）：LLM 可能会输出意料之外的字符串。在映射时建议加上 `try...except` 或 `.get(intent, "default_node")` 来防止程序崩溃。
 3. 状态与路由分离：记住，`Command` 的 `update` 只是更新状态，`goto` 控制流向。两者互不干扰，你可以只跳转不更新数据，也可以只更新数据不跳转（留在本节点）。
 4. 可视化支持：在节点函数上使用类型注解 `-> Command[Literal["node_a", "node_b"]]`，<u style="text-decoration-color: #e63946">LangGraph 的可视化工具能自动识别出这些动态跳转的目标，画出完整的流程图。</u>
-
-
-<!-- created: 2026-08-20 17:58:57 -->
-<!-- updated: 2026-08-27 16:58:45 -->
+<!-- interviewqa:end -->

@@ -1,19 +1,20 @@
-# Claude Code 与 Codex 的 Agent 架构区别
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Claude Code 与 Codex 的 Agent 架构区别
+tags:
+  - Agent
+  - Claude Code
+created: 2026-08-04 16:36:00
+updated: 2026-08-11 10:30:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 Claude Code 和 Codex 在 Agent 架构、执行环境与使用方式上有什么区别？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Agent](../../tags/Agent.md) | [Claude Code](../../tags/Claude Code.md)
-
-## 题目导航
-
-← [Claude Code子智能体类型与vibe-coding场景](001-Claude Code子智能体类型与vibe-coding场景.md) | [Claude Code自定义子智能体与自主派生机制](003-Claude Code自定义子智能体与自主派生机制.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 Claude Code 和 Codex 都不是“只能聊天的代码补全工具”，而是能读取代码、调用终端、修改文件并验证结果的 coding agent。两者的底层私有推理实现没有完整公开，所以我不会把它们武断地归类为某一种内部算法；更可靠的比较方式是看公开的执行环境、上下文管理、委派能力和权限边界。
 
 Claude Code 的公开工作流以终端中的主会话为核心，支持 Explore、Plan、general-purpose 和自定义子智能体，也支持继承当前会话的对话分叉与 Git worktree。Codex 当前同时覆盖桌面应用、CLI、IDE、远程/云端任务，支持 shell、Git、worktree、subagents、多 Agent、技能和 MCP 等能力。因此“Claude Code 是自主 Agent、Codex 只是 IDE 内单 Agent”的二分已经过时。
@@ -21,9 +22,9 @@ Claude Code 的公开工作流以终端中的主会话为核心，支持 Explore
 权限方面，两者都会把模型建议和真实执行分开。Codex 的关键边界是沙箱、工作区根目录、网络访问和审批策略；Claude Code 则通过权限模式、工具授权规则和审批控制操作。界面是否展示 diff 或工具状态，不等同于执行权限，也不能说产品公开了模型的原始思维链。
 
 实际选型要看团队已有生态、执行位置、是否需要云端长任务、委派/并行方式、权限政策和集成成本，而不是依据未经公开验证的“ReAct 对 AST”内部架构标签。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 功能核验日期：2026-08-10。产品能力会快速变化，面试时应说明版本。
 
 ### 一、只比较可观察、可核验能力
@@ -82,10 +83,8 @@ Claude Code 的命名型子智能体通常不继承完整主对话，对话分�
 统一仓库快照、验收器与预算，对局部修复、跨模块功能、陌生代码探索、长任务、并行修改和高风险变更重复运行。比较成功率、单位成功任务成本、P95、人工纠正、权限阻断和冲突恢复，并同时考虑规则资产、团队熟悉度、审计、数据政策和 CI 集成。
 
 “更自主”只有在定义了任务范围、审批策略和人工介入后才可测量；工具轨迹、命令、diff 和验证证据构成可审计性，不需要声称产品展示原始思维链。
+<!-- interviewqa:end -->
 
-## 我的作答
-
+<!-- interviewqa:section notes -->
 (暂无作答记录)
-
-<!-- created: 2026-08-04 16:36:00 -->
-<!-- updated: 2026-08-11 10:30:28 -->
+<!-- interviewqa:end -->

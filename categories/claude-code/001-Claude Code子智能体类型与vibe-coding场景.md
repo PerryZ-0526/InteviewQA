@@ -1,19 +1,22 @@
-# ✅Claude Code 子智能体类型与 Vibe Coding 场景
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅Claude Code 子智能体类型与 Vibe Coding 场景
+tags:
+  - Agent
+  - Vibe Coding
+  - Claude Code
+  - AI辅助开发
+created: 2026-08-03 16:10:00
+updated: 2026-08-15 23:14:56
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 Claude Code 中有哪些子智能体？分别用在什么场景？Vibe Coding 时如何使用？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Agent](../../tags/Agent.md) | [Vibe Coding](../../tags/Vibe Coding.md) | [Claude Code](../../tags/Claude Code.md) | [AI辅助开发](../../tags/AI辅助开发.md)
-
-## 题目导航
-
-← 无 | [Claude Code与Codex架构区别](002-Claude Code与Codex架构区别.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 从两个维度分类：第一个维度是它负责什么任务，第二个维度是它如何获得上下文并运行。
 
 ### 1. 职责维度
@@ -62,10 +65,9 @@ Explore、Plan、general-purpose 以及`自定义子智能体`都属于命名型
 ---
 
 所以总结来说，职责维度解决的是「该让谁做」，Explore 负责探索，Plan 负责规划研究，general-purpose 负责复杂执行，自定义智能体负责固定的专业流程；上下文维度解决的是「带着什么背景去做」，命名型子智能体使用干净的独立上下文，分叉型子智能体继承主会话完整上下文。Vibe Coding 的关键不是机械地套用多智能体流水线，而是根据任务特征选择合适的职责、上下文和隔离方式。
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 功能核验日期：2026-08-10。命令和内置子智能体属于快速变化的产品能力，面试时应说明版本。
 
 ### 一、命名型子智能体
@@ -208,5 +210,4 @@ Claude Code 内置的 `Explore`、`Plan` 和 `general-purpose` 本身会由主�
 ```
 子智能体的价值不在于“同时启动多少个 Agent”，而在于上下文隔离、专业分工、权限控制和并行效率是否真正提升了交付质量。
 ```
-<!-- created: 2026-08-03 16:10:00 -->
-<!-- updated: 2026-08-15 23:14:56 -->
+<!-- interviewqa:end -->

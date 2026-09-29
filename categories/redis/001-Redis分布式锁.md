@@ -1,19 +1,20 @@
-# 谈谈你对 Redis 分布式锁的理解
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 谈谈你对 Redis 分布式锁的理解
+tags:
+  - Redis
+  - 缓存
+created: 2026-08-15 19:45:34
+updated: 2026-08-16 20:53:34
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 Redis 分布式锁的理解，可以从实现原理、正确用法、常见坑、主从架构下的故障模型、Redlock 算法及其争议、以及与其他分布式锁方案的对比等角度展开。
+<!-- interviewqa:end -->
 
-## 标签
-
-[Redis](../../tags/Redis.md) | [缓存](../../tags/缓存.md)
-
-## 题目导航
-
-← 无 | [谈谈你对Redis集群的理解](002-谈谈你对Redis集群的理解.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Redis 分布式锁是<span style="background-color: #fff3cd">用 Redis 的单线程原子命令把互斥仲裁上移到共享存储</span>，为多实例部署的服务提供跨进程互斥的机制。
 >
 > ```
@@ -33,9 +34,9 @@
 第五说这场著名争论。Martin Kleppmann 在 2016 年发文指出 Redlock 依赖时钟与进程调度假设，并不安全：客户端拿到锁后可能被 GC 停顿卡住超过 TTL，锁过期后被别的客户端拿走，而第一个客户端恢复后浑然不觉继续写共享资源，两个客户端并发操作——这个 bug 在 HBase 生产环境真实发生过。他给出的解法是 fencing token：锁服务返回单调递增的令牌，客户端写共享存储时必须携带令牌，存储层拒绝任何小于已见最大令牌的写入。antirez 次日回应认为：如果业务已经有 fencing 兜底，那本来就不需要强锁，Redis 锁只该用于效率型场景；Redlock 只假设各节点时钟走速大致相同（半同步模型），并不要求绝对时间精确；且唯一令牌配合 check-and-set 也能起到类似 fencing 的作用。这场争论的公认结论是：Redlock 比单机锁更抗节点故障，但无法证明绝对互斥，正确性不能寄托在它身上。
 
 最后说方案对比与工程取舍。ZooKeeper、etcd 这类 CP 系统用临时节点加会话租约实现锁：客户端宕机后会话过期、临时节点自动删除，天然具备持有者身份和租约语义，且 etcd 的全局递增 revision、ZK 的 zxid 可以直接充当 fencing token；代价是性能比 Redis 低一到两个数量级，且网络分区时锁服务可能整体不可用——宁可不可用也不脑裂。Redis 锁的定位是高性能、可用性优先的效率型互斥。工程上的结论是：能容忍偶发并发执行的场景——缓存重建、定时任务防重、配合消息幂等做辅助去重（详见 [004-kafka为什么会出现重复消费](../kafka/004-kafka为什么会出现重复消费.md)）——用 Redis 锁非常合适；涉及资金、库存扣减等正确性场景，最终一致性必须由数据库唯一约束、乐观锁版本号这些存储层机制兜底，分布式锁只做第一道过滤。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 版本核验：Redis 8.4（2026-08-15 查证）；Redisson 主线源码。
 
 ### 一、单机 Redis 锁的演进：从错误写法到正确姿势
@@ -92,7 +93,7 @@ end
          ◀────────────── OK ────────────── │  Redis  │
 客户端B ──SET lock tokenB NX PX 30000──▶ └─────────┘
          ◀────────────── nil（未拿到锁，重试或放弃）
-         
+
 客户端A ──EVAL(值等于tokenA才DEL)──▶ Redis   释放锁
 客户端B ──SET lock tokenB NX PX 30000──▶ Redis   拿到锁
 ```
@@ -256,7 +257,4 @@ Redis 8.4（GA 于 2025 年 11 月，PR #14435 随 8.4-RC1 引入）新增了原
 - [Redisson Config.java（lockWatchdogTimeout 定义）](https://github.com/redisson/redisson/blob/master/redisson/src/main/java/org/redisson/config/Config.java)
 - [Redisson RedissonLock.java / RedissonBaseLock.java（watchdog 续期实现）](https://github.com/redisson/redisson/blob/master/redisson/src/main/java/org/redisson/RedissonLock.java)
 - [Redis 8.4.0 Release Notes（DELEX 命令）](https://github.com/redis/redis/releases/tag/8.4.0)
-
-
-<!-- created: 2026-08-15 19:45:34 -->
-<!-- updated: 2026-08-16 20:53:34 -->
+<!-- interviewqa:end -->

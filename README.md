@@ -4,7 +4,7 @@
 
 一个面向技术面试准备的结构化知识库，涵盖 AI Agent、LLM 应用框架、数据存储、编程语言及计算机基础等方向。核心思路是将分散的面试知识点用 Markdown 文件系统化组织，支持分类浏览、标签检索、全文搜索和随机抽题练习。
 
-每条题目包含六个标准章节——题目、标签、题目导航、面试直接答（可流畅口述）、详细解析（含追问预备）、以及个人作答记录，确保面试准备既有广度也有深度。
+每条题目用 YAML frontmatter 保存标题、标签和时间元数据，并用 `interviewqa/sections-v1` 注释标记区分题目、面试直接答、详细解析以及可选的个人作答记录。
 
 ## 核心场景
 
@@ -36,7 +36,9 @@ InteviewQA/
 
 ### 数据层
 
-所有内容以 Markdown 文件存储在磁盘上，无数据库依赖。分类目录和文档列表通过读取目录结构和 `00-index.md` 索引文件动态生成。时间元数据以 HTML 注释 `<!-- created: -->` 形式写在文件末尾。
+所有内容以 Markdown 文件存储在磁盘上，无数据库依赖。分类目录和文档列表通过读取目录结构和 `00-index.md` 索引文件动态生成。标题、标签、创建时间和修改时间统一存入 `interviewqa/v2` YAML frontmatter；前后题导航按索引顺序动态派生，不写入正文。
+
+迁移旧文档时，先运行 `cd admin && npm run migrate:frontmatter -- --write --scope=all`，再运行 `npm run migrate:sections -- --write`。两个命令均可先省略 `--write` 做 dry-run；原文分别备份到 `admin/backups/frontmatter-v2/` 和 `admin/backups/section-markers/`。
 
 ### 管理后台（admin/）
 
@@ -58,19 +60,19 @@ InteviewQA/
   → Claude Code 加载 CLAUDE.md + interview-qa skill
   → 输出结构化元数据和 Markdown，不直接操作文件
   → questionRepository 串行写入题目文件
-  → 应用代码更新 00-index.md + tags/*.md + README.md + 前后题导航链接
+  → 应用代码更新 00-index.md + tags/*.md + README.md
 ```
 
 ## 内容规范
 
-每道真题按 CLAUDE.md 定义的六个章节组织，由 interview-qa skill 注入质量约束：
+每道真题按 CLAUDE.md 定义的 v2 frontmatter 和 section markers 组织，由 interview-qa skill 注入质量约束：
 
-- `## 题目` — 面试题目原文
-- `## 标签` — 跨分类标签链接
-- `## 题目导航` — 分类内前/后题链接
-- `## 面试直接答` — 段落式口述版本，拒绝分点列表
-- `## 详细解析` — 深入展开，含对比表格、代码示例、至少 3 个追问
-- `## 我的作答` — 个人作答记录（仅在有内容时出现）
+- YAML frontmatter — `schema`、`kind`、`body_schema`、`title`、`tags`、`created`、`updated`
+- `<!-- interviewqa:section question -->` — 面试题目原文
+- `<!-- interviewqa:section answer -->` — 段落式口述版本
+- `<!-- interviewqa:section analysis -->` — 详细解析
+- `<!-- interviewqa:section notes -->` — 个人作答记录（仅在有内容时出现）
+- H1-H6 — 只表达章节内部的正文层级
 
 更多细节见 [CLAUDE.md](CLAUDE.md) 和 [.claude/skills/interview-qa/SKILL.md](.claude/skills/interview-qa/SKILL.md)。
 
@@ -132,7 +134,6 @@ InteviewQA/
 - [成本优化](tags/成本优化.md)
 - [代码审查](tags/代码审查.md)
 - [代码质量](tags/代码质量.md)
-- [多模态rag](tags/多模态rag.md)
 - [工程实践](tags/工程实践.md)
 - [缓存](tags/缓存.md)
 - [记忆管理](tags/记忆管理.md)
@@ -141,20 +142,15 @@ InteviewQA/
 - [内存管理](tags/内存管理.md)
 - [上下文压缩](tags/上下文压缩.md)
 - [设计模式](tags/设计模式.md)
-- [生产级多Agent避坑指南：断点续传、无感监控与彩虹部署](tags/生产级多Agent避坑指南：断点续传、无感监控与彩虹部署.md)
 - [数据结构](tags/数据结构.md)
 - [消息队列](tags/消息队列.md)
 - [效果评估](tags/效果评估.md)
 - [知识管理](tags/知识管理.md)
 - [Agent](tags/Agent.md)
-- [Agentic-RAG](tags/Agentic-RAG.md)
-- [agentic-rag-权限](tags/agentic-rag-权限.md)
-- [Agentic-RAG-如何进行构建](tags/Agentic-RAG-如何进行构建.md)
 - [AI辅助开发](tags/AI辅助开发.md)
 - [C++](tags/C++.md)
 - [Claude Code](tags/Claude Code.md)
 - [DeepSeek Harness](tags/DeepSeek Harness.md)
-- [grep](tags/grep.md)
 - [Harness](tags/Harness.md)
 - [Hermes](tags/Hermes.md)
 - [Kafka](tags/Kafka.md)
@@ -166,7 +162,6 @@ InteviewQA/
 - [OS](tags/OS.md)
 - [pi-agent](tags/pi-agent.md)
 - [Python](tags/Python.md)
-- [RAG-评测](tags/RAG-评测.md)
 - [Redis](tags/Redis.md)
 - [Vibe Coding](tags/Vibe Coding.md)
 - [Workflow](tags/Workflow.md)

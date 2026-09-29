@@ -1,4 +1,10 @@
-# Redis 和 Kafka的使用
+---
+schema: interviewqa/v2
+kind: document
+title: Redis 和 Kafka的使用
+created: 2026-08-28 10:49:32
+updated: 2026-08-28 11:00:00
+---
 
 ## 本项目中Redis的使用
 
@@ -33,6 +39,3 @@
     - 消费者组会记录自己已经消费到哪个 offset。worker 重启后，就能从已提交的位置继续消费。
   - 如果 worker 在写库前崩溃，因为没有提交 offset，恢复后消息会重新处理，不会轻易丢失。
   - 但如果已经写入数据库、还没提交 offset 就崩溃，消息也会重新处理，因此 Kafka 常见语义是“至少一次”，可能重复。
-
-<!-- created: 2026-08-28 10:49:32 -->
-<!-- updated: 2026-08-28 11:00:00 -->

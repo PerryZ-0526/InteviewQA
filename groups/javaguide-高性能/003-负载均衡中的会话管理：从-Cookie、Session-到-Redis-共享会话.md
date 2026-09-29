@@ -1,4 +1,10 @@
-# 负载均衡中的会话管理：从 Cookie、Session 到 Redis 共享会话
+---
+schema: interviewqa/v2
+kind: document
+title: 负载均衡中的会话管理：从 Cookie、Session 到 Redis 共享会话
+created: 2026-09-07 04:38:12
+updated: 2026-09-07 04:39:04
+---
 
 可以把这句话拆成 5 个概念来理解：**会话 Session、Cookie、负载均衡、会话粘滞、Redis 共享会话**。它们其实是在解决同一个问题：
 
@@ -985,6 +991,3 @@ Cookie: session_id=abc123
 
 
 如果你刚开始学后端，**最值得真正搞明白的不是 Redis 的命令，而是“为什么 HTTP 无状态 → 为什么需要 Cookie/Session → 为什么多服务器会产生 Session 问题 → 为什么要把状态抽出去”这条逻辑链**。后面你再学 Nginx、Spring Session、Redis、JWT、Kubernetes，很多东西会一下子串起来。
-
-<!-- created: 2026-09-07 04:38:12 -->
-<!-- updated: 2026-09-07 04:39:04 -->

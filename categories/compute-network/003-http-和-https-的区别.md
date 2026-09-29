@@ -1,19 +1,18 @@
-# http 和 https 的区别
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: http 和 https 的区别
+tags: []
+created: 2026-09-02 10:06:34
+updated: 2026-09-07 04:23:46
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [GET-和-POST-的区别](002-GET-和-POST-的区别.md) | [https-的TLSSSL加密层](004-https-的TLSSSL加密层.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 **1）默认端口号：** HTTP 默认使用 80，HTTPS 默认使用 443。不过只是“默认”，并不是协议强制只能使用这两个端口，比如 `https://example.com:8443` 也是完全可以的。
 
 **2）安全性：**HTTPS 的核心能力最好记成三个词：**机密性、完整性、身份认证**。TLS 加密解决“别人不能直接看懂数据”，完整性校验解决“数据不能被偷偷篡改”，数字证书解决“你访问的服务器是不是真的服务器”。所以你写的“防窃听/篡改 + 身份验证”方向完全正确。
@@ -58,9 +57,9 @@ HTTPS 可以理解为 HTTP + TLS。HTTP 的请求方法、状态码、Header、B
 在使用上，HTTP 默认端口通常是 80，HTTPS 默认是 443；HTTP 的 URL 以 `http://` 开头，HTTPS 以 `https://` 开头。HTTPS 因为多了 TLS 握手和加解密过程，理论上会增加一定的计算和网络开销，但在 TLS 1.3、连接复用和硬件性能提升之后，这部分开销通常已经很小，而且 HTTP/2 在浏览器场景下基本也通常运行在 HTTPS 之上。
 
 所以面试中可以总结为：HTTP 负责规定客户端和服务器如何交换 Web 数据，而 HTTPS 是在 HTTP 基础上增加 TLS 安全机制，通过证书认证、加密传输和完整性校验来保证通信安全。现在涉及登录、支付、接口调用等场景，HTTPS 基本已经是标准配置。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > HTTPS 并不是一种完全取代 HTTP 的新协议，而是<span style="background-color: #fff3cd">在 HTTP 通信外增加 TLS 安全层</span>。HTTP 解决“数据怎么传”，TLS 解决“数据怎么安全地传”，因此 HTTPS 能够提供机密性、完整性和身份认证。
 
 ### 一、先理解本质：HTTPS 到底是什么
@@ -545,7 +544,4 @@ TLS 主要回答：
 ```
 
 最后在面试中，可以把整个逻辑收束为一句话：HTTP 本身是明文传输协议，无法解决窃听、篡改和身份冒充的问题；HTTPS 则是在 HTTP 基础上加入 TLS，通过数字证书完成服务器身份认证，通过密钥协商建立会话密钥，再通过对称加密和完整性保护机制保障后续 HTTP 通信，因此能够提供机密性、完整性和身份认证。HTTP 默认使用 80 端口，HTTPS 默认使用 443 端口，而现代 Web 场景基本都应优先使用 HTTPS。
-
-
-<!-- created: 2026-09-02 10:06:34 -->
-<!-- updated: 2026-09-07 04:23:46 -->
+<!-- interviewqa:end -->

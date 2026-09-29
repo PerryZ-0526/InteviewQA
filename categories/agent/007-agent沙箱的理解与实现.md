@@ -1,19 +1,21 @@
-# Agent 沙箱的理解与实现
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Agent 沙箱的理解与实现
+tags:
+  - Agent
+  - Claude Code
+  - OS
+created: 2026-08-13 20:06:00
+updated: 2026-09-01 15:44:42
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 谈谈你对 agent sandbox 的理解？怎么做一个 agent sandbox？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Agent](../../tags/Agent.md) | [Claude Code](../../tags/Claude Code.md) | [OS](../../tags/OS.md)
-
-## 题目导航
-
-← [agent长时间循环的注意事项](006-agent长时间循环的注意事项.md) | [如何防止prompt注入](008-如何防止prompt注入.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Agent sandbox 是给 LLM 生成的代码和工具调用提供的一个`受限隔离执行环境`，核心机制是默认拒绝加最小授权——文件系统白名单写入、网络出口默认关闭、系统调用过滤、资源配额与全量审计；隔离强度从进程级、OS 级沙箱、容器到微虚拟机逐级递增，<span style="background-color: rgb(255, 243, 205)">越强的隔离越贵越慢，选择取决于代码的不可信程度和宿主资产的价值</span>。
 
 ### 首先要理解为什么 Agent 必须沙箱化
@@ -79,10 +81,9 @@ Claude Code 和 Codex 在本地执行命令时都提供 `OS 级沙箱`，正是�
 ```
 沙箱是第一道防线，外面还要有权限审批、审计告警、凭证隔离和最小权限的宿主配置，任何一层失效都不至于全盘沦陷。
 ```
+<!-- interviewqa:end -->
 
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、威胁模型：为什么 Agent 必须沙箱化
 
 传统程序执行的环境假设是「代码由可信开发者编写」，而 Agent 打破了这一假设：执行的代码来自 LLM 的实时生成，且生成过程受上下文影响，而上下文里混入了大量外部内容——网页、文档、issue 评论、工具返回结果。
@@ -215,7 +216,4 @@ DNS 解析不交给沙箱，由宿主代理统一解析后再按 IP 或 SNI 校�
 - [Firecracker microVM（AWS 开源）](https://firecracker-microvm.github.io/)
 - [gVisor：容器安全的用户态内核](https://gvisor.dev/)
 - [fhiltscher/awesome-ai-coding-sandboxes（GitHub）](https://github.com/fhiltscher/awesome-ai-coding-sandboxes)
-
-
-<!-- created: 2026-08-13 20:06:00 -->
-<!-- updated: 2026-09-01 15:44:42 -->
+<!-- interviewqa:end -->

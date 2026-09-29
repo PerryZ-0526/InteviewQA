@@ -1,19 +1,21 @@
-# 确定性 workflow 在 agent 时代还剩下什么位置
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 确定性 workflow 在 agent 时代还剩下什么位置
+tags:
+  - Workflow
+  - Agent
+  - 工程实践
+created: 2026-08-16 03:21:11
+updated: 2026-08-16 03:32:26
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 agentic workflow 收敛为 agent loop 之后，确定性 workflow 在 agent 时代还剩下什么位置？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Workflow](../../tags/Workflow.md) | [Agent](../../tags/Agent.md) | [工程实践](../../tags/工程实践.md)
-
-## 题目导航
-
-← [为什么agentic workflow收敛成了agent loop](002-为什么agentic workflow收敛成了agent loop.md) | [Anthropic五种workflow模式的工程化与演进](004-Anthropic五种workflow模式的工程化与演进.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > 任务级 workflow 式微之后，确定性编排的位置在基础设施层：评测管线、审批与合规链、数据流水线、框架内把关链——它们的共同特征是逻辑必须可审计、可重放、可证伪，不能交给模型的运行时判断；判断标准从「任务流程图能否提前画出」变为「这层逻辑是否承担不可谈判的确定性责任」。
 
 先给结论定调：死掉的是「任务编排」这个位置，不是「确定性」这个属性。2024 年的 workflow 试图让确定性代码同时承担两件事——决定任务怎么走、保证执行守规矩；前者被更强的模型夺走，后者恰恰是模型最不该碰的部分。所以 agent 时代剩下的不是 workflow 的残骸，而是它本来就更胜任的那一半。
@@ -27,9 +29,9 @@ agentic workflow 收敛为 agent loop 之后，确定性 workflow 在 agent 时�
 第四个存活位置是框架内把关链。重试策略、超时、降级、回滚这些执行保障必须是确定性代码，因为它们守护的正是模型的不确定性。当代每个 agent 框架都是这个结构：loop 在内、workflow 在外——dsh 的插件树用类型化事件做确定性调度，Claude Code 的 harness 用 checkpoints 与权限规则约束模型行为，LangGraph 用超步执行与状态持久化保证可恢复。模型自由决策的范围越大，外面那层确定性骨架就越重要。
 
 判断标准也随之更新。旧标准问「任务流程图能否提前画出」；新标准问三个问题：这层逻辑是否需要审计重放？分支是否可枚举？失败是否可容忍？三问全否则用 workflow，任一为是则考虑 agent。工程实践里两者几乎总是混合：外层确定性 workflow 管合规与预算，内层 agent 节点做开放任务，这正是「workflow vs agent」旧二分被「任务层 vs 基础设施层」新二分取代的含义。总结来说，agent 时代的 workflow 不是退场而是换岗：从「替模型做任务决策」换成「为模型的决策兜底」，位置从产品层下沉到框架层，这个判断能同时说清两个方向上的错误——既不能拿 workflow 回潮论去逆历史，也不能因为 loop 主流就删掉权限、审批、评测这些确定性路径。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。框架机制描述基于各项目官方文档（dsh 架构文档、Claude Code hooks 文档、LangGraph 文档）。
 
 ### 一、存活位置总览
@@ -100,7 +102,4 @@ def approval_node(state):
 - [Claude Code hooks 文档](https://code.claude.com/docs/en/hooks)
 - [DeepSeek Harness 架构文档](https://github.com/deepseek-ai/deepseek-harness/blob/main/docs/architecture.md)
 - [LangGraph 官方文档（durable execution / interrupt）](https://langchain-ai.github.io/langgraph/)
-
-
-<!-- created: 2026-08-16 03:21:11 -->
-<!-- updated: 2026-08-16 03:32:26 -->
+<!-- interviewqa:end -->

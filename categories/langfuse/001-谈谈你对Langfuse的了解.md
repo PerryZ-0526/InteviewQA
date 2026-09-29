@@ -1,19 +1,18 @@
-# ✅谈谈你对Langfuse的了解
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅谈谈你对Langfuse的了解
+tags: []
+created: 2026-09-03 14:58:11
+updated: 2026-09-07 14:32:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 本节仅为概览，不过深入技术细节
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← 无 | [Langfuse-prompt-management](002-Langfuse-prompt-management.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > Langfuse 是一个开源的 LLM/AI 应用工程平台，我主要把它理解为大模型应用的“可观测 + Prompt 管理 + 效果评估”平台，用来追踪一次 AI 请求内部发生了什么，并从质量、耗时和成本等维度持续优化应用。
 
 传统 Web 系统出了问题，我们一般可以<u style="text-decoration-color: #e63946">通过接口日志、APM 或链路追踪定位</u>，但 LLM 应用的问题更复杂，因为模型输出具有非确定性，而且一个请求往往还包含 Prompt、模型调用、RAG 检索、工具调用、Agent 决策等多个步骤。
@@ -37,9 +36,9 @@ Langfuse 支持用户反馈、人工评分、代码规则、`LLM-as-a-Judge` 以
 > 在接入方面，Langfuse 提供 Python 和 JavaScript/TypeScript SDK，并且现在基于 OpenTelemetry，也能和 OpenAI SDK、LangChain、LlamaIndex 等框架集成；同时它是开源并支持私有化部署的，所以对于数据比较敏感的企业也可以部署到自己的基础设施中。
 
 所以如果让我总结，**Langfuse 本身并不是用来调用大模型的，而是围绕 LLM 应用提供可观测、Prompt 管理和效果评估能力，把模型调用从一个黑盒变成<u style="text-decoration-color: #e63946">可以追踪、分析和持续优化的工程系统</u>。**
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > Langfuse 是一个开源的 AI Engineering Platform，主要解决 LLM 应用上线以后“发生了什么、为什么回答不好、花了多少钱、修改后有没有变好”等问题，核心能力可以归纳为 Observability、Prompt Management 和 Evaluation。
 
 ### 一、Langfuse 是解决什么问题的
@@ -626,6 +625,4 @@ Prompt 数据
 如果再压缩成一句话，我会说：
 
 **传统 APM 主要告诉我们“系统有没有正常运行”，而 Langfuse 更进一步帮助我们回答“LLM 为什么这么回答、这次回答质量怎么样、花了多少钱，以及下一版到底有没有变得更好”。**
-
-<!-- created: 2026-09-03 14:58:11 -->
-<!-- updated: 2026-09-07 14:32:28 -->
+<!-- interviewqa:end -->

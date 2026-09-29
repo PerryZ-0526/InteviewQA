@@ -1,19 +1,21 @@
-# 为什么 agentic workflow 收敛成了 agent loop
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: 为什么 agentic workflow 收敛成了 agent loop
+tags:
+  - Workflow
+  - Agent
+  - LLM
+created: 2026-08-16 03:18:05
+updated: 2026-08-17 01:59:27
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 agentic workflow 是一个比较早的概念，为什么后来逐渐收敛为一个 agent loop？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Workflow](../../tags/Workflow.md) | [Agent](../../tags/Agent.md) | [LLM](../../tags/LLM.md)
-
-## 题目导航
-
-← [agentic-workflow的理解](001-agentic-workflow的理解.md) | [确定性workflow在agent时代还剩下什么位置](003-确定性workflow在agent时代还剩下什么位置.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 > agentic workflow 在 2024 年还是独立范式，到 2026 年已收敛为 agent loop 的内部行为：固定多步管线的边界僵化与错误累积，在模型工具调用可靠性快速提升后性价比反转；确定性编排没有消失，而是内化为 loop 里的套路、下沉为执行框架的基础设施。
 
 先讲时间线，收敛不是一夜发生的。Andrew Ng 在 2024 年 3 月的 Sequoia 演讲里把 agentic workflow 定义为与零样本推理对立的迭代范式，他给出的 HumanEval 数据是那个时代的标志性结论：GPT-3.5 零样本正确率 48.1%，包进 workflow 后达到 95.1%，反超 GPT-4 零样本的 67.0%。这个数据的正确解读是「流程设计是独立于模型能力的杠杆」——但要注意杠杆的强度取决于模型有多弱：当时模型不会可靠地反思、不会稳定地调用工具，外部结构在补偿模型缺陷。2024 年 12 月 Anthropic 发表《Building effective agents》，把 workflow 定义为工程师拥有控制流图的预定义代码路径，agent 定义为模型运行时拥有图的动态决策，并给出「从最简单的方案开始」的工程哲学。这个二分本身就埋了收敛的种子：判断标准是「流程图能否在模型运行前画出来」，而这个答案随模型能力提升会持续偏向「不必」。
@@ -23,9 +25,9 @@ agentic workflow 是一个比较早的概念，为什么后来逐渐收敛为一
 第三个原因是模型能力改变了性价比曲线。2024 年 workflow 的价值是用流程弥补模型弱；2025 到 2026 年，模型的工具调用可靠性、指令遵循和长程任务能力显著提升，loop 的自适应分支天然覆盖了 workflow 的固定分支，而 workflow 的确定性优势只在「图能提前画对」的场景成立。Ng 当年自己也强调 token 生成速度对迭代式工作流的影响可能超过模型能力本身——模型变强变快之后，同样的迭代轮次更快更便宜，workflow 的相对优势进一步缩水。与此同时，「agent 的失败模式更难推理」这个 workflow 阵营的理由也被对冲掉了：checkpoint 回退、每步验证工具、子任务上下文隔离，让 loop 的失败变得可定位、可恢复。
 
 收敛的形态不是消灭，而是双层转移。第一层是内化：plan、execute、verify 这套固定套路不再是工程师画在 DAG 里的结构，而是模型在 loop 里自发的行为，控制流从「代码拥有」变成「模型拥有但受框架约束」。第二层是下沉：确定性编排退到基础设施层——评测管线、审批链、数据流水线、框架内的把关链，这些位置今天仍然是硬编码 workflow，比如 DeepSeek Harness 里 tools/pre-execute 到 post-execute 的三段把关流水线、Claude Code 的 hooks 链。框架层的同构证据是 LangGraph 的转型：它从 workflow 编排器重新定位为 agent runtime，图的抽象从业务流水线变成 agent 状态机。总结来说，收敛的本质是分工重划：模型接管了「任务怎么走」的决策，确定性代码接管了「执行必须守什么规矩」的约束，而 2024 年的 agentic workflow 范式试图让确定性代码同时干两件事，这是它退场的根本原因。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 > 公开信息核验日期：2026-08-16。时间线数据沿用题库 workflow/001 已核验的出处，LangGraph 1.0 信息基于 LangChain 官方博客与文档。
 
 ### 一、演化时间线
@@ -76,7 +78,4 @@ agentic workflow 是一个比较早的概念，为什么后来逐渐收敛为一
 - [Anthropic：Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [LangChain 官方博客：LangGraph 1.0 GA](https://www.langchain.com/blog/langchain-langgraph-1dot0)
 - [Anthropic 工程博客：How we built Claude Code](https://www.anthropic.com/engineering/building-claude-code)
-
-
-<!-- created: 2026-08-16 03:18:05 -->
-<!-- updated: 2026-08-17 01:59:27 -->
+<!-- interviewqa:end -->

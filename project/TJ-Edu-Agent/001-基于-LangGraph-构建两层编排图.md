@@ -1,4 +1,10 @@
-# LangGraph 编排图-实时对话
+---
+schema: interviewqa/v2
+kind: document
+title: LangGraph 编排图-实时对话
+created: 2026-08-11 16:54:54
+updated: 2026-09-22 16:17:47
+---
 
 ## 方案变迁
 ```text
@@ -417,6 +423,3 @@ Plan → Execute → Validate
 这实际上更接近生产系统的设计思想：`正常路径确定化，异常路径智能化`**。**
 
 这会更符合你现在“Orchestrator + 四个 Domain ReAct Subgraph”的架构，因为 \*\*Domain ReAct 已经负责局部自治，<u style="text-decoration-color: rgb(230, 57, 70)">父层就没有必要再用一个高频大循环重复干预</u>；父层真正应该保留的是跨领域任务规划、依赖管理和异常情况下的全局纠偏。\*\*这也是我认为 gen-4.2 相比 gen-4.1 最实质的架构进步。
-
-<!-- created: 2026-08-11 16:54:54 -->
-<!-- updated: 2026-09-22 16:17:47 -->

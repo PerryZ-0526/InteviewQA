@@ -1,27 +1,28 @@
-# G-Memory：多智能体的共享与进化记忆
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: G-Memory：多智能体的共享与进化记忆
+tags:
+  - Multi-Agent
+  - 记忆管理
+created: 2026-08-05 16:30:00
+updated: 2026-08-11 10:30:28
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 G-Memory，多智能体的共享与进化记忆，这个东西你了解吗？
+<!-- interviewqa:end -->
 
-## 标签
-
-[Multi-Agent](../../tags/Multi-Agent.md) | [记忆管理](../../tags/记忆管理.md)
-
-## 题目导航
-
-← [多agent讨论如何终止](002-多agent讨论如何终止.md) | [多智能体记忆管理与防爆策略](004-多智能体记忆管理与防爆策略.md) →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 G-Memory 指 NeurIPS 2025 论文《G-Memory: Tracing Hierarchical Memory for Multi-Agent Systems》提出的 Graph-based Agentic Memory。它针对传统多 Agent 记忆只保存扁平消息、忽略协作轨迹，也缺少跨任务和角色定制的问题，用 interaction graph、query graph 和 insight graph 三层图组织记忆。
 
 interaction graph 保存压缩后的细粒度协作过程；query graph 把相似任务及其轨迹组织起来；insight graph 提炼跨任务可复用的高层经验。新查询到来时，系统做双向遍历：向上取得通用 insight，向下追踪相关 query 和 interaction，既给团队策略，也给具体协作证据。任务完成后，新轨迹又被吸收到三层图中，使团队记忆跨 trial 演化。
 
 它的重点不是所有 Agent 并发写同一份全局 KV，也不是通用的“原始经验—模式—元记忆”三层抽象。论文报告它可在不修改原多 Agent 框架的情况下集成，并在五个基准、三个模型骨干和三个 MAS 框架上取得提升；这些是论文实验结果，不能直接外推到所有业务。
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 ### 一、三层图
 
 | 图 | 内容 | 作用 |
@@ -93,6 +94,4 @@ G-Memory 回答的是如何组织和检索多 Agent 历史经验，不负责完�
 ### 十四、消融与成本追问
 
 判断三层结构是否必要，要分别移除 insight、query 关联或角色定制，比较成功率与检索成本。若提升主要来自简单的历史相似检索，就不能把全部收益归因于图层级。生产评估还要计算建图调用、存储、更新和额外上下文 Token。
-
-<!-- created: 2026-08-05 16:30:00 -->
-<!-- updated: 2026-08-11 10:30:28 -->
+<!-- interviewqa:end -->

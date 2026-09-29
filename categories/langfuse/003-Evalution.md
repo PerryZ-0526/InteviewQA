@@ -1,19 +1,18 @@
-# Langfuse-Evalution
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: Langfuse-Evalution
+tags: []
+created: 2026-09-07 13:41:36
+updated: 2026-09-07 16:46:44
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
-
-暂无
-
-## 题目导航
-
-← [Langfuse-prompt-management](002-Langfuse-prompt-management.md) | 无 →
-
-## 面试直接答
-
+<!-- interviewqa:section answer -->
 Langfuse 的 Evaluation 我一般不会理解成简单的“给大模型答案打分”，而是把它看成围绕 Agent 全生命周期的一套质量评测体系。它最核心的对象其实是 Score，一次用户请求形成一个 Trace，内部的模型调用、RAG 检索、Tool Call、Planner 等形成 Observation，评测结果最终都<u style="text-decoration-color: rgb(230, 57, 70)">以 Score 的形式挂到 Trace、Observation、Session 或 DatasetRun 上</u>。Score 可以是数值、布尔值或者类别，因此既可以表示正确率、相关性，也可以表示工具是否选择正确、任务是否完成。对于现在的 Langfuse v4，线上自动评测已经更加偏向 Observation 级，而不是过去直接给整个 Trace 做 Judge。([Langfuse](https://langfuse.com/docs/evaluation/scores/overview?utm_source=chatgpt.com "LLM Evaluation Scores - Langfuse"))
 
 > [[003-Evalution#详细解析#附-解析：”Score 可以挂到 Trace、Observation、Session 或 DatasetRun 上“]]
@@ -33,9 +32,9 @@ Langfuse 可以给 Judge 配置 <u style="text-decoration-color: rgb(230, 57, 70
 我通常会设计三层指标：最终层看 task success、correctness、groundedness；轨迹层看工具选择、必要工具召回、错误工具调用、冗余调用和重规划次数；单节点层再分别检查 Retriever、Planner、Tool 和 Answer Generator。这样当最终回答错误时，不只是知道“Agent 失败了”，还能够定位到底是检索没召回、Orchestrator 路由错了、Tool 参数错了，还是最后生成阶段产生了幻觉。
 
 最后，我会把生产 Trace 中的失败案例持续加入 Dataset，结合 Annotation Queue 让人工专家形成可信标签，再<u style="text-decoration-color: rgb(230, 57, 70)">用这些标签校准 LLM Judge</u>，逐渐建立稳定的 Regression Set。然后把 Experiment 接入 CI/CD，例如规定 task success 不得低于 90%、tool accuracy 不得低于 95%，低于阈值直接通过 `RegressionError` 阻止 PR 合并。这样 Langfuse 就不只是一个观察 Agent Trace 的日志平台，而是形成了“线上发现问题—人工标注—沉淀 Dataset—离线 Experiment—自动 Evaluation—CI 回归门禁”的完整 Agent 质量闭环。([Langfuse](https://langfuse.com/docs/evaluation/evaluation-methods/annotation-queues?utm_source=chatgpt.com "Annotation Queues - Langfuse"))
+<!-- interviewqa:end -->
 
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 截至 2026 年 9 月，Langfuse 的 Evaluation 已经比较完整。理解它时不要把它等同于“几个评测指标”，它更像一套围绕 LLM/Agent 的评测基础设施：
 
 `Tracing → Score → Dataset → Experiment → Evaluator → Regression Gate`
@@ -1099,6 +1098,4 @@ Tracing 看日志工具
 ```text
 Agent 质量基础设施
 ```
-
-<!-- created: 2026-09-07 13:41:36 -->
-<!-- updated: 2026-09-07 16:46:44 -->
+<!-- interviewqa:end -->

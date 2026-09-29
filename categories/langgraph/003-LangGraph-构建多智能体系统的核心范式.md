@@ -1,19 +1,21 @@
-# ✅LangGraph 构建多智能体系统的核心范式⭐
+---
+schema: interviewqa/v2
+kind: question
+body_schema: interviewqa/sections-v1
+title: ✅LangGraph 构建多智能体系统的核心范式⭐
+tags: []
+created: 2026-08-21 10:41:23
+updated: 2026-08-27 15:40:08
+---
 
-## 题目
-
+<!-- interviewqa:section question -->
 (在此填写题目)
+<!-- interviewqa:end -->
 
-## 标签
+<!-- interviewqa:section answer -->
+<!-- interviewqa:end -->
 
-暂无
-
-## 题目导航
-
-← [langGraph中的command](002-langGraph中的command.md) | [LangGraph-中的-send](004-LangGraph-中的-send.md) →
-
-## 详细解析
-
+<!-- interviewqa:section analysis -->
 LangGraph 构建多智能体系统的核心范式，主要围绕 **“如何组织智能体之间的协作与决策流程”** 展开。目前，业界公认的三种经典范式是 **主管（Supervisor）模式**、**群组（Swarm）模式** 和 **层级（Hierarchical）模式**。此外，还有一些基于这些范式演变出的高级模式。
 
 ### **🧠 三大经典协作范式**
@@ -1252,7 +1254,4 @@ class SwarmState(TypedDict):
 3. 内部思考共享给 Supervisor 采用“关键推理摘要”模式，并通过离线评估集验证收益。
 4. State 设计区分 `shared` 和 `private_*`，保证通信清晰、状态不膨胀。
 5. 终止条件分级设计，显式 FINISH + 轮次硬截断 + 状态完整性检查，保证系统稳定。
-
-
-<!-- created: 2026-08-21 10:41:23 -->
-<!-- updated: 2026-08-27 15:40:08 -->
+<!-- interviewqa:end -->
