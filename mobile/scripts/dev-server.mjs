@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const projectRoot = path.resolve(root, '..');
 
-const PORT = 4444;
+const PORT = Number(process.env.PORT) || 4444;
 const HOST = '127.0.0.1';
 const MIME = {
   '.html': 'text/html',
@@ -42,6 +42,10 @@ http.createServer((req, res) => {
   }
   if (url === '/vendor/purify.es.mjs') {
     tryServe(path.join(root, 'node_modules', 'dompurify', 'dist', 'purify.es.mjs'), res);
+    return;
+  }
+  if (url === '/vendor/mermaid.min.js') {
+    tryServe(path.join(root, 'node_modules', 'mermaid', 'dist', 'mermaid.min.js'), res);
     return;
   }
 

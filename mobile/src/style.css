@@ -48,6 +48,7 @@ u { text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .list-item:active { background: #f0f0ff; }
 .list-item .icon { font-size: 1.2rem; }
 .list-item .q-prefix { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); min-width: 28px; }
+.list-item .doc-kind { padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); font-size: 0.68rem; }
 .list-item .arrow { color: var(--muted); font-size: 1.2rem; margin-left: auto; }
 .list-item > div { display: flex; flex-direction: column; gap: 2px; }
 
@@ -70,6 +71,193 @@ u { text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .card-body.md mark { background: #fff3cd; padding: 1px 3px; border-radius: 2px; }
 .card-body.md hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 .card-body.md img { max-width: 100%; height: auto; border-radius: 4px; margin: 4px 0; }
+
+.freeform-document { line-height: 1.75; font-size: 0.95rem; }
+.freeform-document p { margin: 0.7em 0; }
+.freeform-document h1 { font-size: 1.35rem; margin: 1em 0 0.45em; }
+.freeform-document h2 { font-size: 1.15rem; margin: 0.9em 0 0.4em; }
+.freeform-document h3 { font-size: 1rem; margin: 0.8em 0 0.35em; }
+.freeform-document ul, .freeform-document ol { padding-left: 20px; margin: 0.6em 0; }
+.freeform-document li { margin: 0.3em 0; }
+.freeform-document code { background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 3px; font-family: var(--mono); font-size: 0.85em; }
+.freeform-document pre { background: #f6f8fa; color: #1f2328; border: 1px solid #e8eaed; padding: 14px; border-radius: 6px; overflow-x: auto; margin: 10px 0; font-size: 0.82rem; line-height: 1.5; }
+.freeform-document pre code { background: none; padding: 0; color: inherit; }
+.freeform-document table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.85rem; }
+.freeform-document th, .freeform-document td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+.freeform-document th { background: rgba(0,0,0,0.03); }
+.freeform-document blockquote { border-left: 3px solid var(--primary); padding: 4px 12px; margin: 10px 0; color: var(--muted); }
+.freeform-document img { max-width: 100%; height: auto; margin: 4px 0; }
+
+.mermaid-diagram {
+  width: 100%;
+  margin: 16px 0;
+  overflow: hidden;
+  border: 1px solid #dedbe3;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  box-shadow: 0 1px 2px rgba(26, 22, 33, 0.04);
+}
+
+.mermaid-diagram-toolbar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 7px 5px 12px;
+  border-bottom: 1px solid #ece9f0;
+  background: #faf9fb;
+}
+
+.mermaid-diagram-toolbar figcaption {
+  color: #77717f;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mermaid-diagram-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.mermaid-diagram-actions button {
+  display: inline-flex;
+  width: 29px;
+  height: 29px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #696271;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.mermaid-diagram-actions button:active,
+.mermaid-diagram-actions button.active {
+  background: #eeeaf4;
+  color: #51416f;
+}
+
+.mermaid-diagram-actions button:disabled {
+  opacity: 0.35;
+}
+
+.mermaid-diagram-body {
+  padding: 14px 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mermaid-canvas {
+  min-height: 110px;
+}
+
+.mermaid-canvas svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.mermaid-skeleton {
+  display: flex;
+  min-height: 110px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.mermaid-skeleton span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a99cbc;
+  animation: mermaid-pulse 1s ease-in-out infinite;
+}
+
+.mermaid-skeleton span:nth-child(2) { animation-delay: 0.12s; }
+.mermaid-skeleton span:nth-child(3) { animation-delay: 0.24s; }
+
+@keyframes mermaid-pulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+.mermaid-canvas-error {
+  display: flex;
+  min-height: 110px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  color: #c92a2a;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.mermaid-canvas-error span {
+  color: var(--muted);
+}
+
+.mermaid-source-panel {
+  border-top: 1px solid #dedbe3;
+  background: #f6f8fa;
+}
+
+.mermaid-source-panel[hidden] {
+  display: none;
+}
+
+.card-body.md .mermaid-source-panel pre,
+.freeform-document .mermaid-source-panel pre {
+  max-height: 260px;
+  margin: 0;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 0;
+}
+
+body.mermaid-fullscreen-open {
+  overflow: hidden;
+}
+
+.mermaid-diagram.is-fullscreen {
+  position: fixed;
+  z-index: 1000;
+  inset: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  display: flex;
+  width: auto;
+  flex-direction: column;
+  margin: 0;
+  box-shadow:
+    0 0 0 100vmax rgba(17, 14, 22, 0.28),
+    0 18px 60px rgba(17, 14, 22, 0.3);
+}
+
+.mermaid-diagram.is-fullscreen .mermaid-diagram-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+}
+
+.mermaid-diagram.is-fullscreen .mermaid-canvas {
+  width: 100%;
+}
+
+.mermaid-diagram.is-fullscreen .mermaid-canvas svg {
+  max-height: calc(100vh - 80px);
+}
+
+.mermaid-diagram.is-fullscreen .mermaid-source-panel {
+  display: none;
+}
 
 /* Misc */
 .muted { font-size: 0.8rem; color: var(--muted); }

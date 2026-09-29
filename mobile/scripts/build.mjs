@@ -21,6 +21,7 @@ const vendorDir = path.join(dist, 'vendor');
 fs.mkdirSync(vendorDir, { recursive: true });
 fs.copyFileSync(path.join(root, 'node_modules', 'marked', 'lib', 'marked.esm.js'), path.join(vendorDir, 'marked.esm.js'));
 fs.copyFileSync(path.join(root, 'node_modules', 'dompurify', 'dist', 'purify.es.mjs'), path.join(vendorDir, 'purify.es.mjs'));
+fs.copyFileSync(path.join(root, 'node_modules', 'mermaid', 'dist', 'mermaid.min.js'), path.join(vendorDir, 'mermaid.min.js'));
 
 // Copy content directories from project root
 const dirs = ['categories', 'tags', 'project', 'groups'];

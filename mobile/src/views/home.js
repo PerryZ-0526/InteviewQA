@@ -33,7 +33,7 @@ register('home', (container) => {
             <span class="icon">📁</span>
             <div>
               <span>${c.name}</span>
-              <span class="muted">${c.questions.length} 题</span>
+              <span class="muted">${c.questions.length} 篇</span>
             </div>
             <span class="arrow">›</span>
           </a>

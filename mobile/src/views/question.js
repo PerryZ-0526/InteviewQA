@@ -1,6 +1,7 @@
 import { register } from '../router.js';
 import { loadQuestion, marked } from '../store.js';
 import { setSafeHtml } from '../html.js';
+import { renderMermaidDiagrams } from '../mermaid.js';
 
 register('question', async (container, { category, filename }, navigation) => {
   const { categories } = window.__appData || {};
@@ -40,6 +41,11 @@ register('question', async (container, { category, filename }, navigation) => {
         <div class="tags-row">${q.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
       </header>
 
+      ${q.kind === 'document' ? `
+      <article class="freeform-document md">
+        ${renderMd(q.body)}
+      </article>
+      ` : `
       <div class="card">
         <div class="card-title">题目</div>
         <div class="card-body">${q.question}</div>
@@ -62,8 +68,11 @@ register('question', async (container, { category, filename }, navigation) => {
         <div class="card-title">我的作答</div>
         <div class="card-body md">${renderMd(q.notes)}</div>
       </div>` : ''}
+      `}
     </div>
   `);
+  await renderMermaidDiagrams(container);
+  if (!navigation.isCurrent()) return;
 
   container.querySelectorAll('[data-nav]').forEach(el => {
     el.addEventListener('click', (e) => {

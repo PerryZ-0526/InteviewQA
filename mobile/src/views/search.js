@@ -18,7 +18,7 @@ register('search', (container) => {
             <span class="q-prefix">${q.filename.slice(0, 3)}</span>
             <div>
               <span>${q.title}</span>
-              <span class="muted">${q.categoryName}</span>
+              <span class="muted">${q.categoryName} · ${q.kind === 'document' ? '自由文档' : '结构化题'}</span>
             </div>
             <span class="arrow">›</span>
           </a>

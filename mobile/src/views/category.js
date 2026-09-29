@@ -15,13 +15,14 @@ register('category', (container, { slug }) => {
       <header class="header">
         <a href="#" class="back" data-nav="home" data-params='{}'>← 返回</a>
         <h1>${cat.name}</h1>
-        <span class="badge">${cat.questions.length} 题</span>
+        <span class="badge">${cat.questions.length} 篇</span>
       </header>
       <div class="list">
         ${cat.questions.map(q => `
           <a href="#" class="list-item" data-nav="question" data-params='${JSON.stringify({ category: cat.slug, filename: q.filename })}'>
             <span class="q-prefix">${q.filename.slice(0, 3)}</span>
             <span>${q.title}</span>
+            <span class="doc-kind">${q.kind === 'document' ? '文' : '题'}</span>
             <span class="arrow">›</span>
           </a>
         `).join('')}
