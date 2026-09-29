@@ -17,11 +17,10 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
-import { Extension, Mark, mergeAttributes } from '@tiptap/core';
+import { Extension, Mark, Node, mergeAttributes } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import { liftListItem, sinkListItem } from '@tiptap/pm/schema-list';
-import { Plugin } from '@tiptap/pm/state';
-import { Selection } from '@tiptap/pm/state';
+import { Plugin, Selection, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import { Markdown } from '@tiptap/markdown';
@@ -33,12 +32,19 @@ import { headingMatch, scrollElementIntoView, isVisibleInLayout, scrollToAnchorP
 import { ResizableImage } from '@/lib/resizableImage';
 import { getEditorColor, toColorAttr } from '@/lib/editorColors';
 import { AutoDetectLowlightPlugin, lowlight } from '@/lib/codeBlockHighlight';
+import MermaidDiagram from './MermaidDiagram';
+import {
+  sectionLabel,
+  sectionStartMarker,
+  SECTION_END_MARKER,
+  type SectionDescriptor,
+} from '@/lib/sectionMarkers';
 
-// 代码块人工标注只保留两类：text（纯文本，不染色）/ code（自动识别语言染色）
-const CODE_ANNOTATIONS = ['text', 'code'];
+// Mermaid 作为明确的图表类型保留；其他代码块可选纯文本或自动识别。
+const CODE_ANNOTATIONS = ['text', 'code', 'mermaid'];
 
 /**
- * 代码块节点视图：顶部显示标注，编辑态下拉切换 text / code 两类。
+ * 代码块节点视图：顶部显示标注，编辑态下拉切换 text / code / mermaid。
  * 历史文档里带明确语言标注的块（如 ```python）在下拉里兜底显示原语言，
  * 不切换则保持原样保存，避免编辑旧文档时被误降级。
  * 切换 language 属性后自动按新标注重新染色，保存时写回 ```语言 围栏。
@@ -46,6 +52,7 @@ const CODE_ANNOTATIONS = ['text', 'code'];
 function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   const language = (node.attrs.language as string | null) || '';
   const editable = editor.isEditable;
+  const isMermaid = language.toLowerCase() === 'mermaid';
   const options = (() => {
     const set = new Set<string>(CODE_ANNOTATIONS);
     // 兜底：历史明确标注的语言（python/java 等）仍显示在下拉里，防止误降级
@@ -54,6 +61,42 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   })();
   // read 模式标签：text 是默认常态不显示（降噪）；code 与历史语言标注显示
   const showLabel = language && language !== 'text';
+
+  if (isMermaid) {
+    return (
+      <NodeViewWrapper className="mermaid-node-view">
+        <MermaidDiagram
+          chart={node.textContent}
+          compact
+          sourceEditor={(
+            <div className="mermaid-source-editor">
+              {editable && (
+                <div className="code-block-head" contentEditable={false}>
+                  <select
+                    className="code-block-lang"
+                    value={language}
+                    onChange={event => updateAttributes({ language: event.target.value })}
+                    onMouseDown={event => event.stopPropagation()}
+                    onKeyDown={event => event.stopPropagation()}
+                    title="代码块类型"
+                    aria-label="代码块类型"
+                  >
+                    {options.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <pre className="code-block">
+                <NodeViewContent<'code'> as="code" />
+              </pre>
+            </div>
+          )}
+        />
+      </NodeViewWrapper>
+    );
+  }
+
   return (
     <NodeViewWrapper className="code-block-view">
       {(editable || showLabel) && (
@@ -66,7 +109,7 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
               // 事件隔离：避免 ProseMirror 抢焦点/拦截按键，保证下拉能正常打开
               onMouseDown={e => e.stopPropagation()}
               onKeyDown={e => e.stopPropagation()}
-              title="代码块类型：text 纯文本 / code 自动识别语言并染色（识别不把握时不染色）"
+              title="代码块类型：text 纯文本 / code 自动识别 / mermaid 图表"
               aria-label="代码块类型"
             >
               {options.map(l => (
@@ -85,7 +128,7 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   );
 }
 
-// 语法高亮代码块 + text/code 两类标注节点视图
+// 语法高亮代码块 + text/code/mermaid 三类标注节点视图
 const HighlightedCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView);
@@ -96,6 +139,62 @@ const HighlightedCodeBlock = CodeBlockLowlight.extend({
     // 其余父类插件（Tab 缩进等）保持不变
     const parentPlugins = this.parent?.() || [];
     return [...parentPlugins.filter(p => (p as any).key !== 'lowlight$'), AutoDetectLowlightPlugin({ name: this.name })];
+  },
+});
+
+const SectionBoundary = Node.create({
+  name: 'sectionBoundary',
+  group: 'block',
+  atom: true,
+  selectable: false,
+  draggable: false,
+  defining: true,
+  addAttributes() {
+    return {
+      marker: { default: 'end' },
+      descriptor: { default: '' },
+    };
+  },
+  parseHTML() {
+    return [{
+      tag: 'div[data-interviewqa-marker]',
+      getAttrs: (element) => {
+        const marker = element.getAttribute('data-interviewqa-marker') || 'end';
+        const encoded = element.getAttribute('data-interviewqa-section') || '';
+        let descriptor = '';
+        if (encoded) {
+          try { descriptor = decodeURIComponent(encoded); } catch {}
+        }
+        return { marker, descriptor };
+      },
+    }];
+  },
+  renderHTML({ node }) {
+    const marker = node.attrs.marker === 'start' ? 'start' : 'end';
+    const descriptor = marker === 'start' ? String(node.attrs.descriptor || '') : '';
+    let label = '';
+    if (descriptor) {
+      try { label = sectionLabel(JSON.parse(descriptor) as SectionDescriptor); } catch {}
+    }
+    const attributes = {
+      class: `section-boundary-marker section-boundary-${marker}`,
+      'data-interviewqa-marker': marker,
+      'data-interviewqa-section': descriptor ? encodeURIComponent(descriptor) : undefined,
+      'data-section-label': label || undefined,
+      contenteditable: 'false',
+    };
+    return label
+      ? ['div', mergeAttributes(attributes), ['span', {}, label]]
+      : ['div', mergeAttributes(attributes)];
+  },
+  renderMarkdown(node) {
+    if (node?.attrs?.marker !== 'start') return SECTION_END_MARKER;
+    const rawDescriptor = String(node?.attrs?.descriptor || '');
+    try {
+      return sectionStartMarker(JSON.parse(rawDescriptor) as SectionDescriptor);
+    } catch {
+      throw new Error(`编辑器中的章节标记损坏: ${rawDescriptor}`);
+    }
   },
 });
 
@@ -708,6 +807,7 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
       BulletList,
       ListItem,
       ResizableImage.configure({ imageBase }),
+      SectionBoundary,
       Markdown,
       Placeholder.configure({ placeholder }),
     ],
@@ -726,6 +826,20 @@ export default function WysiwygEditor({ placeholder = '', initialMarkdown = '', 
         class: 'tiptap-editor',
         // 关闭浏览器拼写检查：避免正文出现红色波浪线
         spellcheck: 'false',
+      },
+      handleDoubleClickOn: (view, _pos, node, nodePos, event) => {
+        if (node.type.name !== 'heading') return false;
+
+        event.preventDefault();
+        const from = nodePos + 1;
+        const to = from + node.content.size;
+        view.dispatch(
+          view.state.tr
+            .setSelection(TextSelection.create(view.state.doc, from, to))
+            .scrollIntoView(),
+        );
+        view.focus();
+        return true;
       },
       handlePaste: (view, event) => {
         // 剪贴板数据必须在事件回调内同步读取

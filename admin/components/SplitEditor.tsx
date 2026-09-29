@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import { EDITOR_COLORS, EDITOR_COLOR_DEFAULT } from '@/lib/editorColors';
+import MarkdownRenderer from './MarkdownRenderer';
 
 interface Props {
   initialContent: string;
@@ -145,30 +143,7 @@ export default function SplitEditor({ initialContent, onSave, filename, autoSave
             overflowY: 'auto',
           }}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
-            components={{
-              code({ className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || '');
-                const isInline = !match && !String(children).includes('\n');
-                if (isInline) return <code {...props}>{children}</code>;
-                return (
-                  <pre>
-                    <code className={className} {...props}>{children}</code>
-                  </pre>
-                );
-              },
-              a({ href, children, ...props }: any) {
-                return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
-              },
-              mark({ children, ...props }: any) {
-                return <mark {...props}>{children}</mark>;
-              },
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+          <MarkdownRenderer markdown={content} />
         </div>
       </div>
     );
@@ -308,30 +283,7 @@ export default function SplitEditor({ initialContent, onSave, filename, autoSave
             // Could sync back to editor if desired
           }}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw]}
-            components={{
-              code({ className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || '');
-                const isInline = !match && !String(children).includes('\n');
-                if (isInline) return <code {...props}>{children}</code>;
-                return (
-                  <pre>
-                    <code className={className} {...props}>{children}</code>
-                  </pre>
-                );
-              },
-              a({ href, children, ...props }: any) {
-                return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
-              },
-              mark({ children, ...props }: any) {
-                return <mark {...props}>{children}</mark>;
-              },
-            }}
-          >
-            {content}
-          </ReactMarkdown>
+          <MarkdownRenderer markdown={content} />
         </div>
       </div>
 

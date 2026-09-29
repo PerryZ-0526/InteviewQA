@@ -7,6 +7,14 @@ import { stripMdText } from '@/lib/stripText';
 import { useTocPref } from '@/lib/useTocPref';
 import { useAutosave } from '@/lib/useAutosave';
 import { useDocumentLoader } from '@/lib/useDocumentLoader';
+import {
+  metadataString,
+  parseMarkdownDocument,
+  serializeMarkdownDocument,
+  serializeV2Document,
+  type DocumentSourceFormat,
+  type FrontmatterData,
+} from '@/lib/documentFormat';
 
 const AUTO_SAVE_DELAY = 400;
 
@@ -32,21 +40,31 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
   const [missing, setMissing] = useState(false);
   const [path, setPath] = useState('');
   const [content, setContent] = useState('');
-  const [frontmatter, setFrontmatter] = useState<Record<string, string>>({});
+  const [frontmatter, setFrontmatter] = useState<FrontmatterData>({});
+  const [sourceFormat, setSourceFormat] = useState<DocumentSourceFormat>('legacy');
+  const [hasFrontmatter, setHasFrontmatter] = useState(false);
   const [displayTitle, setDisplayTitle] = useState('');
   const [mtimeMs, setMtimeMs] = useState<number | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
   // 目录显隐：按文档独立持久化，下次打开同一文档仍保持上次的状态
   const { showToc, toggleToc } = useTocPref(`external:${id}`);
   const contentRef = useRef('');
   const titleRef = useRef('');
   const buildSaveValue = useCallback(() => {
     const body = `# ${titleRef.current}\n\n${contentRef.current}`;
-    const frontmatterLines = Object.entries(frontmatter)
-      .filter(([key, value]) => key !== 'title' && value)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n');
-    return frontmatterLines ? `---\n${frontmatterLines}\n---\n\n${body}` : body;
-  }, [frontmatter]);
+    if (sourceFormat === 'frontmatter-v2') {
+      return serializeV2Document(
+        {
+          ...frontmatter,
+          title: titleRef.current,
+          updated: fmtTime(Date.now()),
+        },
+        contentRef.current,
+        frontmatter.kind === 'question' ? 'question' : 'document',
+      );
+    }
+    return hasFrontmatter ? serializeMarkdownDocument(frontmatter, body) : body;
+  }, [frontmatter, hasFrontmatter, sourceFormat]);
   const saveDocument = useCallback(async (full: string) => {
     try {
       const response = await fetch(`/api/external/${encodeURIComponent(id)}`, {
@@ -99,7 +117,10 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
     setDisplayTitle('');
     titleRef.current = '';
     setFrontmatter({});
+    setSourceFormat('legacy');
+    setHasFrontmatter(false);
     setMtimeMs(null);
+    setEditorReady(false);
     resetSave();
   }, [id, resetSave]);
 
@@ -111,33 +132,27 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
     }
     if (!loadedDocument) return;
     const raw = loadedDocument.data;
-    let parsedFrontmatter: Record<string, string> = {};
-    let body = raw;
-    if (raw.startsWith('---')) {
-      const end = raw.indexOf('---', 3);
-      if (end > 0) {
-        const frontmatterText = raw.slice(3, end).trim();
-        for (const line of frontmatterText.split('\n')) {
-          const colon = line.indexOf(':');
-          if (colon > 0) parsedFrontmatter[line.slice(0, colon).trim()] = line.slice(colon + 1).trim();
-        }
-        body = raw.slice(end + 3).trimStart();
-      }
-    }
-    let title = basename(loadedDocument.path);
+    const parsedDocument = parseMarkdownDocument(raw);
+    const parsedFrontmatter = parsedDocument.attributes;
+    let body = parsedDocument.body;
+    let title = metadataString(parsedFrontmatter, 'title') || basename(loadedDocument.path);
     body = body.trimStart();
-    const heading = body.match(/^#\s+(.+)/m);
-    if (heading) {
+    const heading = parsedDocument.sourceFormat === 'legacy' ? body.match(/^#\s+(.+)/) : null;
+    if (heading?.[1]) {
       title = stripMdText(heading[1]);
-      body = body.slice(body.indexOf('\n', heading.index!) + 1).trimStart();
+      const firstNewline = body.indexOf('\n');
+      body = firstNewline >= 0 ? body.slice(firstNewline + 1).trimStart() : '';
     }
     setFrontmatter(parsedFrontmatter);
+    setSourceFormat(parsedDocument.sourceFormat);
+    setHasFrontmatter(parsedDocument.hasFrontmatter);
     setDisplayTitle(title);
     titleRef.current = title;
     setContent(body);
     contentRef.current = body;
     setPath(loadedDocument.path);
     setMtimeMs(loadedDocument.mtimeMs ?? null);
+    setEditorReady(true);
   }, [loadError, loadedDocument]);
 
   const handleTitleChange = useCallback((val: string) => {
@@ -151,7 +166,7 @@ export default function ExternalDocView({ id, onBack, onSaveStatusChange, onSave
     scheduleSave();
   }, [scheduleSave]);
 
-  if (loading) {
+  if (loading || (!editorReady && !missing)) {
     return (
       <div className="loading-overlay" style={{ padding: 40 }}>
         <div className="loading-spinner" />

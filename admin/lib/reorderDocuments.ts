@@ -1,5 +1,14 @@
 import type { CategoryInfo, ExternalDocInfo, ProjectSubdir } from './types';
 
+function withCategoryCounts(category: CategoryInfo, questions: CategoryInfo['questions']): CategoryInfo {
+  return {
+    ...category,
+    questions,
+    questionCount: questions.filter((document) => document.kind === 'question').length,
+    documentCount: questions.length,
+  };
+}
+
 export function reorderCategories(
   previous: CategoryInfo[],
   fromCategory: string,
@@ -19,16 +28,16 @@ export function reorderCategories(
       if (currentIndex < 0) return category;
       const [question] = questions.splice(currentIndex, 1);
       questions.splice(Math.max(0, Math.min(toIndex, questions.length)), 0, question);
-      return { ...category, questions };
+      return withCategoryCounts(category, questions);
     }
     if (category.slug === fromCategory) {
       const questions = category.questions.filter((question) => question.filename !== filename);
-      return { ...category, questions, questionCount: questions.length };
+      return withCategoryCounts(category, questions);
     }
     if (category.slug === toCategory) {
       const questions = [...category.questions];
       questions.splice(Math.max(0, Math.min(toIndex, questions.length)), 0, moved);
-      return { ...category, questions, questionCount: questions.length };
+      return withCategoryCounts(category, questions);
     }
     return category;
   });

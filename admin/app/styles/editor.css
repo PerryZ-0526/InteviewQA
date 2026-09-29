@@ -39,6 +39,7 @@
 .doc-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 8px;
   font-size: 12px;
@@ -50,6 +51,48 @@
   background: #f1f3f5;
   padding: 1px 6px;
   border-radius: 3px;
+}
+
+.doc-kind-badge {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  background: #fff;
+  white-space: nowrap;
+}
+
+.document-kind-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 6px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f1f3f5;
+}
+
+.document-kind-segment button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.document-kind-segment button.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  font-weight: 600;
+}
+
+.document-kind-segment button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .doc-tags {
@@ -457,6 +500,34 @@
   margin: 0.5em 0 0.15em;
 }
 
+.tiptap-editor .section-boundary-marker {
+  position: relative;
+  min-height: 1px;
+  margin: 18px 0 10px;
+  border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+
+.tiptap-editor .section-boundary-start span {
+  position: relative;
+  top: -11px;
+  display: inline-block;
+  padding: 1px 8px;
+  color: var(--primary);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.tiptap-editor .section-boundary-end {
+  margin: 8px 0 14px;
+  border-top-style: dashed;
+  opacity: 0.55;
+}
+
 .tiptap-editor ul,
 .tiptap-editor ol {
   padding-left: 24px;
@@ -629,6 +700,27 @@
   border-radius: 0;
   background: transparent;
   padding: 12px 18px 14px;
+}
+
+.tiptap-editor .mermaid-node-view {
+  margin: 12px 0;
+}
+
+.tiptap-editor .mermaid-node-view .mermaid-diagram {
+  margin: 0;
+}
+
+.tiptap-editor .mermaid-source-editor .code-block-head {
+  padding: 8px 10px 0;
+}
+
+.tiptap-editor .mermaid-source-editor pre.code-block {
+  max-height: 320px;
+  margin: 0;
+  padding: 10px 18px 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .code-block-head {

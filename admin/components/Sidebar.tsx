@@ -9,6 +9,7 @@ import { getRecent, type RecentEntry } from '@/lib/recent';
 import { reorderExternalDocs, reorderProjectSubdirs } from '@/lib/reorderDocuments';
 import SidebarHeader from './SidebarHeader';
 import { ExternalAddModal, ExternalGroupModal, SidebarCreateModal } from './SidebarModals';
+import type { DocumentKind } from '@/lib/documentFormat';
 
 interface Props {
   categories: CategoryInfo[];
@@ -98,6 +99,7 @@ export default function Sidebar({
   const [createForm, setCreateForm] = useState<CreateForm | null>(null);
   const [formName, setFormName] = useState('');
   const [formSlug, setFormSlug] = useState('');
+  const [formDocumentKind, setFormDocumentKind] = useState<DocumentKind>('question');
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState('');
   const [addExternalOpen, setAddExternalOpen] = useState(false);
@@ -393,12 +395,14 @@ export default function Sidebar({
     setCreateForm({ type, parent });
     setFormName('');
     setFormSlug('');
+    setFormDocumentKind('question');
   };
 
   const closeForm = () => {
     setCreateForm(null);
     setFormName('');
     setFormSlug('');
+    setFormDocumentKind('question');
     setFormError('');
   };
 
@@ -434,7 +438,7 @@ export default function Sidebar({
         res = await fetch(`/api/categories/${createForm.parent}/empty`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: formName.trim() }),
+          body: JSON.stringify({ title: formName.trim(), kind: formDocumentKind }),
         });
       } else if (createForm.type === 'project-doc') {
         res = await fetch(`/api/project/${createForm.parent}/empty`, {
@@ -779,7 +783,7 @@ export default function Sidebar({
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {cat.name}
               </span>
-              <span className="badge">{cat.questionCount}</span>
+              <span className="badge">{cat.documentCount}</span>
             </button>
             {expandedCategories.has(cat.slug) && (
               <div>
@@ -798,6 +802,7 @@ export default function Sidebar({
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {q.title}
                     </span>
+                    <span className="sidebar-doc-kind">{q.kind === 'question' ? '题' : '文'}</span>
                   </button>
                 ))}
                 <button
@@ -807,7 +812,7 @@ export default function Sidebar({
                 >
                   <span className="sidebar-question-index">+</span>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#999' }}>
-                    新建题目...
+                    新建文档...
                   </span>
                 </button>
               </div>
@@ -831,7 +836,7 @@ export default function Sidebar({
           <div
             key={tag.name}
             className="sidebar-item" style={{ fontSize: 12, cursor: "pointer" }} onClick={() => onSelectTag?.(tag.name)}
-            title={`${tag.name} — ${tag.questions.length} 道题目`}
+            title={`${tag.name} — ${tag.questions.length} 篇文档`}
           >
             <span># {tag.name}</span>
             <span className="badge">{tag.questions.length}</span>
@@ -1057,15 +1062,17 @@ export default function Sidebar({
 
       {createForm && (
         <SidebarCreateModal
-          title={createForm.type === "category" ? "新建分类" : createForm.type === "project-subdir" ? "新建 project 子目录" : createForm.type === "group" ? "新建分组" : "新建文档"}
+          title={createForm.type === "category" ? "新建分类" : createForm.type === "project-subdir" ? "新建 project 子目录" : createForm.type === "group" ? "新建分组" : createForm.type === "category-doc" ? "新建分类文档" : "新建文档"}
           needsSlug={needsSlug}
           slug={formSlug}
           slugPlaceholder={slugify(formName)}
           name={formName}
           busy={creating}
           error={formError}
+          documentKind={createForm.type === 'category-doc' ? formDocumentKind : undefined}
           onSlugChange={setFormSlug}
           onNameChange={setFormName}
+          onDocumentKindChange={createForm.type === 'category-doc' ? setFormDocumentKind : undefined}
           onSubmit={handleSubmit}
           onClose={closeForm}
         />

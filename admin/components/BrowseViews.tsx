@@ -23,11 +23,12 @@ export function HomeView({
 }) {
   const projects = projectSubdirs.filter((subdir) => !subdir.isGroup);
   const groups = projectSubdirs.filter((subdir) => subdir.isGroup);
-  const questionCount = categories.reduce((sum, category) => sum + category.questions.length, 0);
+  const categoryDocumentCount = categories.reduce((sum, category) => sum + category.questions.length, 0);
+  const questionCount = categories.reduce((sum, category) => sum + category.questionCount, 0);
   const projectCount = projects.reduce((sum, subdir) => sum + subdir.docs.length, 0);
   const groupCount = groups.reduce((sum, subdir) => sum + subdir.docs.length, 0);
 
-  if (questionCount + projectCount + groupCount + externalDocs.length === 0) {
+  if (categoryDocumentCount + projectCount + groupCount + externalDocs.length === 0) {
     return (
       <div className="empty-state">
         <h3>知识库为空</h3>
@@ -53,7 +54,7 @@ export function HomeView({
   return (
     <div className="home-view">
       <div className="home-stats">
-        <span>{categories.length} 个分类 · {questionCount} 道题目</span>
+        <span>{categories.length} 个分类 · {categoryDocumentCount} 篇文档 · {questionCount} 道题目</span>
         <span>{projects.length} 个 project · {projectCount} 篇文档</span>
         <span>{groups.length} 个分组 · {groupCount} 篇文档</span>
         <span>{externalDocs.length} 个外部文档</span>
@@ -179,7 +180,7 @@ export function BrowseView({
     return (
       <div className="empty-state">
         <h3>选择一个分类</h3>
-        <p>从左侧边栏选择分类查看题目列表，或点击「新建题目」创建新题目</p>
+        <p>从左侧边栏选择分类查看文档列表，或新建一篇分类文档</p>
       </div>
     );
   }
@@ -194,15 +195,15 @@ export function BrowseView({
   if (category.questions.length === 0) {
     return (
       <div className="empty-state">
-        <h3>{category.name} — 暂无题目</h3>
-        <p>该分类下还没有题目，点击「新建题目」开始创建</p>
+        <h3>{category.name} — 暂无文档</h3>
+        <p>该分类下还没有文档，请从侧边栏新建</p>
       </div>
     );
   }
 
   return (
     <div className="card document-list-card">
-      <div className="document-list-heading">{category.name} — {category.questions.length} 道题目</div>
+      <div className="document-list-heading">{category.name} — {category.questions.length} 篇文档</div>
       {loading && <div className="loading-overlay document-list-loading"><div className="loading-spinner" /></div>}
       <ScopeSearchPanel
         key={selectedCategory}
@@ -219,6 +220,7 @@ export function BrowseView({
         >
           <span className="filename">{question.filename}</span>
           <span className="title">{question.title}</span>
+          <span className="document-kind-label">{question.kind === 'question' ? '结构化题' : '自由文档'}</span>
           <span className="document-word-count">{question.wordCount?.toLocaleString() ?? ''} 字</span>
         </div>
       ))}

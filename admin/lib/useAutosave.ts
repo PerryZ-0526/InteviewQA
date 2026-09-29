@@ -57,6 +57,26 @@ export function useAutosave<T>({ delay, buildValue, save }: AutosaveOptions<T>) 
     setStatus('saved');
   }, []);
 
+  const saveNow = useCallback(async (value: T): Promise<boolean> => {
+    editVersionRef.current += 1;
+    const version = editVersionRef.current;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setStatus('saving');
+
+    let success = false;
+    queueRef.current = queueRef.current.then(async () => {
+      success = await saveRef.current(value);
+    });
+    await queueRef.current;
+    if (mountedRef.current && version === editVersionRef.current) {
+      setStatus(success ? 'saved' : 'error');
+    }
+    return success;
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -69,5 +89,5 @@ export function useAutosave<T>({ delay, buildValue, save }: AutosaveOptions<T>) 
     };
   }, []);
 
-  return { status, schedule, flush, reset };
+  return { status, schedule, flush, reset, saveNow };
 }

@@ -45,13 +45,13 @@ export default function TagViewer({ tagName, onBack, onOpenQuestion }: Props) {
       <div className="tag-viewer-header">
         <button className="btn btn-secondary btn-small" onClick={onBack}>← 返回</button>
         <h2># {tagName}</h2>
-        <span style={{ fontSize: 13, color: '#999' }}>{questions.length} 道题目</span>
+        <span style={{ fontSize: 13, color: '#999' }}>{questions.length} 篇文档</span>
       </div>
 
       {loading ? (
         <div className="loading-overlay"><div className="loading-spinner" /></div>
       ) : questions.length === 0 ? (
-        <div className="empty-state"><p>该标签下暂无题目</p></div>
+        <div className="empty-state"><p>该标签下暂无文档</p></div>
       ) : (
         <div>
           {Object.entries(grouped).map(([cat, qs]) => (

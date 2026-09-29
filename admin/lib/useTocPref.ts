@@ -1,12 +1,12 @@
-// 文档视图偏好：按文档独立记忆目录显隐与分类文档渲染模式，localStorage 持久化
-// 目录偏好由题目、项目、外部文档共用；渲染模式仅供分类题目使用
+// 文档视图偏好：按文档独立记忆目录显隐与分类文档渲染模式，localStorage 持久化。
 
 'use client';
 
 import { useCallback, useLayoutEffect, useState } from 'react';
 
 const STORAGE_KEY = 'interviewqa:toc-prefs';
-const CATEGORY_RENDER_MODE_STORAGE_KEY = 'interviewqa:category-render-mode-prefs';
+// v2 重置旧的逐文档选择，让已迁移文档统一从分段模式开始；后续切换仍按文档记忆。
+const CATEGORY_RENDER_MODE_STORAGE_KEY = 'interviewqa:category-render-mode-prefs:v2';
 
 export type CategoryRenderMode = 'sectioned' | 'continuous';
 
@@ -60,7 +60,6 @@ export function useTocPref(docKey: string) {
   return { showToc, toggleToc };
 }
 
-/** 读取分类文档的渲染模式偏好；未配置或数据无效时默认分段渲染 */
 function readCategoryRenderModes(): Record<string, CategoryRenderMode> {
   if (typeof window === 'undefined') return {};
   try {
@@ -85,11 +84,10 @@ function writeCategoryRenderMode(docKey: string, mode: CategoryRenderMode): void
     all[docKey] = mode;
     window.localStorage.setItem(CATEGORY_RENDER_MODE_STORAGE_KEY, JSON.stringify(all));
   } catch {
-    // localStorage 不可用时静默降级为仅本次会话生效
+    // localStorage 不可用时静默降级为仅本次会话生效。
   }
 }
 
-/** 分类文档渲染模式：按文档记忆，默认保持原有的分段编辑方式 */
 export function useCategoryRenderMode(docKey: string) {
   const [renderMode, setRenderMode] = useState<CategoryRenderMode>('sectioned');
 

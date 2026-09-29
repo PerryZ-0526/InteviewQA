@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { extractTocItems, jumpToTocItem, type TocItem } from '@/lib/toc';
 
 export default function TocFloat() {
@@ -64,7 +64,8 @@ export default function TocFloat() {
           {items.map((item, i) => (
             <button
               key={i}
-              className={`toc-float-item toc-float-l${item.level}`}
+              className={`toc-float-item ${item.level === 0 ? 'toc-float-root' : 'toc-float-nested'}`}
+              style={{ '--toc-depth': item.level } as CSSProperties}
               onClick={() => jump(item)}
               title={item.label}
             >

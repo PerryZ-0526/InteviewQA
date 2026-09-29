@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CategoryInfo } from '@/lib/types';
+import type { DocumentKind } from '@/lib/documentFormat';
 
 interface Props {
   categories: CategoryInfo[];
@@ -12,6 +13,7 @@ interface Props {
 export default function CreateEmptyModal({ categories, onCreated, onCancel }: Props) {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
+  const [kind, setKind] = useState<DocumentKind>('question');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export default function CreateEmptyModal({ categories, onCreated, onCancel }: Pr
       const res = await fetch(`/api/categories/${category}/empty`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), tags }),
+        body: JSON.stringify({ title: title.trim(), tags, kind }),
       });
       const json = await res.json();
       if (json.success) {
@@ -56,7 +58,7 @@ export default function CreateEmptyModal({ categories, onCreated, onCancel }: Pr
             <span className="ai-popup-mark" style={{ opacity: 0.6 }}>📄</span>
             <div>
               <div className="ai-popup-title">新建空文档</div>
-              <div className="ai-popup-subtitle">创建空白题目文件，之后再编辑内容</div>
+              <div className="ai-popup-subtitle">创建分类文档，之后再编辑内容</div>
             </div>
           </div>
           <button type="button" className="ai-popup-close" onClick={onCancel}>×</button>
@@ -69,10 +71,34 @@ export default function CreateEmptyModal({ categories, onCreated, onCancel }: Pr
           </section>
 
           <section className="ai-selection-card" style={{ marginTop: 12 }}>
+            <label className="ai-section-label">文档类型 *</label>
+            <div className="document-kind-segment" role="group" aria-label="文档类型">
+              <button
+                type="button"
+                className={kind === 'question' ? 'active' : ''}
+                aria-pressed={kind === 'question'}
+                onClick={() => setKind('question')}
+                disabled={loading}
+              >
+                结构化面试题
+              </button>
+              <button
+                type="button"
+                className={kind === 'document' ? 'active' : ''}
+                aria-pressed={kind === 'document'}
+                onClick={() => setKind('document')}
+                disabled={loading}
+              >
+                自由文档
+              </button>
+            </div>
+          </section>
+
+          <section className="ai-selection-card" style={{ marginTop: 12 }}>
             <label className="ai-section-label" htmlFor="empty-cat">分类 *</label>
             <select id="empty-cat" className="gen-select" value={category} onChange={e => setCategory(e.target.value)} disabled={loading} style={{ width: '100%', boxSizing: 'border-box' }}>
               <option value="">-- 选择分类 --</option>
-              {categories.map(c => <option key={c.slug} value={c.slug}>{c.name} ({c.questionCount} 题)</option>)}
+              {categories.map(c => <option key={c.slug} value={c.slug}>{c.name} ({c.documentCount} 篇)</option>)}
             </select>
           </section>
 

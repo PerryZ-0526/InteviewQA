@@ -26,6 +26,17 @@
   font-size: 11px;
 }
 
+.sidebar-doc-kind {
+  flex-shrink: 0;
+  padding: 1px 4px;
+  border: 1px solid #ded7e8;
+  border-radius: 3px;
+  color: #897a9b;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
 /* 分类行前的小圆点：与子题目的序号前缀形成层级差；选中时变主题色 */
 .sidebar-cat-dot {
   flex-shrink: 0;
@@ -1121,7 +1132,7 @@
 .toc-float-item {
   display: block;
   width: 100%;
-  padding: 6px 14px;
+  padding: 6px 14px 6px calc(14px + var(--toc-depth, 0) * 12px);
   border: none;
   background: none;
   text-align: left;
@@ -1139,8 +1150,7 @@
   color: var(--primary);
 }
 
-.toc-float-l2 {
-  padding-left: 26px;
+.toc-float-nested {
   font-size: 0.78rem;
   color: #777;
 }

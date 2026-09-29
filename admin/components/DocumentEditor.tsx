@@ -5,6 +5,18 @@ import WysiwygEditor, { BacklinkEntry } from './WysiwygEditor';
 import TocPanel from './TocPanel';
 import BacklinksPanel, { Backlink } from './BacklinksPanel';
 import { parseQuestion, generateMarkdown, formatDateTime } from '@/lib/markdown';
+import {
+  categoryDocumentKind,
+  convertCategoryDocument,
+  FREEFORM_BODY_SCHEMA,
+  metadataString,
+  metadataStringList,
+  parseMarkdownDocument,
+  serializeV2Document,
+  type DocumentKind,
+  type FrontmatterData,
+} from '@/lib/documentFormat';
+import { QUESTION_BODY_SCHEMA } from '@/lib/sectionMarkers';
 import { stripMdText } from '@/lib/stripText';
 import { scrollToAnchorPathPolling } from '@/lib/domScroll';
 import { useCategoryRenderMode, useTocPref } from '@/lib/useTocPref';
@@ -13,43 +25,26 @@ import { useAutosave } from '@/lib/useAutosave';
 
 const AUTO_SAVE_DELAY = 400;
 const TIME_METADATA_RE = /<!--\s*(?:created|updated):[\s\S]*?-->/g;
-const CONTINUOUS_HIDDEN_SECTIONS = new Set(['标签', '题目导航']);
 
 function stripTimeMetadata(markdown: string): string {
   return markdown.replace(TIME_METADATA_RE, '').trim();
 }
 
-function omitContinuousHiddenSections(markdown: string): string {
-  const keptLines: string[] = [];
-  let inCodeBlock = false;
-  let hiddenSection = false;
-
-  for (const line of markdown.split('\n')) {
-    if (/^\s*```/.test(line)) {
-      inCodeBlock = !inCodeBlock;
-      if (!hiddenSection) keptLines.push(line);
-      continue;
-    }
-
-    if (!inCodeBlock && line.startsWith('## ')) {
-      const sectionName = line.slice(3).trim();
-      hiddenSection = CONTINUOUS_HIDDEN_SECTIONS.has(sectionName);
-    }
-
-    if (!hiddenSection) keptLines.push(line);
-  }
-
-  return keptLines.join('\n').trim();
-}
-
-/** 整篇模式保留 H1 作为独立标题输入框，并隐藏标签、题目导航两个结构化章节 */
 function extractEditableBody(markdown: string): string {
-  let body = markdown.replace(/^\uFEFF/, '').trimStart();
-  if (/^#\s+/.test(body)) {
+  const document = parseMarkdownDocument(markdown);
+  if (
+    document.sourceFormat === 'frontmatter-v2'
+    && document.attributes.kind === 'document'
+    && document.attributes.body_schema === FREEFORM_BODY_SCHEMA
+  ) {
+    return document.body;
+  }
+  let body = document.body.trimStart();
+  if (document.sourceFormat === 'legacy' && /^#\s+/.test(body)) {
     const firstNewline = body.indexOf('\n');
     body = firstNewline >= 0 ? body.slice(firstNewline + 1) : '';
   }
-  return omitContinuousHiddenSections(stripTimeMetadata(body));
+  return stripTimeMetadata(body);
 }
 
 function parseContinuousQuestion(
@@ -59,15 +54,30 @@ function parseContinuousQuestion(
   metadataSource: Question,
   updatedAt: string,
 ): Question {
-  const parsedBody = parseQuestion(`# ${title}\n\n${stripTimeMetadata(body)}`, filename);
-  return {
-    ...parsedBody,
-    tags: metadataSource.tags,
-    prevLink: metadataSource.prevLink,
-    nextLink: metadataSource.nextLink,
-    createdAt: metadataSource.createdAt,
-    updatedAt,
-  };
+  return parseQuestion(
+    serializeV2Document(
+      {
+        ...metadataSource.frontmatter,
+        body_schema: QUESTION_BODY_SCHEMA,
+        title,
+        tags: metadataSource.tags,
+        created: metadataSource.createdAt,
+        updated: updatedAt,
+      },
+      stripTimeMetadata(body),
+      'question',
+    ),
+    filename,
+  );
+}
+
+function createCustomSectionId(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return `custom-${uuid || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`}`;
+}
+
+function customSectionKey(section: { id?: string }, index: number): string {
+  return section.id || `legacy-${index}`;
 }
 
 interface Props {
@@ -85,7 +95,10 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   const uploadDir = category ? `categories/${category}` : '';
   // 章节 id 加每实例唯一前缀：多标签页并存时避免重复 id 导致 getElementById 命中第一个标签的隐藏章节
   const secIdPrefix = useId().replace(/[^a-zA-Z0-9-]/g, '');
+  const [documentKind, setDocumentKind] = useState<DocumentKind>(() => categoryDocumentKind(markdown));
   const [parsed, setParsed] = useState<Question | null>(null);
+  const [frontmatter, setFrontmatter] = useState<FrontmatterData>(() => parseMarkdownDocument(markdown).attributes);
+  const [tags, setTags] = useState<string[]>(() => metadataStringList(parseMarkdownDocument(markdown).attributes, 'tags'));
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [answerLen, setAnswerLen] = useState(0);
@@ -95,12 +108,13 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   const documentPrefKey = `category:${category || ''}/${filename || ''}`;
   const { showToc, toggleToc } = useTocPref(documentPrefKey);
   const { renderMode, toggleRenderMode } = useCategoryRenderMode(documentPrefKey);
-  const [customSections, setCustomSections] = useState<{ title: string; content: string }[]>([]);
+  const [customSections, setCustomSections] = useState<{ id?: string; title: string; content: string }[]>([]);
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const [continuousBody, setContinuousBody] = useState(() => extractEditableBody(markdown));
   const [continuousEditorVersion, setContinuousEditorVersion] = useState(0);
-  const customRefs = useRef<Record<number, string>>({});
+  const [convertingKind, setConvertingKind] = useState(false);
+  const customRefs = useRef<Record<string, string>>({});
 
   const answerRef = useRef('');
   const analysisRef = useRef('');
@@ -119,23 +133,36 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
       ...parsed,
       title,
       question,
-      answer: hiddenSections.has('面试直接答') ? '' : answerRef.current,
-      analysis: hiddenSections.has('详细解析') ? '' : analysisRef.current,
+      answer: answerRef.current,
+      analysis: analysisRef.current,
       notes: hiddenSections.has('我的作答') ? '' : notesRef.current,
       customSections: customSections.map((section, index) => ({
-        title: section.title,
-        content: customRefs.current[index] ?? section.content,
+        ...section,
+        content: customRefs.current[customSectionKey(section, index)] ?? section.content,
       })),
       createdAt: createdAtRef.current,
       updatedAt,
     };
   }, [customSections, hiddenSections, parsed, question, title]);
 
-  const buildSaveValue = useCallback(() => {
-    if (!parsed) return null;
-    const updatedAt = formatDateTime(new Date());
+  const serializeCurrentDocument = useCallback((updatedAt: string) => {
     updatedAtRef.current = updatedAt;
-    const nextMarkdown = renderMode === 'continuous'
+    if (documentKind === 'document') {
+      return serializeV2Document(
+        {
+          ...frontmatter,
+          body_schema: FREEFORM_BODY_SCHEMA,
+          title,
+          tags,
+          created: createdAtRef.current,
+          updated: updatedAt,
+        },
+        continuousBodyRef.current,
+        'document',
+      );
+    }
+    if (!parsed) return null;
+    return renderMode === 'continuous'
       ? generateMarkdown(
           parseContinuousQuestion(
             title,
@@ -147,25 +174,32 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             },
             updatedAt,
           ),
-          { omitEmptyQuestion: true },
         )
       : generateMarkdown(buildStructuredQuestion(updatedAt)!);
+  }, [buildStructuredQuestion, documentKind, filename, frontmatter, parsed, renderMode, tags, title]);
+
+  const buildSaveValue = useCallback(() => {
+    const nextMarkdown = serializeCurrentDocument(formatDateTime(new Date()));
+    if (!nextMarkdown) return null;
     ownSaveContentsRef.current.add(nextMarkdown);
     return nextMarkdown;
-  }, [buildStructuredQuestion, filename, parsed, renderMode, title]);
+  }, [serializeCurrentDocument]);
   const saveDocument = useCallback(async (nextMarkdown: string) => {
     const success = await onSave(nextMarkdown, { category: category || '', filename: filename || '' });
     if (!success) ownSaveContentsRef.current.delete(nextMarkdown);
     return success;
   }, [category, filename, onSave]);
-  const { status: saveStatus, schedule: scheduleSave, reset: resetSave } = useAutosave({
+  const { status: saveStatus, schedule: scheduleSave, reset: resetSave, saveNow } = useAutosave({
     delay: AUTO_SAVE_DELAY,
     buildValue: buildSaveValue,
     save: saveDocument,
   });
 
   const applyQuestionState = useCallback((questionData: Question) => {
+    setDocumentKind('question');
     setParsed(questionData);
+    setFrontmatter(questionData.frontmatter);
+    setTags(questionData.tags);
     setTitle(questionData.title);
     setQuestion(questionData.question);
     answerRef.current = questionData.answer;
@@ -177,7 +211,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     const nextCustomSections = questionData.customSections || [];
     setCustomSections(nextCustomSections);
     customRefs.current = Object.fromEntries(
-      nextCustomSections.map((section, index) => [index, section.content]),
+      nextCustomSections.map((section, index) => [customSectionKey(section, index), section.content]),
     );
     createdAtRef.current = questionData.createdAt;
     updatedAtRef.current = questionData.updatedAt;
@@ -186,11 +220,43 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     notesKeyRef.current += 1;
 
     const hidden = new Set<string>();
-    if (!questionData.answer.trim()) hidden.add('面试直接答');
-    if (!questionData.analysis.trim()) hidden.add('详细解析');
     if (!(questionData.notes || '').trim()) hidden.add('我的作答');
     setHiddenSections(hidden);
   }, []);
+
+  const applyMarkdownState = useCallback((content: string) => {
+    const document = parseMarkdownDocument(content);
+    const nextKind = categoryDocumentKind(content);
+    const nextContinuousBody = extractEditableBody(content);
+
+    setDocumentKind(nextKind);
+    setFrontmatter(document.attributes);
+    setTags(metadataStringList(document.attributes, 'tags'));
+    continuousBodyRef.current = nextContinuousBody;
+    setContinuousBody(nextContinuousBody);
+    setContinuousEditorVersion((version) => version + 1);
+
+    if (nextKind === 'question') {
+      applyQuestionState(parseQuestion(content, filename || ''));
+      return;
+    }
+
+    const createdAt = metadataString(document.attributes, 'created') || formatDateTime(new Date());
+    setParsed(null);
+    setTitle(metadataString(document.attributes, 'title'));
+    setQuestion('');
+    answerRef.current = '';
+    analysisRef.current = '';
+    notesRef.current = '';
+    setAnswerLen(0);
+    setAnalysisLen(0);
+    setNotesLen(0);
+    setCustomSections([]);
+    customRefs.current = {};
+    createdAtRef.current = createdAt;
+    updatedAtRef.current = metadataString(document.attributes, 'updated') || createdAt;
+    setHiddenSections(new Set());
+  }, [applyQuestionState, filename]);
 
   useEffect(() => {
     const labels: Record<string, string> = { saved: '已保存', saving: '保存中...', waiting: '待保存', error: '保存失败' };
@@ -201,15 +267,10 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     // 忽略本组件保存成功后的内容回传，避免旧请求覆盖正在编辑的界面
     if (ownSaveContentsRef.current.delete(markdown)) return;
 
-    const q = parseQuestion(markdown, filename || '');
-    applyQuestionState(q);
-    const nextContinuousBody = extractEditableBody(markdown);
-    continuousBodyRef.current = nextContinuousBody;
-    setContinuousBody(nextContinuousBody);
-    setContinuousEditorVersion((version) => version + 1);
+    applyMarkdownState(markdown);
 
     resetSave();
-  }, [applyQuestionState, markdown, filename, resetSave]);
+  }, [applyMarkdownState, markdown, resetSave]);
 
   const handleAnswerChange = useCallback((md: string) => {
     answerRef.current = md;
@@ -245,17 +306,17 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
   }, [scheduleSave]);
 
   const handleRenderModeToggle = useCallback(() => {
-    if (!parsed) return;
+    if (!parsed || documentKind !== 'question') return;
 
     if (renderMode === 'sectioned') {
       const structured = buildStructuredQuestion(updatedAtRef.current || parsed.updatedAt);
       if (!structured) return;
-      const nextBody = extractEditableBody(generateMarkdown(structured, { omitEmptyQuestion: true }));
+      const nextBody = extractEditableBody(generateMarkdown(structured));
       continuousBodyRef.current = nextBody;
       setContinuousBody(nextBody);
       setContinuousEditorVersion((version) => version + 1);
     } else {
-      const continuousQuestion = parseContinuousQuestion(
+      applyQuestionState(parseContinuousQuestion(
         title,
         continuousBodyRef.current,
         filename || parsed.filename,
@@ -264,8 +325,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
           createdAt: createdAtRef.current || parsed.createdAt,
         },
         updatedAtRef.current || parsed.updatedAt,
-      );
-      applyQuestionState(continuousQuestion);
+      ));
     }
 
     toggleRenderMode();
@@ -277,6 +337,45 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
     renderMode,
     title,
     toggleRenderMode,
+    documentKind,
+  ]);
+
+  const handleKindConversion = useCallback(async () => {
+    if (convertingKind) return;
+    const targetKind: DocumentKind = documentKind === 'question' ? 'document' : 'question';
+    const confirmed = window.confirm(
+      targetKind === 'document'
+        ? '确认转为自由文档？章节边界会被移除，现有非空内容将按原顺序合并。转换前版本会自动备份。'
+        : '确认转为结构化面试题？当前正文会完整放入“详细解析”，“题目”和“面试直接答”将留空。转换前版本会自动备份。',
+    );
+    if (!confirmed) return;
+
+    const updatedAt = formatDateTime(new Date());
+    const currentMarkdown = serializeCurrentDocument(updatedAt);
+    if (!currentMarkdown) return;
+
+    let converted: string;
+    try {
+      converted = convertCategoryDocument(currentMarkdown, targetKind, updatedAt);
+    } catch {
+      return;
+    }
+
+    setConvertingKind(true);
+    ownSaveContentsRef.current.add(converted);
+    const success = await saveNow(converted);
+    if (success) {
+      applyMarkdownState(converted);
+    } else {
+      ownSaveContentsRef.current.delete(converted);
+    }
+    setConvertingKind(false);
+  }, [
+    applyMarkdownState,
+    convertingKind,
+    documentKind,
+    saveNow,
+    serializeCurrentDocument,
   ]);
 
   // 拉取反向引用
@@ -326,14 +425,17 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             className="doc-title-input"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="题目标题"
+            placeholder={documentKind === 'question' ? '题目标题' : '文档标题'}
             spellCheck={false}
           />
           <div className="doc-meta">
             <span className="doc-filename">{filename}</span>
-            {(parsed?.tags || []).length > 0 && (
+            <span className="doc-kind-badge">
+              {documentKind === 'question' ? '结构化面试题' : '自由文档'}
+            </span>
+            {tags.length > 0 && (
               <span className="doc-tags">
-                {(parsed?.tags || []).map((t) => (
+                {tags.map((t) => (
                   <span key={t} className="doc-tag">{t}</span>
                 ))}
               </span>
@@ -341,17 +443,31 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
           </div>
         </div>
         <div className="doc-header-right" style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6 }}>
+            {documentKind === 'question' && (
+              <button
+                className="btn btn-small btn-secondary doc-render-mode-toggle"
+                aria-pressed={renderMode === 'continuous'}
+                onClick={handleRenderModeToggle}
+                disabled={!parsed || convertingKind}
+                title={renderMode === 'sectioned'
+                  ? '当前为分段渲染，切换为整篇渲染'
+                  : '当前为整篇渲染，切换为分段渲染'}
+              >
+                {renderMode === 'sectioned' ? '整篇编辑' : '分段编辑'}
+              </button>
+            )}
             <button
-              className="btn btn-small btn-secondary doc-render-mode-toggle"
-              aria-pressed={renderMode === 'continuous'}
-              onClick={handleRenderModeToggle}
-              disabled={!parsed}
-              title={renderMode === 'sectioned'
-                ? '当前为分段渲染，切换为整篇渲染'
-                : '当前为整篇渲染，切换为分段渲染'}
+              className="btn btn-small btn-secondary doc-kind-convert"
+              onClick={handleKindConversion}
+              disabled={convertingKind}
+              title={documentKind === 'question' ? '转为自由文档' : '转为结构化面试题'}
             >
-              {renderMode === 'sectioned' ? '整篇编辑' : '分段编辑'}
+              {convertingKind
+                ? '转换中...'
+                : documentKind === 'question'
+                ? '转为自由文档'
+                : '转为结构化面试题'}
             </button>
             <button
               className="btn btn-small btn-secondary doc-toc-toggle"
@@ -372,14 +488,14 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
 
       {showToc && <TocPanel />}
 
-      {renderMode === 'continuous' ? (
+      {documentKind === 'document' || renderMode === 'continuous' ? (
         <WysiwygEditor
-          key={`continuous-${category || ''}/${filename || ''}-${continuousEditorVersion}`}
+          key={`continuous-${documentKind}-${category || ''}/${filename || ''}-${continuousEditorVersion}`}
           initialMarkdown={continuousBody}
           onChange={handleContinuousChange}
           placeholder="文档正文..."
-          documentTitle={parsed?.title || ''}
-          sectionName={parsed?.title || '整篇正文'}
+          documentTitle={title}
+          sectionName={title || '整篇正文'}
           imageBase={imageBase}
           uploadDir={uploadDir}
           backlinkMap={backlinkMap}
@@ -401,69 +517,43 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             />
           </div>
 
-          {!hiddenSections.has('面试直接答') && (
-            <div className="doc-section">
-              <div className="doc-section-header">
-                <span className="doc-section-label" id={`${secIdPrefix}-sec-2`}>面试直接答</span>
-                <span className="doc-count">{answerLen.toLocaleString()} 字</span>
-                <button
-                  className="btn btn-small btn-danger"
-                  style={{ marginLeft: 8, padding: '0 6px', fontSize: 14 }}
-                  onClick={() => {
-                    answerRef.current = '';
-                    setAnswerLen(0);
-                    setHiddenSections(prev => new Set([...prev, '面试直接答']));
-                    scheduleSave();
-                  }}
-                  title="删除此章节"
-                >×</button>
-              </div>
-              <WysiwygEditor
-                key={`answer-${answerKeyRef.current}`}
-                initialMarkdown={answerRef.current}
-                onChange={handleAnswerChange}
-                placeholder="面试可直接作答的版本..."
-                documentTitle={parsed?.title || ''}
-                sectionName="面试直接答"
-                imageBase={imageBase}
-                uploadDir={uploadDir}
-                backlinkMap={backlinkMap}
-                docKey={filename ? filename.replace(/\.md$/, '') : ''}
-              />
+          <div className="doc-section">
+            <div className="doc-section-header">
+              <span className="doc-section-label" id={`${secIdPrefix}-sec-2`}>面试直接答</span>
+              <span className="doc-count">{answerLen.toLocaleString()} 字</span>
             </div>
-          )}
+            <WysiwygEditor
+              key={`answer-${answerKeyRef.current}`}
+              initialMarkdown={answerRef.current}
+              onChange={handleAnswerChange}
+              placeholder="面试可直接作答的版本..."
+              documentTitle={parsed?.title || ''}
+              sectionName="面试直接答"
+              imageBase={imageBase}
+              uploadDir={uploadDir}
+              backlinkMap={backlinkMap}
+              docKey={filename ? filename.replace(/\.md$/, '') : ''}
+            />
+          </div>
 
-          {!hiddenSections.has('详细解析') && (
-            <div className="doc-section">
-              <div className="doc-section-header">
-                <span className="doc-section-label" id={`${secIdPrefix}-sec-3`}>详细解析</span>
-                <span className="doc-count">{analysisLen.toLocaleString()} 字</span>
-                <button
-                  className="btn btn-small btn-danger"
-                  style={{ marginLeft: 8, padding: '0 6px', fontSize: 14 }}
-                  onClick={() => {
-                    analysisRef.current = '';
-                    setAnalysisLen(0);
-                    setHiddenSections(prev => new Set([...prev, '详细解析']));
-                    scheduleSave();
-                  }}
-                  title="删除此章节"
-                >×</button>
-              </div>
-              <WysiwygEditor
-                key={`analysis-${analysisKeyRef.current}`}
-                initialMarkdown={analysisRef.current}
-                onChange={handleAnalysisChange}
-                placeholder="详细解析内容..."
-                documentTitle={parsed?.title || ''}
-                sectionName="详细解析"
-                imageBase={imageBase}
-                uploadDir={uploadDir}
-                backlinkMap={backlinkMap}
-                docKey={filename ? filename.replace(/\.md$/, '') : ''}
-              />
+          <div className="doc-section">
+            <div className="doc-section-header">
+              <span className="doc-section-label" id={`${secIdPrefix}-sec-3`}>详细解析</span>
+              <span className="doc-count">{analysisLen.toLocaleString()} 字</span>
             </div>
-          )}
+            <WysiwygEditor
+              key={`analysis-${analysisKeyRef.current}`}
+              initialMarkdown={analysisRef.current}
+              onChange={handleAnalysisChange}
+              placeholder="详细解析内容..."
+              documentTitle={parsed?.title || ''}
+              sectionName="详细解析"
+              imageBase={imageBase}
+              uploadDir={uploadDir}
+              backlinkMap={backlinkMap}
+              docKey={filename ? filename.replace(/\.md$/, '') : ''}
+            />
+          </div>
 
           {!hiddenSections.has('我的作答') && (
             <div className="doc-section">
@@ -520,7 +610,7 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
 
           {/* Custom sections */}
           {customSections.map((s, i) => (
-            <div className="doc-section" key={i} id={`${secIdPrefix}-sec-c${i}`}>
+            <div className="doc-section" key={s.id || i} id={`${secIdPrefix}-sec-c${i}`}>
               <div className="doc-section-header">
                 <input
                   className="doc-custom-title"
@@ -546,10 +636,10 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
                 >×</button>
               </div>
               <WysiwygEditor
-                key={`custom-${i}`}
+                key={`custom-${s.id || i}`}
                 initialMarkdown={s.content}
                 onChange={(md: string) => {
-                  customRefs.current[i] = md;
+                  customRefs.current[customSectionKey(s, i)] = md;
                   scheduleSave();
                 }}
                 placeholder="自定义内容..."
@@ -568,7 +658,10 @@ export default function DocumentEditor({ markdown, filename, category, onSave, o
             <button
               className="btn btn-secondary btn-small"
               onClick={() => {
-                setCustomSections([...customSections, { title: '', content: '' }]);
+                setCustomSections([
+                  ...customSections,
+                  { id: createCustomSectionId(), title: '', content: '' },
+                ]);
               }}
             >+ 添加自定义章节</button>
           </div>

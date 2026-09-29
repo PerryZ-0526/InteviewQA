@@ -1,6 +1,7 @@
 'use client';
 
 import type { KeyboardEvent } from 'react';
+import type { DocumentKind } from '@/lib/documentFormat';
 
 function submitOnEnter(event: KeyboardEvent<HTMLInputElement>, onSubmit: () => void) {
   if (
@@ -137,8 +138,10 @@ export function SidebarCreateModal({
   name,
   busy,
   error,
+  documentKind,
   onSlugChange,
   onNameChange,
+  onDocumentKindChange,
   onSubmit,
   onClose,
 }: {
@@ -149,8 +152,10 @@ export function SidebarCreateModal({
   name: string;
   busy: boolean;
   error: string;
+  documentKind?: DocumentKind;
   onSlugChange: (value: string) => void;
   onNameChange: (value: string) => void;
+  onDocumentKindChange?: (value: DocumentKind) => void;
   onSubmit: () => void;
   onClose: () => void;
 }) {
@@ -169,6 +174,31 @@ export function SidebarCreateModal({
                 onKeyDown={(event) => submitOnEnter(event, onSubmit)}
                 placeholder={slugPlaceholder || 'english-slug'}
               />
+            </div>
+          )}
+          {documentKind && onDocumentKindChange && (
+            <div className="sidebar-modal-field">
+              <label className="sidebar-modal-label">文档类型</label>
+              <div className="document-kind-segment" role="group" aria-label="文档类型">
+                <button
+                  type="button"
+                  className={documentKind === 'question' ? 'active' : ''}
+                  aria-pressed={documentKind === 'question'}
+                  onClick={() => onDocumentKindChange('question')}
+                  disabled={busy}
+                >
+                  结构化面试题
+                </button>
+                <button
+                  type="button"
+                  className={documentKind === 'document' ? 'active' : ''}
+                  aria-pressed={documentKind === 'document'}
+                  onClick={() => onDocumentKindChange('document')}
+                  disabled={busy}
+                >
+                  自由文档
+                </button>
+              </div>
             </div>
           )}
           <div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { extractTocItems, jumpToTocItem, tocEquals, type TocItem } from '@/lib/toc';
 
 /**
@@ -38,10 +38,10 @@ export default function TocPanel() {
 
   if (items.length === 0) return null;
 
-  // 按 level 1 条目切组，保持「每章节一块」的视觉结构
+  // 按 depth 0 条目切组，保持「每章节一块」的视觉结构
   const groups: TocItem[][] = [];
   for (const item of items) {
-    if (item.level === 1 || groups.length === 0) groups.push([item]);
+    if (item.level === 0 || groups.length === 0) groups.push([item]);
     else groups[groups.length - 1].push(item);
   }
   const summary = `${groups.length} 个章节`;
@@ -62,15 +62,16 @@ export default function TocPanel() {
               <a
                 key={`${item.label}-${itemIndex}`}
                 href={item.id ? `#${item.id}` : '#'}
-                className={`toc-item toc-l${item.level}`}
+                className={`toc-item ${item.level === 0 ? 'toc-root' : 'toc-nested'}`}
+                style={{ '--toc-depth': item.level } as CSSProperties}
                 onClick={(e) => {
                   e.preventDefault();
                   jumpToTocItem(item);
                 }}
               >
-                <span className="toc-num">{item.level === 1 ? String(groupIndex + 1).padStart(2, '0') : '—'}</span>
+                <span className="toc-num">{item.level === 0 ? String(groupIndex + 1).padStart(2, '0') : '—'}</span>
                 <span className="toc-label" title={item.label}>{item.label}</span>
-                {item.level === 1 && <span className="toc-arrow" aria-hidden="true">↘</span>}
+                {item.level === 0 && <span className="toc-arrow" aria-hidden="true">↘</span>}
               </a>
             ))}
           </div>

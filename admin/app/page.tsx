@@ -14,6 +14,7 @@ import TabRestoreBar from '@/components/TabRestoreBar';
 import ScrollRestoreBar from '@/components/ScrollRestoreBar';
 import InboxView from '@/components/InboxView';
 import { stripMdText } from '@/lib/stripText';
+import { categoryDocumentKind, documentTitle } from '@/lib/documentFormat';
 import { dueEntries } from '@/lib/fsrsLogic';
 import { docScrollKey, getDocScroll, setDocScroll } from '@/lib/docScroll';
 import type { FsrsCardData, FsrsStore } from '@/lib/fsrsStore';
@@ -181,7 +182,9 @@ export default function Home() {
   const questionKeySet = () => {
     const keys = new Set<string>();
     for (const cat of categories) {
-      for (const q of cat.questions) keys.add(`${cat.slug}/${q.filename}`);
+      for (const q of cat.questions) {
+        if (q.kind === 'question') keys.add(`${cat.slug}/${q.filename}`);
+      }
     }
     return keys;
   };
@@ -350,7 +353,12 @@ export default function Home() {
                 `/api/categories/${encodeURIComponent(tab.category!)}/${encodeURIComponent(tab.filename!)}`
               );
               const json = await res.json();
-              if (json.success) return { tab, content: json.data };
+              if (
+                json.success
+                && (tab.kind === 'category' || json.kind === 'question')
+              ) {
+                return { tab, content: json.data };
+              }
             } catch {
               // 网络异常等按失效处理，下方统一丢弃
             }
@@ -671,25 +679,57 @@ export default function Home() {
       });
       const json = await res.json();
       if (json.success) {
-        // Update sidebar title from H1 in content（标题可能带颜色等内联 HTML，剥成纯文本）
-        const h1Match = content.match(/^#\s+(.+)/m);
-        if (h1Match) {
-          const newTitle = stripMdText(h1Match[1]);
-          setCategories((prev) =>
-            prev.map((c) => {
-              if (c.slug !== cat) return c;
-              return {
-                ...c,
-                questions: c.questions.map((q) =>
-                  q.filename === file ? { ...q, title: newTitle } : q
-                ),
-              };
-            })
-          );
-          setTabs((prev) =>
-            prev.map((t) => (t.id === `cat:${cat}:${file}` ? { ...t, label: newTitle } : t))
-          );
-        }
+        const nextKind = categoryDocumentKind(content);
+        const previousKind = categories
+          .find((category) => category.slug === cat)
+          ?.questions.find((document) => document.filename === file)
+          ?.kind;
+        // v2 从 frontmatter.title 取标题；旧格式只读取正文开头 H1。
+        const newTitle = stripMdText(documentTitle(content));
+        setCategories((prev) =>
+          prev.map((c) => {
+            if (c.slug !== cat) return c;
+            const questions = c.questions.map((q) =>
+              q.filename === file
+                ? { ...q, ...(newTitle ? { title: newTitle } : {}), kind: nextKind }
+                : q
+            );
+            return {
+              ...c,
+              questions,
+              questionCount: questions.filter((document) => document.kind === 'question').length,
+              documentCount: questions.length,
+            };
+          })
+        );
+        setTabContents((prev) => {
+          const next = { ...prev };
+          for (const tab of tabsRef.current) {
+            if (tab.category !== cat || tab.filename !== file) continue;
+            if (nextKind === 'document' && (tab.kind === 'random' || tab.kind === 'review')) {
+              delete next[tab.id];
+              delete tabScrollsRef.current[tab.id];
+            } else {
+              next[tab.id] = content;
+            }
+          }
+          return next;
+        });
+        setTabs((prev) =>
+          prev
+            .filter((tab) => !(
+              nextKind === 'document'
+              && (tab.kind === 'random' || tab.kind === 'review')
+              && tab.category === cat
+              && tab.filename === file
+            ))
+            .map((tab) => (
+              newTitle && tab.category === cat && tab.filename === file
+                ? { ...tab, label: newTitle }
+                : tab
+            ))
+        );
+        if (previousKind && previousKind !== nextKind) loadFsrsStore();
         return true;
       } else {
         showToast('保存失败: ' + json.error, 'error');
@@ -769,7 +809,9 @@ export default function Home() {
     const allQuestions: { category: string; filename: string }[] = [];
     for (const cat of categories) {
       for (const q of cat.questions) {
-        allQuestions.push({ category: cat.slug, filename: q.filename });
+        if (q.kind === 'question') {
+          allQuestions.push({ category: cat.slug, filename: q.filename });
+        }
       }
     }
 
@@ -793,7 +835,7 @@ export default function Home() {
       setLoading(true);
       const res = await fetch(`/api/categories/${picked.category}/${picked.filename}`);
       const json = await res.json();
-      if (json.success) {
+      if (json.success && json.kind === 'question') {
         const label = categories.find((c) => c.slug === picked.category)?.questions.find((q) => q.filename === picked.filename)?.title || picked.filename;
         const tab: DocTab = { id: tabId, kind: 'random', category: picked.category, filename: picked.filename, label };
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
@@ -802,7 +844,7 @@ export default function Home() {
         // 随机打开的题目同样计入最近浏览
         pushRecent({ kind: 'category', category: picked.category, filename: picked.filename, title: label });
       } else {
-        showToast('加载失败', 'error');
+        showToast(json.kind === 'document' ? '自由文档不能进入随机练习' : '加载失败', 'error');
       }
     } catch (e) {
       showToast('加载失败', 'error');
@@ -825,14 +867,14 @@ export default function Home() {
       setLoading(true);
       const res = await fetch(`/api/categories/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`);
       const json = await res.json();
-      if (json.success) {
+      if (json.success && json.kind === 'question') {
         const label = categories.find((c) => c.slug === category)?.questions.find((q) => q.filename === filename)?.title || filename;
         const tab: DocTab = { id: tabId, kind: 'review', category, filename, label };
         setTabContents((prev) => ({ ...prev, [tabId]: json.data }));
         addTabToFront(tab);
         activateTab(tab);
       } else {
-        showToast('加载失败', 'error');
+        showToast(json.kind === 'document' ? '自由文档不能进入复习模式' : '加载失败', 'error');
       }
     } catch {
       showToast('加载失败', 'error');
@@ -1061,10 +1103,13 @@ export default function Home() {
   };
 
   const currentCategoryName = categories.find((c) => c.slug === selectedCategory)?.name || selectedCategory;
+  const currentCategoryDocument = categories
+    .find((category) => category.slug === selectedCategory)
+    ?.questions.find((document) => document.filename === selectedFile);
 
   // 全库统计：categories + project（含分组）的全部文档，不含外部文档
   const totalDocs =
-    categories.reduce((s, c) => s + c.questionCount, 0) +
+    categories.reduce((s, c) => s + c.documentCount, 0) +
     projectSubdirs.reduce((s, d) => s + d.docs.length, 0);
   const totalWords =
     categories.reduce((s, c) => s + c.questions.reduce((w, q) => w + (q.wordCount || 0), 0), 0) +
@@ -1196,7 +1241,7 @@ export default function Home() {
             )}
             {view === 'browse' && (
               <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {selectedCategory ? `${currentCategoryName} — 题目列表` :
+                {selectedCategory ? `${currentCategoryName} — 文档列表` :
                  selectedProjectSubdir ? `${selectedProjectSubdir} — 文档列表` :
                  browsingExternal ? `${selectedExternalGroup != null ? (selectedExternalGroup || '未分组') : '外部文档'} — 文档列表` :
                  '首页 — 全部文档'}
@@ -1216,7 +1261,7 @@ export default function Home() {
           <div className="header-actions">
             {view === 'edit' && (
               <button className="btn btn-danger" onClick={deleteQuestion}>
-                删除此题
+                {currentCategoryDocument?.kind === 'document' ? '删除文档' : '删除此题'}
               </button>
             )}
             {view === 'project-doc' && projectSubdir && projectFilename && (
@@ -1385,6 +1430,7 @@ export default function Home() {
           <span>
             {categories.length} 个分类 |{' '}
             {categories.reduce((sum, c) => sum + c.questionCount, 0)} 道题目 |{' '}
+            {categories.reduce((sum, c) => sum + (c.documentCount - c.questionCount), 0)} 篇自由文档 |{' '}
             {tags.length} 个标签
             {' | '}
             {categories.reduce((sum, c) => sum + c.questions.filter(q => q.title.startsWith('✅')).length, 0)} 个✅文档
