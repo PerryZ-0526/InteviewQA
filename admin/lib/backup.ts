@@ -32,6 +32,7 @@ export async function backupBeforeWriteAt(
   backupRelDir: string,
   filename: string,
   newContent: string,
+  options: { force?: boolean } = {},
 ): Promise<void> {
   try {
     let oldContent: string | null = null;
@@ -51,7 +52,7 @@ export async function backupBeforeWriteAt(
 
     // 节流：最近 5 分钟内已有备份则跳过
     const existing = await listBackups();
-    if (existing.length > 0) {
+    if (!options.force && existing.length > 0) {
       const newest = existing
         .map((f) => f.slice(prefix.length, -3))
         .sort()
@@ -71,6 +72,11 @@ export async function backupBeforeWriteAt(
 }
 
 /** 仓库内文档的便捷入口：docPath = PROJECT_ROOT/<relDir>/<filename> */
-export async function backupBeforeWrite(relDir: string, filename: string, newContent: string): Promise<void> {
-  await backupBeforeWriteAt(path.join(PROJECT_ROOT, relDir, filename), relDir, filename, newContent);
+export async function backupBeforeWrite(
+  relDir: string,
+  filename: string,
+  newContent: string,
+  options: { force?: boolean } = {},
+): Promise<void> {
+  await backupBeforeWriteAt(path.join(PROJECT_ROOT, relDir, filename), relDir, filename, newContent, options);
 }

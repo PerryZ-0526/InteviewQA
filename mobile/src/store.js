@@ -1,5 +1,5 @@
 import { marked } from '/vendor/marked.esm.js';
-import { parseIndex, parseQuestion } from './content.js';
+import { parseCategoryDocument, parseIndex, parseQuestion } from './content.js';
 
 marked.setOptions({ breaks: true });
 
@@ -34,7 +34,7 @@ async function loadQuestion(category, filename) {
   const key = `${category}/${filename}`;
   if (questionCache.has(key)) return questionCache.get(key);
   const request = loadFile(`categories/${category}/${filename}`)
-    .then(md => parseQuestion(md, filename))
+    .then(md => parseCategoryDocument(md, filename))
     .catch((error) => {
       questionCache.delete(key);
       throw error;

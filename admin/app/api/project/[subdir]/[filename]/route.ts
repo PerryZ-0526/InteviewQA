@@ -7,6 +7,7 @@ import { updateLinkMeta } from '@/lib/wikiLinks';
 import { backupBeforeWrite } from '@/lib/backup';
 import { remapFsrsKeys } from '@/lib/fsrsStore';
 import { isMarkdownFilename, isSafePathSegment } from '@/lib/safePath';
+import { isV2Markdown } from '@/lib/documentFormat';
 
 function hasValidDocumentPath(subdir: string, filename: string): boolean {
   return isSafePathSegment(subdir) && isMarkdownFilename(filename);
@@ -50,6 +51,13 @@ export async function PUT(
     const { content } = await req.json();
     if (!content) {
       return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
+    }
+    const currentContent = await readProjectDoc(subdir, filename);
+    if (currentContent && isV2Markdown(currentContent) && !isV2Markdown(content)) {
+      return NextResponse.json(
+        { success: false, error: '文档已迁移到 v2，请刷新页面后再编辑' },
+        { status: 409 },
+      );
     }
     const base = await resolveSubdirBase(subdir);
     await backupBeforeWrite(path.join(path.relative(PROJECT_ROOT, base), subdir), filename, content);

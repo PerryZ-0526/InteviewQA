@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import { PROJECT_ROOT, renumberCategoryAfterDelete } from '@/lib/fileUtils';
+import { getQuestionNavigation, PROJECT_ROOT, renumberCategoryAfterDelete } from '@/lib/fileUtils';
 import { logDelete, logUpdate } from '@/lib/logger';
 import { updateLinkMeta } from '@/lib/wikiLinks';
 import { backupBeforeWrite } from '@/lib/backup';
 import { remapFsrsKeys } from '@/lib/fsrsStore';
 import { isMarkdownFilename, isSafePathSegment, resolveInside } from '@/lib/safePath';
+import {
+  categoryDocumentKind,
+  isV2Markdown,
+  strictCategoryDocumentKind,
+} from '@/lib/documentFormat';
 
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
 
@@ -25,8 +30,16 @@ export async function GET(
   try {
     const { slug, filename } = await params;
     const filePath = questionPath(slug, filename);
-    const content = await fs.readFile(filePath, 'utf-8');
-    return NextResponse.json({ success: true, data: content });
+    const [content, navigation] = await Promise.all([
+      fs.readFile(filePath, 'utf-8'),
+      getQuestionNavigation(slug, filename),
+    ]);
+    return NextResponse.json({
+      success: true,
+      data: content,
+      kind: categoryDocumentKind(content),
+      navigation,
+    });
   } catch (e: any) {
     return NextResponse.json(
       { success: false, error: e.message },
@@ -43,18 +56,37 @@ export async function PUT(
   try {
     const { slug, filename } = await params;
     const { content } = await req.json();
-    if (!content) {
+    if (typeof content !== 'string' || !content) {
       return NextResponse.json(
         { success: false, error: 'Content is required' },
         { status: 400 }
       );
     }
     const filePath = questionPath(slug, filename);
-    await backupBeforeWrite(path.join('categories', slug), filename, content);
+    const currentContent = await fs.readFile(filePath, 'utf-8');
+    const currentKind = strictCategoryDocumentKind(currentContent);
+    const nextKind = strictCategoryDocumentKind(content);
+    if (isV2Markdown(currentContent) && !isV2Markdown(content)) {
+      return NextResponse.json(
+        { success: false, error: '文档已迁移到 v2，请刷新页面后再编辑' },
+        { status: 409 },
+      );
+    }
+    if (currentKind && !nextKind) {
+      return NextResponse.json(
+        { success: false, error: '分类文档必须保持合法的 kind 与 body_schema，请刷新页面后再编辑' },
+        { status: 409 },
+      );
+    }
+    const converted = currentKind !== null && nextKind !== null && currentKind !== nextKind;
+    await backupBeforeWrite(path.join('categories', slug), filename, content, { force: converted });
     await fs.writeFile(filePath, content, 'utf-8');
+    if (converted && nextKind === 'document') {
+      await remapFsrsKeys([{ from: `${slug}/${filename}`, to: null }]);
+    }
     logUpdate(slug, filename);
     updateLinkMeta({ kind: 'category', category: slug, filename }, content);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, kind: nextKind || categoryDocumentKind(content), converted });
   } catch (e: any) {
     return NextResponse.json(
       { success: false, error: e.message },

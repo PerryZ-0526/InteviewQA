@@ -3,6 +3,7 @@ import path from 'path';
 import { PROJECT_ROOT } from './fileUtils';
 import { stripMdText } from './stripText';
 import { loadExternalDocs, externalDocId } from './externalDocs';
+import { documentTitle, parseMarkdownDocument } from './documentFormat';
 
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
 const PROJECT_DIR = path.join(PROJECT_ROOT, 'project');
@@ -24,7 +25,7 @@ interface IndexedDocument {
   contentLower: string;
   collapsed: string;
   collapsedLower: string;
-  h1: string;
+  title: string;
 }
 
 const documentIndex = new Map<string, IndexedDocument>();
@@ -55,14 +56,14 @@ async function indexDocument(filePath: string): Promise<IndexedDocument | null> 
       return null;
     }
     indexedReads += 1;
-    const collapsed = content.replace(/\s+/g, ' ').trim();
+    const collapsed = parseMarkdownDocument(content).body.replace(/\s+/g, ' ').trim();
     const indexed: IndexedDocument = {
       mtimeMs: stat.mtimeMs,
       size: stat.size,
       contentLower: content.toLowerCase(),
       collapsed,
       collapsedLower: collapsed.toLowerCase(),
-      h1: stripMdText(content.match(/^#\s+(.+)/m)?.[1] || ''),
+      title: stripMdText(documentTitle(content)),
     };
     documentIndex.set(filePath, indexed);
     return indexed;
@@ -117,7 +118,7 @@ async function scanDir(
     if (!filename.endsWith('.md') || filename === '00-index.md') return null;
     const indexed = await indexDocument(path.join(dir, filename));
     if (!indexed) return null;
-    const title = indexed.h1 || filename;
+    const title = indexed.title || filename;
     const match = matchIndexedDocument(indexed, query, queryLower, title, filename);
     return match ? { kind, category: slug, filename, title, ...match } : null;
   }));
@@ -130,7 +131,7 @@ async function scanExternal(query: string, queryLower: string, group?: string): 
     if (group !== undefined && (entry.group?.trim() || '') !== group) return null;
     const indexed = await indexDocument(entry.path);
     if (!indexed) return null;
-    const title = entry.customTitle || indexed.h1 || path.basename(entry.path);
+    const title = entry.customTitle || indexed.title || path.basename(entry.path);
     const match = matchIndexedDocument(indexed, query, queryLower, title);
     return match
       ? { kind: 'external', category: group ?? '', extId: externalDocId(entry.path), title, ...match }

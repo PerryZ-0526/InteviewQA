@@ -1,7 +1,19 @@
-import { DocumentLink, Question } from './types';
+import type { DocumentLink, Question } from './types';
 import { marked } from 'marked';
-
-const PROJECT_ROOT = process.cwd() + '/..';
+import {
+  metadataString,
+  metadataStringList,
+  type ParsedMarkdownDocument,
+  parseMarkdownDocument,
+  serializeMarkdownDocument,
+  serializeV2Document,
+} from './documentFormat';
+import {
+  parseSectionedBody,
+  QUESTION_BODY_SCHEMA,
+  sectionMarkersToHtmlPlaceholders,
+  serializeQuestionBody,
+} from './sectionMarkers';
 
 /**
  * Markdown → HTML，给 TipTap 编辑器加载内容用。
@@ -18,7 +30,7 @@ function replaceOutsideCodeFences(md: string, regexp: RegExp, replace: (match: s
 }
 
 export function mdToHtml(md: string): string {
-  let preprocessed = md
+  let preprocessed = sectionMarkersToHtmlPlaceholders(md)
     .replace(/<\/(table|pre)>[ \t]*(?:\r?\n[ \t]*)?(?=#{1,6}[ \t]+)/gi, '</$1>\n\n')
     .replace(/\[\[([^\]]+)\]\]/g, (_m, wiki: string) => {
       const safe = wiki.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -36,13 +48,60 @@ export function mdToHtml(md: string): string {
 /**
  * 解析题目 Markdown 文件为结构化 Question 对象
  */
-export function parseQuestion(markdown: string, filename: string): Question {
-  const lines = markdown.split('\n');
+function parseMarkerQuestion(document: ParsedMarkdownDocument, filename: string): Question {
+  const parsedBody = parseSectionedBody(document.body);
+  const sections = new Map(
+    parsedBody.sections
+      .filter((section) => section.descriptor.type !== 'custom')
+      .map((section) => [section.descriptor.type, section.content]),
+  );
+  const createdAt = metadataString(document.attributes, 'created') || formatDateTime(new Date());
+  const updatedAt = metadataString(document.attributes, 'updated') || createdAt;
+  return {
+    title: metadataString(document.attributes, 'title'),
+    preamble: parsedBody.preamble,
+    question: sections.get('question') || '',
+    tags: metadataStringList(document.attributes, 'tags'),
+    answer: sections.get('answer') || '',
+    analysis: sections.get('analysis') || '',
+    filename,
+    prevLink: null,
+    nextLink: null,
+    createdAt,
+    updatedAt,
+    notes: sections.get('notes') || '',
+    customSections: parsedBody.sections
+      .filter((section) => section.descriptor.type === 'custom')
+      .map((section) => ({
+        id: section.descriptor.id,
+        title: section.descriptor.title || '',
+        content: section.content,
+      })),
+    bodySchema: QUESTION_BODY_SCHEMA,
+    sourceFormat: document.sourceFormat,
+    frontmatter: document.attributes,
+  };
+}
 
-  let title = '';
+export function parseQuestion(markdown: string, filename: string): Question {
+  const document = parseMarkdownDocument(markdown);
+  if (
+    document.sourceFormat === 'frontmatter-v2'
+    && metadataString(document.attributes, 'body_schema') === QUESTION_BODY_SCHEMA
+  ) {
+    return parseMarkerQuestion(document, filename);
+  }
+  const lines = document.body.split('\n');
+  const titleLineIndex = lines.findIndex((line) => line.trim().length > 0);
+
+  let title = document.sourceFormat === 'frontmatter-v2'
+    ? metadataString(document.attributes, 'title')
+    : '';
   let preamble = '';
   let question = '';
-  const tags: string[] = [];
+  const tags: string[] = document.sourceFormat === 'frontmatter-v2'
+    ? metadataStringList(document.attributes, 'tags')
+    : [];
   let answer = '';
   let analysis = '';
   let prevLink: DocumentLink | null = null;
@@ -51,16 +110,17 @@ export function parseQuestion(markdown: string, filename: string): Question {
   const KNOWN_SECTIONS = ['题目', '标签', '题目导航', '面试直接答', '详细解析', '我的作答'];
   let currentSection = '';
   let inCodeBlock = false;
-  let createdAt = '';
-  let updatedAt = '';
+  let createdAt = document.sourceFormat === 'frontmatter-v2'
+    ? metadataString(document.attributes, 'created')
+    : '';
+  let updatedAt = document.sourceFormat === 'frontmatter-v2'
+    ? metadataString(document.attributes, 'updated')
+    : '';
   let notes = '';
   let inNotes = false;
-  let hasSeenTitle = false;
-  const customSections: { title: string; content: string }[] = [];
-  // null = 不在自定义章节内；'' = 未命名的自定义章节（真值判断无法区分，必须用 null 判断）
-  let currentCustom: string | null = null;
+  let hasSeenTitle = document.sourceFormat === 'frontmatter-v2';
 
-  for (const line of lines) {
+  for (const [lineIndex, line] of lines.entries()) {
     // Track code fences: ``` or ```lang opens/closes
     if (/^\s*```/.test(line)) {
       inCodeBlock = !inCodeBlock;
@@ -73,21 +133,19 @@ export function parseQuestion(markdown: string, filename: string): Question {
         analysis += line + '\n';
       } else if (currentSection === '我的作答') {
         notes += line + '\n';
-      } else if (hasSeenTitle && currentCustom === null) {
+      } else if (hasSeenTitle) {
         preamble += line + '\n';
-      }
-      // Also accumulate in custom sections（未命名章节标题为 ''，须判 null 而非真值）
-      if (currentCustom !== null && customSections.length > 0) {
-        const last = customSections[customSections.length - 1];
-        if (last.title === currentCustom) {
-          last.content += line + '\n';
-        }
       }
       continue;
     }
 
-    // 一级标题
-    if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+    // 仅文档开头的 H1 是独立标题；正文中的 H1 必须归入当前内容，不能被吞掉
+    if (
+      document.sourceFormat === 'legacy'
+      && !inCodeBlock
+      && lineIndex === titleLineIndex
+      && line.startsWith('# ')
+    ) {
       title = line.replace('# ', '').trim();
       hasSeenTitle = true;
       continue;
@@ -96,17 +154,10 @@ export function parseQuestion(markdown: string, filename: string): Question {
     // 二级标题 — only outside code blocks
     if (!inCodeBlock && line.startsWith('## ')) {
       const name = line.replace('## ', '').trim();
-      if (!KNOWN_SECTIONS.includes(name)) {
-        // Custom section: push immediately so content can accumulate
-        customSections.push({ title: name, content: '' });
-        currentCustom = name;
-        currentSection = '';
+      if (KNOWN_SECTIONS.includes(name)) {
+        currentSection = name;
         continue;
       }
-      // Known section: stop accumulating custom content
-      currentCustom = null;
-      currentSection = name;
-      continue;
     }
 
     switch (currentSection) {
@@ -149,26 +200,10 @@ export function parseQuestion(markdown: string, filename: string): Question {
 
     if (
       !currentSection
-      && currentCustom === null
       && hasSeenTitle
       && !/<!--\s*(?:created|updated):/.test(line)
     ) {
       if (line.trim() || preamble) preamble += line + '\n';
-    }
-
-    // Accumulate custom section content (skip time metadata)
-    // 未命名章节标题为 ''，须判 null 而非真值；纯元数据注释行整行跳过（同旧行为），
-    // 历史格式中粘连在正文末行上的注释则剥离注释、保留正文部分
-    if (currentCustom !== null && customSections.length > 0) {
-      const last = customSections[customSections.length - 1];
-      if (last.title === currentCustom) {
-        if (/<!--\s*(?:created|updated):/.test(line)) {
-          const cleaned = line.replace(/<!--\s*(?:created|updated):[^>]*-->/g, '').replace(/[ \t]+$/, '');
-          if (cleaned.trim()) last.content += cleaned + '\n';
-        } else {
-          last.content += line + '\n';
-        }
-      }
     }
 
     // Parse time metadata comments
@@ -205,7 +240,10 @@ export function parseQuestion(markdown: string, filename: string): Question {
     createdAt,
     updatedAt,
     notes: trimOne(notes),
-    customSections: customSections.map(s => ({ ...s, content: trimOne(s.content) })),
+    customSections: [],
+    bodySchema: metadataString(document.attributes, 'body_schema'),
+    sourceFormat: document.sourceFormat,
+    frontmatter: document.attributes,
   };
 }
 
@@ -219,7 +257,10 @@ export function formatDateTime(date: Date): string {
  */
 export function generateMarkdown(
   q: Question,
-  options: { omitEmptyQuestion?: boolean } = {},
+  options: {
+    omitEmptyQuestion?: boolean;
+    targetFormat?: 'legacy' | 'frontmatter-v2';
+  } = {},
 ): string {
   const tagLinks = q.tags
     .map((t) => `[${t}](../../tags/${t}.md)`)
@@ -234,7 +275,7 @@ export function generateMarkdown(
 
   const now = formatDateTime(new Date());
   const created = (q.createdAt && q.createdAt.trim()) || now;
-  const updated = now;
+  const updated = (q.updatedAt && q.updatedAt.trim()) || now;
   const rtrim1 = (s: string) => s.replace(/\r?\n$/, '');
 
   const preambleBlock = q.preamble?.trim() ? `${rtrim1(q.preamble)}\n\n` : '';
@@ -250,7 +291,30 @@ export function generateMarkdown(
     ? (q.customSections || []).map(s => `## ${s.title}\n\n${rtrim1(s.content)}`).join('\n\n') + '\n\n'
     : '';
 
-  return `# ${q.title}
+  const targetFormat = options.targetFormat || q.sourceFormat || 'legacy';
+  if (targetFormat === 'frontmatter-v2') {
+    return serializeV2Document(
+      {
+        ...q.frontmatter,
+        body_schema: QUESTION_BODY_SCHEMA,
+        title: q.title,
+        tags: q.tags,
+        created,
+        updated,
+      },
+      serializeQuestionBody({
+        preamble: q.preamble,
+        question: q.question,
+        answer: q.answer,
+        analysis: q.analysis,
+        notes: q.notes,
+        customSections: q.customSections,
+      }),
+      'question',
+    );
+  }
+
+  const legacyBody = `# ${q.title}
 
 ${preambleBlock}${questionBlock}## 标签
 
@@ -263,4 +327,7 @@ ${prevPart} | ${nextPart}
 ${answerBlock}${analysisBlock}${notesBlock}${customsBlock}<!-- created: ${created} -->
 <!-- updated: ${updated} -->
 `;
+  return Object.keys(q.frontmatter || {}).length > 0
+    ? serializeMarkdownDocument(q.frontmatter, legacyBody)
+    : legacyBody;
 }

@@ -4,6 +4,14 @@ import { backupBeforeWrite } from './backup';
 import { PROJECT_ROOT } from './paths';
 import { stripMdText } from './stripText';
 import { assertSafePathSegment, isMarkdownFilename } from './safePath';
+import {
+  categoryDocumentKind,
+  documentTitle,
+  parseMarkdownDocument,
+  serializeV2Document,
+  type DocumentKind,
+} from './documentFormat';
+import type { DocumentLink } from './types';
 
 export { PROJECT_ROOT };
 
@@ -32,7 +40,7 @@ export async function resolveSubdirBase(subdir: string): Promise<string> {
 
 /** 统计 md 文档纯字数（去除样式符号、时间标签、空白后的字符数） */
 function countWords(md: string): number {
-  const cleaned = md
+  const cleaned = parseMarkdownDocument(md).body
     .replace(/<!--[\s\S]*?-->/g, '')                    // HTML 注释（含时间标签）
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')               // 图片
     .replace(/\[\[([^\]]+)\]\]/g, '$1')                 // wiki 链接 → 文本
@@ -74,19 +82,21 @@ export async function listCategories() {
     const questions = await Promise.all(questionFiles.map(async (f) => {
       let title = f.replace(/^\d{3}-/, '').replace(/\.md$/, '');
       let wordCount = 0;
+      let kind: DocumentKind = 'question';
       try {
         const content = await fs.readFile(path.join(categoryPath, f), 'utf-8');
-        const h1 = content.match(/^#\s+(.+)/m);
-        if (h1) title = stripMdText(h1[1]);
+        title = stripMdText(documentTitle(content, title));
         wordCount = countWords(content);
+        kind = categoryDocumentKind(content);
       } catch {}
-      return { filename: f, title, wordCount };
+      return { filename: f, title, wordCount, kind };
     }));
 
     return {
       slug: entry.name,
       name: displayName,
-      questionCount: questionFiles.length,
+      questionCount: questions.filter((document) => document.kind === 'question').length,
+      documentCount: questions.length,
       questions,
     };
   }));
@@ -289,6 +299,43 @@ export async function fixNavigationChain(category: string): Promise<void> {
   await fixNavigationChainInDir(path.join(CATEGORIES_DIR, category), path.join('categories', category));
 }
 
+/** v2 文档不落盘导航；读取时按 00-index.md 顺序派生，索引缺项时回退到文件名顺序。 */
+export async function getQuestionNavigation(
+  category: string,
+  filename: string,
+): Promise<{ prevLink: DocumentLink | null; nextLink: DocumentLink | null }> {
+  assertDocumentPath(category, filename);
+  const dirPath = path.join(CATEGORIES_DIR, category);
+  const diskFiles = (await fs.readdir(dirPath))
+    .filter((file) => file.match(/^\d{3}-.+\.md$/) && file !== '00-index.md')
+    .sort();
+  const diskSet = new Set(diskFiles);
+  const indexedFiles: string[] = [];
+  try {
+    const index = await fs.readFile(path.join(dirPath, '00-index.md'), 'utf-8');
+    for (const match of index.matchAll(/\[[^\]]+\]\(([^)#]+\.md)(?:#[^)]*)?\)/g)) {
+      if (diskSet.has(match[1]) && !indexedFiles.includes(match[1])) indexedFiles.push(match[1]);
+    }
+  } catch {}
+  const files = [...indexedFiles, ...diskFiles.filter((file) => !indexedFiles.includes(file))];
+  const currentIndex = files.indexOf(filename);
+  if (currentIndex < 0) return { prevLink: null, nextLink: null };
+
+  const linkAt = async (index: number): Promise<DocumentLink | null> => {
+    const target = files[index];
+    if (!target) return null;
+    const fallback = target.replace(/^\d{3}-/, '').replace(/\.md$/, '');
+    const content = await fs.readFile(path.join(dirPath, target), 'utf-8').catch(() => '');
+    return { title: stripMdText(documentTitle(content, fallback)), href: target };
+  };
+
+  const [prevLink, nextLink] = await Promise.all([
+    linkAt(currentIndex - 1),
+    linkAt(currentIndex + 1),
+  ]);
+  return { prevLink, nextLink };
+}
+
 /** 按当前磁盘文件顺序重建指定目录（categories/project/groups）下所有文档的题目导航链接 */
 async function fixNavigationChainInDir(dirPath: string, relDir: string): Promise<void> {
   const files = (await fs.readdir(dirPath))
@@ -346,8 +393,7 @@ export async function rebuildCategoryIndex(category: string): Promise<void> {
     let title = f.replace(/^\d{3}-/, '').replace(/\.md$/, '');
     try {
       const content = await fs.readFile(path.join(catDir, f), 'utf-8');
-      const h1 = content.match(/^#\s+(.+)/m);
-      if (h1) title = stripMdText(h1[1]);
+      title = stripMdText(documentTitle(content, title));
     } catch {}
     const brief = oldBriefs.get(f) || title.slice(0, 30);
     lines.push(`- [${title}](${f}) - ${brief}`);
@@ -388,8 +434,7 @@ async function rebuildSubdirIndex(base: string, subdir: string): Promise<void> {
     let title = f.replace(/^\d{3}-/, '').replace(/\.md$/, '');
     try {
       const content = await fs.readFile(path.join(dirPath, f), 'utf-8');
-      const h1 = content.match(/^#\s+(.+)/m);
-      if (h1) title = stripMdText(h1[1]);
+      title = stripMdText(documentTitle(content, title));
     } catch {}
     const brief = oldBriefs.get(f) || title.slice(0, 30);
     lines.push(`- [${title}](${f}) - ${brief}`);
@@ -553,8 +598,7 @@ export async function listProjectDocs() {
             let wordCount = 0;
             try {
               const docContent = await fs.readFile(path.join(subdirPath, match[2]), 'utf-8');
-              const h1 = docContent.match(/^#\s+(.+)/m);
-              if (h1) title = stripMdText(h1[1]);
+              title = stripMdText(documentTitle(docContent, title));
               wordCount = countWords(docContent);
             } catch {}
             docs.push({ title, filename: match[2], brief: match[3], wordCount });
@@ -574,8 +618,7 @@ export async function listProjectDocs() {
           let wordCount = 0;
           try {
             const docContent = await fs.readFile(path.join(subdirPath, f), 'utf-8');
-            const h1 = docContent.match(/^#\s+(.+)/m);
-            if (h1) title = stripMdText(h1[1]);
+            title = stripMdText(documentTitle(docContent, title));
             wordCount = countWords(docContent);
           } catch {}
           docs.push({ title, filename: f, brief: '', wordCount });
@@ -625,8 +668,8 @@ export async function writeProjectDoc(subdir: string, filename: string, content:
 
   // 同步 00-index.md：新增文档或标题变化时保证前端列表可见（仅序号命名的文档）
   if (/^\d{3}-.+\.md$/.test(filename)) {
-    const h1 = content.match(/^#\s+(.+)/m);
-    if (h1) await syncProjectIndex(base, subdir, filename, stripMdText(h1[1]));
+    const title = stripMdText(documentTitle(content));
+    if (title) await syncProjectIndex(base, subdir, filename, title);
   }
 }
 
@@ -710,7 +753,18 @@ export async function createProjectDocFile(subdir: string, filename: string, tit
   assertDocumentPath(subdir, filename);
   const base = await resolveSubdirBase(subdir);
   const filePath = path.join(base, subdir, filename);
-  const content = `# ${title}\n\n`;
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const content = serializeV2Document(
+    {
+      title,
+      created: timestamp,
+      updated: timestamp,
+    },
+    '',
+    'document',
+  );
   await fs.writeFile(filePath, content, 'utf-8');
 
   // 更新 00-index.md
@@ -1151,5 +1205,3 @@ export async function moveProjectDoc(
     throw error;
   }
 }
-
-

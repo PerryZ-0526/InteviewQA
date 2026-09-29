@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { documentTitle, parseCategoryDocument, parseMarkdownDocument } from '../mobile/src/content.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const categoriesRoot = path.join(root, 'categories');
@@ -29,14 +30,11 @@ function stripFormatting(value) {
 }
 
 function titleOf(content, filename) {
-  return stripFormatting(content.match(/^#\s+(.+)/m)?.[1] || filename.replace(/^\d{3}-/, '').replace(/\.md$/, ''));
+  return stripFormatting(documentTitle(content, filename.replace(/^\d{3}-/, '').replace(/\.md$/, '')));
 }
 
-function parseTags(content) {
-  const section = content.match(/(?:^|\n)## 标签\s*\n([\s\S]*?)(?=\n## |\n<!-- |$)/)?.[1] || '';
-  return [...section.matchAll(/\[([^\]]+)\]\([^)]+\)/g)]
-    .map((match) => match[1])
-    .filter((tag) => tag !== 'TODO');
+function parseTags(content, filename) {
+  return parseCategoryDocument(content, filename).tags.filter((tag) => tag !== 'TODO');
 }
 
 const tagEntries = new Map();
@@ -58,18 +56,21 @@ for (const category of directories(categoriesRoot)) {
     const filePath = path.join(dir, filename);
     const content = fs.readFileSync(filePath, 'utf8');
     const title = titleOf(content, filename);
-    const previous = index > 0 ? files[index - 1] : null;
-    const next = index < files.length - 1 ? files[index + 1] : null;
-    const label = (name) => name.replace(/^\d{3}-/, '').replace(/\.md$/, '');
-    const nav = `${previous ? `← [${label(previous)}](${previous})` : '← 无'} | ${next ? `[${label(next)}](${next}) →` : '无 →'}`;
-    const updated = content.replace(
-      /## 题目导航\r?\n\r?\n[\s\S]*?(?=\r?\n## |\r?\n<!-- )/,
-      `## 题目导航\n\n${nav}\n`,
-    );
+    let updated = content;
+    if (!parseMarkdownDocument(content).isV2) {
+      const previous = index > 0 ? files[index - 1] : null;
+      const next = index < files.length - 1 ? files[index + 1] : null;
+      const label = (name) => name.replace(/^\d{3}-/, '').replace(/\.md$/, '');
+      const nav = `${previous ? `← [${label(previous)}](${previous})` : '← 无'} | ${next ? `[${label(next)}](${next}) →` : '无 →'}`;
+      updated = content.replace(
+        /## 题目导航\r?\n\r?\n[\s\S]*?(?=\r?\n## |\r?\n<!-- )/,
+        `## 题目导航\n\n${nav}\n`,
+      );
+    }
     if (updated !== content) writeAtomic(filePath, updated);
 
     indexLines.push(`- [${title}](${filename}) - ${briefs.get(filename) || title.slice(0, 30)}`);
-    for (const tag of parseTags(updated)) {
+    for (const tag of parseTags(updated, filename)) {
       if (/[\/\\\0]/.test(tag)) throw new Error(`标签名不合法: ${tag}`);
       tagEntries.set(tag, [...(tagEntries.get(tag) || []), { title, category, filename }]);
     }

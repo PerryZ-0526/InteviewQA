@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { parseIndex, parseQuestion } from '../src/content.js';
+import { documentTitle, parseCategoryDocument, parseIndex } from '../src/content.js';
 
 function readUtf8(file) {
   return fs.readFileSync(file, 'utf8');
@@ -22,7 +22,7 @@ function listMarkdownDocuments(root) {
 }
 
 function titleFromMarkdown(markdown, fallback) {
-  return markdown.match(/^#\s+(.+)/m)?.[1]?.trim() || fallback;
+  return documentTitle(markdown, fallback);
 }
 
 export function buildContentManifest(projectRoot) {
@@ -36,16 +36,17 @@ export function buildContentManifest(projectRoot) {
     const index = fs.existsSync(indexPath) ? readUtf8(indexPath) : '';
     const name = index.match(/^#\s+(.+?)\s*[-–—]/m)?.[1]?.trim() || slug;
     const questions = listMarkdownDocuments(dir).map((filename) => {
-      const question = parseQuestion(readUtf8(path.join(dir, filename)), filename);
-      for (const tag of question.tags) {
+      const document = parseCategoryDocument(readUtf8(path.join(dir, filename)), filename);
+      for (const tag of document.tags) {
         if (!tagMap.has(tag)) tagMap.set(tag, []);
-        tagMap.get(tag).push({ filename, title: question.title, category: slug });
+        tagMap.get(tag).push({ filename, title: document.title, category: slug });
       }
       return {
         filename,
-        title: question.title,
-        question: question.question,
-        tags: question.tags,
+        title: document.title,
+        kind: document.kind,
+        question: document.question,
+        tags: document.tags,
       };
     });
     categories.push({ slug, name, questions });

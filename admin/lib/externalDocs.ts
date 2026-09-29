@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { PROJECT_ROOT } from './fileUtils';
 import { stripMdText } from './stripText';
+import { documentTitle, parseMarkdownDocument } from './documentFormat';
 
 const EXTERNAL_DOCS_PATH = path.join(PROJECT_ROOT, 'admin', 'external-docs.json');
 
@@ -287,20 +288,8 @@ export async function addExternalPaths(
   return { added, skipped, failed };
 }
 
-/** 读取单文件 H1 标题，fallback 文件名 */
-async function readTitle(filePath: string): Promise<string> {
-  const fallback = path.basename(filePath).replace(/\.md$/i, '');
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    const h1 = content.match(/^#\s+(.+)/m);
-    return h1 ? stripMdText(h1[1]) || fallback : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function countWordsExternal(md: string): number {
-  const cleaned = md
+  const cleaned = parseMarkdownDocument(md).body
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[\[([^\]]+)\]\]/g, '$1')
@@ -335,8 +324,7 @@ export async function listExternalDocs(): Promise<ExternalDocInfo[]> {
       const stat = await fs.stat(norm);
       mtimeMs = stat.mtimeMs;
       const content = await fs.readFile(norm, 'utf-8');
-      const h1 = content.match(/^#\s+(.+)/m);
-      if (h1) title = stripMdText(h1[1]) || title;
+      title = stripMdText(documentTitle(content, title));
       wordCount = countWordsExternal(content);
     } catch {
       isMissing = true;

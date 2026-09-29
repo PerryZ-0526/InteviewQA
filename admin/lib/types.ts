@@ -1,8 +1,11 @@
+import type { DocumentKind, DocumentSourceFormat, FrontmatterData } from './documentFormat';
+
 // 分类信息
 export interface CategoryInfo {
   slug: string;        // 目录名，如 "agent"
   name: string;        // 显示名，如 "Agent"
   questionCount: number;
+  documentCount: number;
   questions: QuestionBrief[];
 }
 
@@ -12,12 +15,13 @@ export interface QuestionBrief {
   title: string;       // 题目标题
   brief: string;       // 简短说明
   wordCount?: number;  // 纯字数
+  kind: DocumentKind;
 }
 
 // 完整题目（从 MD 解析）
 export interface Question {
   title: string;
-  preamble: string;       // H1 与首个 H2 之间的前置正文
+  preamble: string;       // 正文起始处与首个结构化 H2 之间的前置内容
   question: string;
   tags: string[];       // 标签名列表
   answer: string;       // 面试直接答
@@ -28,7 +32,10 @@ export interface Question {
   createdAt: string;
   updatedAt: string;
   notes: string;
-  customSections: { title: string; content: string }[];
+  customSections: { id?: string; title: string; content: string }[];
+  bodySchema: string;
+  sourceFormat: DocumentSourceFormat;
+  frontmatter: FrontmatterData;
 }
 
 export interface DocumentLink {

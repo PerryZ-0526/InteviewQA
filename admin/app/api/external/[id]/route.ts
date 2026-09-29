@@ -3,6 +3,7 @@ import path from 'path';
 import { readExternalDocById, writeExternalDocById } from '@/lib/externalDocs';
 import { appendLog } from '@/lib/logger';
 import { backupBeforeWriteAt } from '@/lib/backup';
+import { isV2Markdown } from '@/lib/documentFormat';
 
 export async function GET(
   _req: NextRequest,
@@ -36,6 +37,12 @@ export async function PUT(
     // 外部文档可能位于仓库外，按路径 hash 归档到 backups/external/<id>/
     const current = await readExternalDocById(id);
     if (current && !current.missing) {
+      if (current.content && isV2Markdown(current.content) && !isV2Markdown(content)) {
+        return NextResponse.json(
+          { success: false, error: '文档已迁移到 v2，请刷新页面后再编辑' },
+          { status: 409 },
+        );
+      }
       await backupBeforeWriteAt(current.path, path.join('external', id), path.basename(current.path), content);
     }
     const result = await writeExternalDocById(id, content);

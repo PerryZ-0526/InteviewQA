@@ -8,8 +8,14 @@ import {
   getMaxSequence,
   rebuildCategoryIndex,
 } from './fileUtils';
-import { formatDateTime } from './markdown';
+import {
+  FREEFORM_BODY_SCHEMA,
+  serializeV2Document,
+  type DocumentKind,
+} from './documentFormat';
+import { formatDateTime, generateMarkdown, parseQuestion } from './markdown';
 import { assertSafePathSegment } from './safePath';
+import { QUESTION_BODY_SCHEMA, serializeQuestionBody } from './sectionMarkers';
 import { stripMdText } from './stripText';
 
 const CATEGORIES_DIR = path.join(PROJECT_ROOT, 'categories');
@@ -40,32 +46,29 @@ function slugifyTitle(title: string): string {
   return slug;
 }
 
-function replaceOrInsertSection(content: string, heading: string, body: string, beforeHeading?: string): string {
-  const section = new RegExp(`(^|\\n)## ${heading}\\s*\\n[\\s\\S]*?(?=\\n## |\\n<!-- |$)`);
-  if (section.test(content)) {
-    return content.replace(section, (_match, prefix) => `${prefix}## ${heading}\n\n${body}\n`);
-  }
-  const block = `## ${heading}\n\n${body}\n\n`;
-  if (beforeHeading && content.includes(`## ${beforeHeading}`)) {
-    return content.replace(`## ${beforeHeading}`, `${block}## ${beforeHeading}`);
-  }
-  return `${content.trimEnd()}\n\n${block}`;
-}
-
 function normalizeGeneratedContent(content: string, tags: string[]): { content: string; title: string } {
-  let normalized = content.trim().replace(/^```(?:markdown|md)?\s*\n/i, '').replace(/\n```\s*$/i, '');
-  const title = stripMdText(normalized.match(/^#\s+(.+)/m)?.[1] || '');
-  if (!title || !normalized.includes('## 题目')) {
+  const normalized = content.trim().replace(/^```(?:markdown|md)?\s*\n/i, '').replace(/\n```\s*$/i, '');
+  const parsed = parseQuestion(normalized, '');
+  const title = stripMdText(parsed.title);
+  if (!title || !/^## 题目\s*$/m.test(normalized)) {
     throw new Error('AI 输出缺少 H1 标题或“题目”章节');
   }
 
-  const tagLinks = tags.map((tag) => `[${tag}](../../tags/${tag}.md)`).join(' | ') || '暂无';
-  normalized = replaceOrInsertSection(normalized, '标签', tagLinks, '题目导航');
-  normalized = replaceOrInsertSection(normalized, '题目导航', '← 无 | 无 →', '面试直接答');
-  normalized = normalized.replace(/\n?<!--\s*(?:created|updated):[\s\S]*?-->\s*/g, '\n').trimEnd();
   const now = formatDateTime(new Date());
-  normalized += `\n\n<!-- created: ${now} -->\n<!-- updated: ${now} -->\n`;
-  return { content: normalized, title };
+  return {
+    content: generateMarkdown(
+      {
+        ...parsed,
+        title,
+        tags,
+        createdAt: now,
+        updatedAt: now,
+        sourceFormat: 'frontmatter-v2',
+      },
+      { targetFormat: 'frontmatter-v2' },
+    ),
+    title,
+  };
 }
 
 async function upsertTag(tag: string, category: string, filename: string, title: string): Promise<void> {
@@ -107,6 +110,32 @@ export interface GeneratedQuestion {
   content: string;
 }
 
+async function persistCategoryDocument(
+  category: string,
+  categoryDisplayName: string,
+  tags: string[],
+  normalized: { content: string; title: string },
+): Promise<{ category: string; filename: string; content: string }> {
+  const existed = await categoryExists(category);
+  if (!existed) await createCategory(category, categoryDisplayName || category);
+
+  let sequence = (await getMaxSequence(category)) + 1;
+  let filename = `${String(sequence).padStart(3, '0')}-${slugifyTitle(normalized.title)}.md`;
+  while (await fs.access(path.join(CATEGORIES_DIR, category, filename)).then(() => true).catch(() => false)) {
+    sequence += 1;
+    filename = `${String(sequence).padStart(3, '0')}-${slugifyTitle(normalized.title)}.md`;
+  }
+
+  const filePath = path.join(CATEGORIES_DIR, category, filename);
+  await writeAtomic(filePath, normalized.content);
+  await rebuildCategoryIndex(category);
+  await fixNavigationChain(category);
+  await Promise.all(tags.map((tag) => upsertTag(tag, category, filename, normalized.title)));
+  await updateReadme(category, categoryDisplayName || category, tags);
+
+  return { category, filename, content: await fs.readFile(filePath, 'utf8') };
+}
+
 export async function createGeneratedQuestion(input: GeneratedQuestion): Promise<{ category: string; filename: string; content: string }> {
   return withMutationLock(async () => {
     const category = input.category.trim();
@@ -114,24 +143,59 @@ export async function createGeneratedQuestion(input: GeneratedQuestion): Promise
     const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
     tags.forEach((tag) => assertSafePathSegment(tag, '标签名'));
 
-    const existed = await categoryExists(category);
-    if (!existed) await createCategory(category, input.categoryDisplayName?.trim() || category);
-
     const normalized = normalizeGeneratedContent(input.content, tags);
-    let sequence = (await getMaxSequence(category)) + 1;
-    let filename = `${String(sequence).padStart(3, '0')}-${slugifyTitle(normalized.title)}.md`;
-    while (await fs.access(path.join(CATEGORIES_DIR, category, filename)).then(() => true).catch(() => false)) {
-      sequence += 1;
-      filename = `${String(sequence).padStart(3, '0')}-${slugifyTitle(normalized.title)}.md`;
-    }
+    return persistCategoryDocument(
+      category,
+      input.categoryDisplayName?.trim() || category,
+      tags,
+      normalized,
+    );
+  });
+}
 
-    const filePath = path.join(CATEGORIES_DIR, category, filename);
-    await writeAtomic(filePath, normalized.content);
-    await rebuildCategoryIndex(category);
-    await fixNavigationChain(category);
-    await Promise.all(tags.map((tag) => upsertTag(tag, category, filename, normalized.title)));
-    await updateReadme(category, input.categoryDisplayName?.trim() || category, tags);
+export async function createEmptyCategoryDocument(input: {
+  category: string;
+  title: string;
+  tags: string[];
+  kind: DocumentKind;
+}): Promise<{ category: string; filename: string; content: string }> {
+  return withMutationLock(async () => {
+    const category = input.category.trim();
+    const title = stripMdText(input.title);
+    assertSafePathSegment(category, '分类名');
+    if (!title) throw new Error('标题不能为空');
+    const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))];
+    tags.forEach((tag) => assertSafePathSegment(tag, '标签名'));
 
-    return { category, filename, content: await fs.readFile(filePath, 'utf8') };
+    const now = formatDateTime(new Date());
+    const content = input.kind === 'document'
+      ? serializeV2Document(
+          {
+            body_schema: FREEFORM_BODY_SCHEMA,
+            title,
+            tags,
+            created: now,
+            updated: now,
+          },
+          '(在此填写正文)',
+          'document',
+        )
+      : serializeV2Document(
+          {
+            body_schema: QUESTION_BODY_SCHEMA,
+            title,
+            tags,
+            created: now,
+            updated: now,
+          },
+          serializeQuestionBody({
+            question: '(在此填写题目)',
+            answer: '(暂无)',
+            analysis: '(暂无)',
+          }),
+          'question',
+        );
+
+    return persistCategoryDocument(category, category, tags, { content, title });
   });
 }

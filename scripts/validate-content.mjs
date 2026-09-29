@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { parseCategoryDocument, parseMarkdownDocument } from '../mobile/src/content.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const categoriesRoot = path.join(root, 'categories');
@@ -19,11 +20,6 @@ function questionFiles(dir) {
 
 function linkLabel(filename) {
   return filename.replace(/^\d{3}-/, '').replace(/\.md$/, '');
-}
-
-function parseTags(content) {
-  const section = content.match(/(?:^|\n)## 标签\s*\n([\s\S]*?)(?=\n## |\n<!-- |$)/)?.[1] || '';
-  return [...section.matchAll(/\[([^\]]+)\]\([^)]+\)/g)].map((match) => match[1]);
 }
 
 function parseIndexFiles(content) {
@@ -59,20 +55,60 @@ for (const slug of directories(categoriesRoot)) {
   files.forEach((filename, index) => {
     const filePath = path.join(dir, filename);
     const content = fs.readFileSync(filePath, 'utf8');
-    for (const heading of ['题目', '标签', '题目导航']) {
-      if (!content.includes(`## ${heading}`)) errors.push(`${path.relative(root, filePath)} 缺少“${heading}”章节`);
-    }
-    if (!/<!--\s*created:/.test(content) || !/<!--\s*updated:/.test(content)) {
-      warnings.push(`${path.relative(root, filePath)} 缺少完整时间元数据`);
+    const document = parseMarkdownDocument(content);
+    const categoryDocument = parseCategoryDocument(content, filename);
+    if (document.isV2) {
+      if (!['question', 'document'].includes(document.attributes.kind)) {
+        errors.push(`${path.relative(root, filePath)} kind 必须是 question 或 document`);
+      }
+      if (document.attributes.kind === 'question' && document.attributes.body_schema !== 'interviewqa/sections-v1') {
+        errors.push(`${path.relative(root, filePath)} 结构化题尚未迁移到 section markers`);
+      }
+      if (document.attributes.kind === 'document' && document.attributes.body_schema !== 'interviewqa/freeform-v1') {
+        errors.push(`${path.relative(root, filePath)} 自由文档 body_schema 不是 interviewqa/freeform-v1`);
+      }
+      if (!categoryDocument.title) errors.push(`${path.relative(root, filePath)} 缺少 frontmatter.title`);
+      if (!Array.isArray(document.attributes.tags)) errors.push(`${path.relative(root, filePath)} frontmatter.tags 不是数组`);
+      if (!document.attributes.created || !document.attributes.updated) {
+        warnings.push(`${path.relative(root, filePath)} 缺少完整时间元数据`);
+      }
+      if (/^## (标签|题目导航)\s*$/m.test(document.body)) {
+        errors.push(`${path.relative(root, filePath)} v2 正文仍含元数据章节`);
+      }
+      if (/<!--\s*(?:created|updated):/.test(document.body)) {
+        errors.push(`${path.relative(root, filePath)} v2 正文仍含时间注释`);
+      }
+      if (document.attributes.kind === 'question') {
+        for (const type of ['question', 'answer', 'analysis']) {
+          const marker = `<!-- interviewqa:section ${type} -->`;
+          const count = document.body.split(marker).length - 1;
+          if (count !== 1) errors.push(`${path.relative(root, filePath)} ${type} marker 数量为 ${count}`);
+        }
+        const starts = [...document.body.matchAll(/^<!-- interviewqa:section (?:question|answer|analysis|notes|custom .+) -->$/gm)].length;
+        const ends = [...document.body.matchAll(/^<!-- interviewqa:end -->$/gm)].length;
+        if (starts !== ends) errors.push(`${path.relative(root, filePath)} section marker 未成对`);
+        if (/^## (题目|面试直接答|详细解析|我的作答)\s*$/m.test(document.body)) {
+          errors.push(`${path.relative(root, filePath)} 正文仍含旧式标准章节标题`);
+        }
+      } else if (/^<!-- interviewqa:(?:section|end)\b.*-->$/gm.test(document.body)) {
+        errors.push(`${path.relative(root, filePath)} 自由文档不应包含活动 section marker`);
+      }
+    } else {
+      for (const heading of ['题目', '标签', '题目导航']) {
+        if (!content.includes(`## ${heading}`)) errors.push(`${path.relative(root, filePath)} 缺少“${heading}”章节`);
+      }
+      if (!/<!--\s*created:/.test(content) || !/<!--\s*updated:/.test(content)) {
+        warnings.push(`${path.relative(root, filePath)} 缺少完整时间元数据`);
+      }
+
+      const prev = index > 0 ? `← [${linkLabel(files[index - 1])}](${files[index - 1]})` : '← 无';
+      const next = index < files.length - 1 ? `[${linkLabel(files[index + 1])}](${files[index + 1]}) →` : '无 →';
+      const expected = `${prev} | ${next}`;
+      const actual = content.match(/## 题目导航\s*\n\s*([^\n]+)/)?.[1]?.trim();
+      if (actual !== expected) errors.push(`${path.relative(root, filePath)} 导航链不一致`);
     }
 
-    const prev = index > 0 ? `← [${linkLabel(files[index - 1])}](${files[index - 1]})` : '← 无';
-    const next = index < files.length - 1 ? `[${linkLabel(files[index + 1])}](${files[index + 1]}) →` : '无 →';
-    const expected = `${prev} | ${next}`;
-    const actual = content.match(/## 题目导航\s*\n\s*([^\n]+)/)?.[1]?.trim();
-    if (actual !== expected) errors.push(`${path.relative(root, filePath)} 导航链不一致`);
-
-    for (const tag of parseTags(content)) {
+    for (const tag of categoryDocument.tags) {
       if (tag === 'TODO') {
         warnings.push(`${path.relative(root, filePath)} 仍使用 TODO 标签`);
         continue;
@@ -102,6 +138,33 @@ for (const filename of fs.readdirSync(path.join(root, 'tags')).filter((name) => 
     .map((match) => match[1]);
   for (const link of actual) {
     if (!expected.has(link)) errors.push(`tags/${filename} 含无效或多余条目 ${link}`);
+  }
+}
+
+for (const rootName of ['project', 'groups']) {
+  const contentRoot = path.join(root, rootName);
+  for (const subdir of directories(contentRoot)) {
+    const dir = path.join(contentRoot, subdir);
+    for (const filename of questionFiles(dir)) {
+      const filePath = path.join(dir, filename);
+      const content = fs.readFileSync(filePath, 'utf8');
+      const document = parseMarkdownDocument(content);
+      const relative = path.relative(root, filePath);
+      if (!document.isV2) {
+        errors.push(`${relative} 尚未迁移到 v2`);
+        continue;
+      }
+      if (document.attributes.kind !== 'document') errors.push(`${relative} kind 不是 document`);
+      if (typeof document.attributes.title !== 'string' || !document.attributes.title.trim()) {
+        errors.push(`${relative} 缺少 frontmatter.title`);
+      }
+      if (!document.attributes.created || !document.attributes.updated) {
+        warnings.push(`${relative} 缺少完整时间元数据`);
+      }
+      if (/<!--\s*(?:created|updated):/.test(document.body)) {
+        errors.push(`${relative} v2 正文仍含时间注释`);
+      }
+    }
   }
 }
 

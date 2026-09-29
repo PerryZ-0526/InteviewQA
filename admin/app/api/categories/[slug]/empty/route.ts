@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { appendLog } from '@/lib/logger';
-import { createGeneratedQuestion } from '@/lib/questionRepository';
+import { createEmptyCategoryDocument } from '@/lib/questionRepository';
 import { isSafePathSegment } from '@/lib/safePath';
+import type { DocumentKind } from '@/lib/documentFormat';
 
 export async function POST(
   req: NextRequest,
@@ -14,6 +15,10 @@ export async function POST(
     const tags: string[] = Array.isArray(body.tags)
       ? body.tags.filter((tag: unknown): tag is string => typeof tag === 'string').map((tag: string) => tag.trim())
       : [];
+    if (body.kind !== undefined && body.kind !== 'question' && body.kind !== 'document') {
+      return NextResponse.json({ success: false, error: '文档类型不合法' }, { status: 400 });
+    }
+    const kind: DocumentKind = body.kind === 'document' ? 'document' : 'question';
     const category = slug;
 
     if (!title) {
@@ -23,33 +28,15 @@ export async function POST(
       return NextResponse.json({ success: false, error: '分类或标签名不合法' }, { status: 400 });
     }
 
-    const content = `# ${title}
-
-## 题目
-
-(在此填写题目)
-
-## 标签
-
-## 题目导航
-
-## 面试直接答
-
-(暂无)
-
-## 详细解析
-
-(暂无)
-`;
-    const created = await createGeneratedQuestion({ category, tags, content });
+    const created = await createEmptyCategoryDocument({ category, title, tags, kind });
     appendLog({
       action: 'create_empty',
       status: 'success',
       category: created.category,
       filename: created.filename,
-      detail: title,
+      detail: `${kind}: ${title}`,
     });
-    return NextResponse.json({ success: true, ...created });
+    return NextResponse.json({ success: true, kind, ...created });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
