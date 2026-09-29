@@ -1,7 +1,7 @@
 import { register } from '../router.js';
 import { loadProjectDocument, marked } from '../store.js';
 import { setSafeHtml, setSafeOuterHtml } from '../html.js';
-import { renderMermaidDiagrams } from '../mermaid.js';
+import { enhanceCodeBlocks } from '../mermaid.js';
 
 register('project', (container, _params, navigation) => {
   const { projectDocs } = window.__appData || {};
@@ -64,7 +64,7 @@ register('project', (container, _params, navigation) => {
             <div class="card-body md">${html}</div>
           </div>
         `);
-        await renderMermaidDiagrams(container);
+        await enhanceCodeBlocks(container);
       } catch {
         if (navigation.isCurrent()) {
           const list = container.querySelector('.list');

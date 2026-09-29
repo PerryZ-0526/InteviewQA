@@ -685,21 +685,22 @@
 
 .tiptap-editor pre .hljs-deletion { color: var(--hl-del-fg); background-color: var(--hl-del-bg); }
 
-/* ---- 代码块节点视图：外层容器（背景/边框）+ 顶部语言标注栏 + 内部 pre ---- */
-.tiptap-editor .code-block-view {
-  background: var(--code-bg);
-  border: 1px solid var(--code-border);
-  border-radius: var(--radius);
+/* ---- 代码块节点视图：统一工具栏 + 可编辑代码区 ---- */
+.tiptap-editor .code-block-node-view {
   margin: 12px 0;
-  overflow: hidden;
 }
 
-.tiptap-editor .code-block-view pre.code-block {
+.tiptap-editor .code-block-node-view .code-panel {
+  margin: 0;
+}
+
+.tiptap-editor .code-panel-body pre.code-block {
+  max-height: 520px;
   margin: 0;
   border: none;
   border-radius: 0;
   background: transparent;
-  padding: 12px 18px 14px;
+  padding: 16px 18px;
 }
 
 .tiptap-editor .mermaid-node-view {
@@ -731,31 +732,39 @@
 
 .code-block-lang {
   max-width: 140px;
-  padding: 1px 6px;
-  background: transparent;
-  border: 1px solid transparent;
+  min-height: 26px;
+  padding: 1px 24px 1px 7px;
+  background: #fff;
+  border: 1px solid #ddd8e3;
   border-radius: 4px;
-  color: var(--code-fg);
-  opacity: 0.65;
+  color: #625b69;
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
-  transition: opacity 0.12s, border-color 0.12s;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .code-block-lang:hover,
 .code-block-lang:focus-visible {
-  opacity: 1;
-  border-color: var(--code-border);
+  border-color: #a99cbc;
+  box-shadow: 0 0 0 2px rgba(121, 80, 242, 0.1);
   outline: none;
+}
+
+.code-block-lang-dark {
+  background: transparent;
+  border-color: transparent;
+  color: var(--code-fg);
+  opacity: 0.72;
 }
 
 .code-block-lang-label {
   padding: 1px 6px;
-  color: var(--code-fg);
-  opacity: 0.6;
+  color: #77717f;
   font-family: var(--font-mono);
   font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .tiptap-editor code {

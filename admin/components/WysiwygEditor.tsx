@@ -32,6 +32,7 @@ import { headingMatch, scrollElementIntoView, isVisibleInLayout, scrollToAnchorP
 import { ResizableImage } from '@/lib/resizableImage';
 import { getEditorColor, toColorAttr } from '@/lib/editorColors';
 import { AutoDetectLowlightPlugin, lowlight } from '@/lib/codeBlockHighlight';
+import CodeBlock from './CodeBlock';
 import MermaidDiagram from './MermaidDiagram';
 import {
   sectionLabel,
@@ -59,9 +60,6 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
     if (language && !CODE_ANNOTATIONS.includes(language)) set.add(language);
     return Array.from(set);
   })();
-  // read 模式标签：text 是默认常态不显示（降噪）；code 与历史语言标注显示
-  const showLabel = language && language !== 'text';
-
   if (isMermaid) {
     return (
       <NodeViewWrapper className="mermaid-node-view">
@@ -73,7 +71,7 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
               {editable && (
                 <div className="code-block-head" contentEditable={false}>
                   <select
-                    className="code-block-lang"
+                    className="code-block-lang code-block-lang-dark"
                     value={language}
                     onChange={event => updateAttributes({ language: event.target.value })}
                     onMouseDown={event => event.stopPropagation()}
@@ -98,32 +96,33 @@ function CodeBlockView({ node, updateAttributes, editor }: NodeViewProps) {
   }
 
   return (
-    <NodeViewWrapper className="code-block-view">
-      {(editable || showLabel) && (
-        <div className="code-block-head" contentEditable={false}>
-          {editable ? (
-            <select
-              className="code-block-lang"
-              value={language || 'text'}
-              onChange={e => updateAttributes({ language: e.target.value })}
-              // 事件隔离：避免 ProseMirror 抢焦点/拦截按键，保证下拉能正常打开
-              onMouseDown={e => e.stopPropagation()}
-              onKeyDown={e => e.stopPropagation()}
-              title="代码块类型：text 纯文本 / code 自动识别 / mermaid 图表"
-              aria-label="代码块类型"
-            >
-              {options.map(l => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-          ) : (
-            <span className="code-block-lang-label">{language}</span>
-          )}
-        </div>
-      )}
-      <pre className="code-block">
-        <NodeViewContent<'code'> as="code" />
-      </pre>
+    <NodeViewWrapper className="code-block-node-view">
+      <CodeBlock
+        source={node.textContent}
+        language={language || 'text'}
+        languageControl={editable ? (
+          <select
+            className="code-block-lang"
+            value={language || 'text'}
+            onChange={event => updateAttributes({ language: event.target.value })}
+            onMouseDown={event => event.stopPropagation()}
+            onKeyDown={event => event.stopPropagation()}
+            title="代码块类型：text 纯文本 / code 自动识别 / mermaid 图表"
+            aria-label="代码块类型"
+          >
+            {options.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="code-block-lang-label">{language || 'text'}</span>
+        )}
+        sourceEditor={(
+          <pre className="code-block">
+            <NodeViewContent<'code'> as="code" />
+          </pre>
+        )}
+      />
     </NodeViewWrapper>
   );
 }

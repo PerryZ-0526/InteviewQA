@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Code2, Copy, Maximize2, X } from 'lucide-react';
+import { writeClipboard } from '@/lib/clipboard';
 
 type RenderState =
   | { status: 'loading' }
@@ -49,23 +50,6 @@ function errorMessage(error: unknown): string {
   if (!(error instanceof Error)) return '请检查 Mermaid 语法';
   const firstLine = error.message.split('\n').find((line) => line.trim());
   return firstLine?.trim() || '请检查 Mermaid 语法';
-}
-
-async function writeClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.append(textarea);
-    textarea.select();
-    const copied = document.execCommand('copy');
-    textarea.remove();
-    return copied;
-  }
 }
 
 interface Props {

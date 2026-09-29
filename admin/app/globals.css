@@ -853,7 +853,9 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 }
 
 .mermaid-diagram-toolbar,
-.mermaid-fullscreen-toolbar {
+.mermaid-fullscreen-toolbar,
+.code-panel-toolbar,
+.code-fullscreen-toolbar {
   display: flex;
   min-height: 38px;
   align-items: center;
@@ -864,7 +866,9 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 }
 
 .mermaid-diagram-toolbar figcaption,
-.mermaid-fullscreen-toolbar > span {
+.mermaid-fullscreen-toolbar > span,
+.code-panel-toolbar figcaption,
+.code-fullscreen-toolbar > span {
   color: #77717f;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -873,7 +877,8 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
   text-transform: uppercase;
 }
 
-.mermaid-diagram-actions {
+.mermaid-diagram-actions,
+.code-panel-actions {
   display: flex;
   gap: 2px;
   opacity: 0.48;
@@ -881,12 +886,16 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 }
 
 .mermaid-diagram:hover .mermaid-diagram-actions,
-.mermaid-diagram:focus-within .mermaid-diagram-actions {
+.mermaid-diagram:focus-within .mermaid-diagram-actions,
+.code-panel:hover .code-panel-actions,
+.code-panel:focus-within .code-panel-actions {
   opacity: 1;
 }
 
 .mermaid-diagram-actions button,
-.mermaid-fullscreen-toolbar button {
+.mermaid-fullscreen-toolbar button,
+.code-panel-actions button,
+.code-fullscreen-toolbar button {
   display: inline-flex;
   width: 28px;
   height: 28px;
@@ -902,13 +911,17 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 
 .mermaid-diagram-actions button:hover,
 .mermaid-diagram-actions button.active,
-.mermaid-fullscreen-toolbar button:hover {
+.mermaid-fullscreen-toolbar button:hover,
+.code-panel-actions button:hover,
+.code-fullscreen-toolbar button:hover {
   background: #eeeaf4;
   color: #51416f;
 }
 
 .mermaid-diagram-actions button:focus-visible,
-.mermaid-fullscreen-toolbar button:focus-visible {
+.mermaid-fullscreen-toolbar button:focus-visible,
+.code-panel-actions button:focus-visible,
+.code-fullscreen-toolbar button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
@@ -916,6 +929,46 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
 .mermaid-diagram-actions button:disabled {
   cursor: default;
   opacity: 0.35;
+}
+
+.code-panel {
+  width: 100%;
+  margin: 14px 0;
+  overflow: hidden;
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  box-shadow: 0 1px 2px rgba(31, 28, 38, 0.05);
+}
+
+.code-panel-toolbar {
+  border-bottom-color: var(--code-border);
+  background: #f7f6f8;
+}
+
+.code-panel-body {
+  overflow: hidden;
+  background: var(--code-bg);
+}
+
+.code-panel-body pre,
+.markdown-preview .code-panel-body pre {
+  max-height: 520px;
+  margin: 0;
+  padding: 16px 18px;
+  overflow: auto;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--code-fg);
+  font-size: 13px;
+}
+
+.code-panel-body pre code,
+.markdown-preview .code-panel-body pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .mermaid-diagram-body {
@@ -1034,8 +1087,47 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
   max-height: 100%;
 }
 
+.code-fullscreen {
+  position: fixed;
+  z-index: 2000;
+  inset: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d8d3df;
+  border-radius: 8px;
+  background: var(--code-bg);
+  box-shadow:
+    0 0 0 100vmax rgba(22, 18, 28, 0.28),
+    0 20px 70px rgba(22, 18, 28, 0.28);
+}
+
+.code-fullscreen-toolbar {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+
+.code-fullscreen-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  background: var(--code-bg);
+}
+
+.code-fullscreen-body pre {
+  min-height: 100%;
+  margin: 0;
+  padding: 24px;
+  background: transparent;
+  color: var(--code-fg);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 @media (hover: none) {
-  .mermaid-diagram-actions {
+  .mermaid-diagram-actions,
+  .code-panel-actions {
     opacity: 1;
   }
 }
@@ -1046,7 +1138,8 @@ body.sidebar-external-dragging [data-sidebar-external-draggable] {
     padding: 12px;
   }
 
-  .mermaid-fullscreen {
+  .mermaid-fullscreen,
+  .code-fullscreen {
     inset: 8px;
   }
 

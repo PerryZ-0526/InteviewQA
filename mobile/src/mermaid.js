@@ -54,26 +54,81 @@ function setFullscreen(host, button, active) {
   if (fullscreenHost && fullscreenHost !== host) {
     fullscreenHost.classList.remove('is-fullscreen');
   }
+  const subject = button.dataset.fullscreenSubject || '内容';
   host.classList.toggle('is-fullscreen', active);
   button.textContent = active ? '×' : '⛶';
   button.title = active ? '退出全屏' : '全屏查看';
-  button.setAttribute('aria-label', active ? '退出全屏' : '全屏查看 Mermaid 图表');
+  button.setAttribute('aria-label', active ? '退出全屏' : `全屏查看${subject}`);
   document.body.classList.toggle('mermaid-fullscreen-open', active);
   fullscreenHost = active ? host : null;
 }
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape' || !fullscreenHost) return;
-  const button = fullscreenHost.querySelector('[data-mermaid-fullscreen]');
+  const button = fullscreenHost.querySelector('[data-fullscreen]');
   fullscreenHost.classList.remove('is-fullscreen');
   if (button) {
+    const subject = button.dataset.fullscreenSubject || '内容';
     button.textContent = '⛶';
     button.title = '全屏查看';
-    button.setAttribute('aria-label', '全屏查看 Mermaid 图表');
+    button.setAttribute('aria-label', `全屏查看${subject}`);
   }
   document.body.classList.remove('mermaid-fullscreen-open');
   fullscreenHost = null;
 });
+
+function enableCopy(button, source, subject) {
+  button.addEventListener('click', async () => {
+    if (await writeClipboard(source)) {
+      button.textContent = '✓';
+      button.title = '已复制';
+      button.setAttribute('aria-label', `已复制${subject}`);
+      window.setTimeout(() => {
+        button.textContent = '⧉';
+        button.title = `复制${subject}`;
+        button.setAttribute('aria-label', `复制${subject}`);
+      }, 1600);
+    }
+  });
+}
+
+function decorateCodeBlocks(root) {
+  const blocks = Array.from(root.querySelectorAll('pre > code:not(.language-mermaid)'));
+  for (const code of blocks) {
+    const pre = code.parentElement;
+    if (!pre) continue;
+    const source = code.textContent || '';
+    const languageClass = Array.from(code.classList).find(name => name.startsWith('language-'));
+    const language = languageClass?.slice('language-'.length) || 'text';
+
+    const host = document.createElement('figure');
+    host.className = 'code-panel';
+    host.setAttribute('aria-label', `${language} 代码块`);
+    const toolbar = document.createElement('div');
+    toolbar.className = 'code-panel-toolbar';
+    const caption = document.createElement('figcaption');
+    caption.textContent = language;
+    const actions = document.createElement('div');
+    actions.className = 'code-panel-actions';
+    const copyButton = createButton('⧉', '复制代码');
+    const fullscreenButton = createButton('⛶', '全屏查看代码');
+    fullscreenButton.dataset.fullscreen = '';
+    fullscreenButton.dataset.fullscreenSubject = '代码';
+    actions.append(copyButton, fullscreenButton);
+    toolbar.append(caption, actions);
+    const body = document.createElement('div');
+    body.className = 'code-panel-body';
+
+    pre.replaceWith(host);
+    body.append(pre);
+    host.append(toolbar, body);
+
+    enableCopy(copyButton, source, '代码');
+    fullscreenButton.addEventListener('click', () => {
+      setFullscreen(host, fullscreenButton, !host.classList.contains('is-fullscreen'));
+    });
+  }
+}
 
 function createDiagramShell(source) {
   const host = document.createElement('figure');
@@ -91,7 +146,8 @@ function createDiagramShell(source) {
   sourceButton.setAttribute('aria-expanded', 'false');
   const copyButton = createButton('⧉', '复制 Mermaid 源码');
   const fullscreenButton = createButton('⛶', '全屏查看 Mermaid 图表');
-  fullscreenButton.dataset.mermaidFullscreen = '';
+  fullscreenButton.dataset.fullscreen = '';
+  fullscreenButton.dataset.fullscreenSubject = 'Mermaid 图表';
   fullscreenButton.disabled = true;
   actions.append(sourceButton, copyButton, fullscreenButton);
   toolbar.append(caption, actions);
@@ -120,18 +176,7 @@ function createDiagramShell(source) {
     sourceButton.setAttribute('aria-expanded', String(!sourcePanel.hidden));
     sourceButton.title = sourcePanel.hidden ? '查看源码' : '收起源码';
   });
-  copyButton.addEventListener('click', async () => {
-    if (await writeClipboard(source)) {
-      copyButton.textContent = '✓';
-      copyButton.title = '已复制';
-      copyButton.setAttribute('aria-label', '已复制 Mermaid 源码');
-      window.setTimeout(() => {
-        copyButton.textContent = '⧉';
-        copyButton.title = '复制源码';
-        copyButton.setAttribute('aria-label', '复制 Mermaid 源码');
-      }, 1600);
-    }
-  });
+  enableCopy(copyButton, source, 'Mermaid 源码');
   fullscreenButton.addEventListener('click', () => {
     setFullscreen(host, fullscreenButton, !host.classList.contains('is-fullscreen'));
   });
@@ -157,7 +202,8 @@ function showRenderError(canvas, sourcePanel, sourceButton, error) {
   sourceButton.title = '收起源码';
 }
 
-export async function renderMermaidDiagrams(root) {
+export async function enhanceCodeBlocks(root) {
+  decorateCodeBlocks(root);
   const blocks = Array.from(root.querySelectorAll('pre > code.language-mermaid'));
   if (blocks.length === 0) return;
 

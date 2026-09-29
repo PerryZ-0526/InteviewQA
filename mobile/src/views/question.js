@@ -1,7 +1,7 @@
 import { register } from '../router.js';
 import { loadQuestion, marked } from '../store.js';
 import { setSafeHtml } from '../html.js';
-import { renderMermaidDiagrams } from '../mermaid.js';
+import { enhanceCodeBlocks } from '../mermaid.js';
 
 register('question', async (container, { category, filename }, navigation) => {
   const { categories } = window.__appData || {};
@@ -71,7 +71,7 @@ register('question', async (container, { category, filename }, navigation) => {
       `}
     </div>
   `);
-  await renderMermaidDiagrams(container);
+  await enhanceCodeBlocks(container);
   if (!navigation.isCurrent()) return;
 
   container.querySelectorAll('[data-nav]').forEach(el => {
