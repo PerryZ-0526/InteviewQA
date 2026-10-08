@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildContentManifest } from '../mobile/scripts/content-manifest.mjs';
+import { createSyncManifest } from '../mobile/scripts/sync-manifest.mjs';
 import { parseCategoryDocument, parseQuestion } from '../mobile/src/content.js';
+import { groupLibraryDocuments } from '../mobile/src/library.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -109,4 +113,39 @@ test('generated mobile manifest contains repository content', () => {
   assert.ok(questions.every((document) => ['question', 'document'].includes(document.kind)));
   assert.equal('answer' in questions[0], false);
   assert.equal('content' in manifest.projectDocs[0], false);
+
+  const projectDirectories = groupLibraryDocuments(manifest.projectDocs, 'project');
+  const customGroups = groupLibraryDocuments(manifest.projectDocs, 'groups');
+  assert.ok(projectDirectories.some((directory) => directory.name === 'TJ-Edu-Agent'));
+  assert.ok(customGroups.some((directory) => directory.name === 'Claude Code Docs'));
+  assert.equal(
+    projectDirectories.flatMap((directory) => directory.documents).length,
+    manifest.projectDocs.filter((document) => document.base === 'project').length,
+  );
+  assert.equal(
+    customGroups.flatMap((directory) => directory.documents).length,
+    manifest.projectDocs.filter((document) => document.base === 'groups').length,
+  );
+});
+
+test('sync manifest hashes generated index and content files', () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'interviewqa-sync-'));
+  try {
+    fs.mkdirSync(path.join(fixture, 'categories', 'demo'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'content-manifest.json'), '{"version":1}', 'utf8');
+    fs.writeFileSync(path.join(fixture, 'categories', 'demo', '001-test.md'), '# Test', 'utf8');
+    const manifest = createSyncManifest(fixture, {
+      contentVersion: 'abc123',
+      generatedAt: '2026-10-08T00:00:00.000Z',
+    });
+    assert.equal(manifest.schemaVersion, 1);
+    assert.equal(manifest.contentVersion, 'abc123');
+    assert.deepEqual(
+      manifest.files.map((entry) => entry.path),
+      ['categories/demo/001-test.md', 'content-manifest.json'],
+    );
+    assert.ok(manifest.files.every((entry) => /^[a-f0-9]{64}$/.test(entry.sha256)));
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
 });

@@ -1,5 +1,6 @@
 import { marked } from '/vendor/marked.esm.js';
 import { parseCategoryDocument, parseIndex, parseQuestion } from './content.js';
+import { initializeContentSync, readContentFile } from './content-sync.js';
 
 marked.setOptions({ breaks: true });
 
@@ -12,15 +13,12 @@ const projectDocCache = new Map();
 
 // ---- load ----
 async function loadFile(filepath) {
-  const res = await fetch(`/${filepath.replace(/^\/+/, '')}`);
-  if (!res.ok) throw new Error(`404 ${filepath}`);
-  return res.text();
+  return readContentFile(filepath.replace(/^\/+/, ''));
 }
 
 async function loadAll() {
-  const res = await fetch('/content-manifest.json');
-  if (!res.ok) throw new Error(`内容清单加载失败 (${res.status})`);
-  const manifest = await res.json();
+  await initializeContentSync();
+  const manifest = JSON.parse(await loadFile('content-manifest.json'));
   if (manifest.version !== 1 || !Array.isArray(manifest.categories)) {
     throw new Error('内容清单格式不兼容');
   }

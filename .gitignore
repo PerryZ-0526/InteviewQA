@@ -8,4 +8,5 @@ admin/link-meta/
 admin/*.jsonl
 admin/*.tsbuildinfo
 mobile/dist/
+mobile/sync-dist/
 ref_project/

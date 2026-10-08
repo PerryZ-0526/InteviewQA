@@ -7,9 +7,11 @@ import { buildContentManifest } from './content-manifest.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const projectRoot = path.resolve(root, '..');
+const distRoot = path.join(root, 'dist');
+const syncContentRoot = path.join(root, 'sync-dist', 'mobile-content');
 
 const PORT = Number(process.env.PORT) || 4444;
-const HOST = '127.0.0.1';
+const HOST = process.env.HOST || '127.0.0.1';
 const MIME = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -33,6 +35,14 @@ http.createServer((req, res) => {
     const manifest = buildContentManifest(projectRoot);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(manifest));
+    return;
+  }
+  if (url === '/baseline-sync-manifest.json') {
+    tryServe(path.join(distRoot, 'baseline-sync-manifest.json'), res);
+    return;
+  }
+  if (url.startsWith('/mobile-content/')) {
+    tryServe(path.join(syncContentRoot, url.slice('/mobile-content/'.length)), res);
     return;
   }
 

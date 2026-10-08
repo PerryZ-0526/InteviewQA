@@ -2,6 +2,7 @@ import { register } from '../router.js';
 import { loadQuestion, marked } from '../store.js';
 import { setSafeHtml } from '../html.js';
 import { enhanceCodeBlocks } from '../mermaid.js';
+import { resolveDocumentImages } from '../content-sync.js';
 
 register('question', async (container, { category, filename }, navigation) => {
   const { categories } = window.__appData || {};
@@ -71,6 +72,7 @@ register('question', async (container, { category, filename }, navigation) => {
       `}
     </div>
   `);
+  await resolveDocumentImages(container, `categories/${category}/${filename}`);
   await enhanceCodeBlocks(container);
   if (!navigation.isCurrent()) return;
 

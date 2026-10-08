@@ -31,6 +31,12 @@ u { text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .header { padding: 20px 0 12px; }
 .header h1 { font-size: 1.25rem; font-weight: 700; }
 .header .badge { font-size: 0.8rem; color: var(--muted); }
+.home-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sync-button { display: inline-flex; width: 36px; height: 36px; flex: 0 0 36px; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--primary); font-size: 1.2rem; cursor: pointer; }
+.sync-button:disabled { cursor: default; opacity: 0.6; }
+.sync-button.syncing { animation: sync-spin 0.8s linear infinite; }
+.sync-status { min-height: 18px; margin: -6px 0 12px; color: var(--muted); font-size: 0.75rem; }
+@keyframes sync-spin { to { transform: rotate(360deg); } }
 .back { font-size: 0.9rem; color: var(--primary); cursor: pointer; display: inline-block; margin-bottom: 4px; }
 .tags-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .tag { display: inline-block; padding: 2px 8px; font-size: 0.75rem; background: #eef0ff; color: var(--primary); border-radius: 4px; cursor: pointer; }
@@ -47,10 +53,16 @@ u { text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .list-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--card); cursor: pointer; color: var(--text) !important; }
 .list-item:active { background: #f0f0ff; }
 .list-item .icon { font-size: 1.2rem; }
+.list-item .list-item-main { min-width: 0; flex: 1; }
+.list-item .list-item-main > span:first-child { overflow-wrap: anywhere; }
+.list-item .list-item-count { flex: 0 0 auto; color: var(--muted); font-size: 0.75rem; }
 .list-item .q-prefix { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); min-width: 28px; }
 .list-item .doc-kind { padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); font-size: 0.68rem; }
 .list-item .arrow { color: var(--muted); font-size: 1.2rem; margin-left: auto; }
 .list-item > div { display: flex; flex-direction: column; gap: 2px; }
+.home-section-title { margin: 20px 4px 8px; color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+.search-bar + .home-section-title { margin-top: 0; }
+.library-list { margin-bottom: 20px; }
 
 /* Cards */
 .card { background: var(--card); border-radius: var(--radius); margin: 12px 0; overflow: hidden; border: 1px solid var(--border); }

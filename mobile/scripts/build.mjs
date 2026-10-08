@@ -1,7 +1,9 @@
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { buildContentManifest } from './content-manifest.mjs';
+import { writeSyncManifest } from './sync-manifest.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -36,5 +38,10 @@ for (const dir of dirs) {
 
 const manifest = buildContentManifest(projectRoot);
 fs.writeFileSync(path.join(dist, 'content-manifest.json'), JSON.stringify(manifest), 'utf8');
+const contentVersion = process.env.GITHUB_SHA || execFileSync('git', ['rev-parse', 'HEAD'], {
+  cwd: projectRoot,
+  encoding: 'utf8',
+}).trim();
+writeSyncManifest(dist, 'baseline-sync-manifest.json', { contentVersion });
 
 console.log('build done → dist/');

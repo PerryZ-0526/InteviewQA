@@ -53,6 +53,18 @@ InteviewQA/
 
 基于 Capacitor 的纯静态 Web App，将题库打包为原生 APK。支持分类浏览、标签检索、全文搜索、离线访问。构建时生成轻量 `content-manifest.json`，题目答案、解析和 project 正文在打开时从包内 Markdown 按需加载。
 
+移动端通过首页右上角的同步按钮获取最新内容。App 内置一份离线基线，远端内容由 `.github/workflows/mobile-content-sync.yml` 在 `main` 更新后发布到 GitHub Pages。客户端按 SHA-256 比较并下载变化文件，全部校验成功后才原子切换版本；失败时继续使用旧版本。
+
+首次启用时，需要在 GitHub 仓库的 **Settings → Pages → Build and deployment** 中选择 **GitHub Actions**。本地生成同步站点可运行：
+
+```bash
+cd mobile
+npm run build
+npm run build:sync
+```
+
+`npm run sync` 仍表示开发电脑执行 `git pull`；App 内的内容同步不依赖 Git 命令或 Git 凭证。
+
 ### 内容生成流水线
 
 ```
