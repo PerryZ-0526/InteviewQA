@@ -5,7 +5,7 @@ body_schema: interviewqa/freeform-v1
 title: grep
 tags: []
 created: 2026-09-22 14:34:23
-updated: 2026-09-28 15:46:54
+updated: 2026-10-08 16:53:53
 ---
 
 > [https://mp.weixin.qq.com/s/kFtO6xsG09FX0-4pcm8XKg](https://mp.weixin.qq.com/s/kFtO6xsG09FX0-4pcm8XKg)
@@ -14,9 +14,9 @@ updated: 2026-09-28 15:46:54
 
 Claude Code 的作者 Boris Cherny 在 Latent Space 播客上说，结果是==outperformed everything. By a lot, and this was surprising==——全面胜出，而且优势很大，大到他们自己都意外。
 
-一年后，问题已经不再是 AI Agent 是否需要向量数据库，而是当<u style="text-decoration-color: #e63946">初为什么会觉得需要</u>。Cursor 挖走了做出这个决定的工程师；Windsurf、Cline、Devin、Sourcegraph Amp 相继弃用向量，改走工具驱动检索；Anthropic 自己的多 agent 研究系统，在内部评测上比单个 Claude Opus 4 高出 90.2%；亚马逊一篇 AAAI 2026 论文测得，只用关键词工具的 agent 达到了 RAG 94.5% 的忠实度，全程零向量库。
+一年后，问题已经不再是 AI Agent 是否需要向量数据库，而是当<u style="text-decoration-color: rgb(230, 57, 70)">初为什么会觉得需要</u>。Cursor 挖走了做出这个决定的工程师；Windsurf、Cline、Devin、Sourcegraph Amp 相继弃用向量，改走工具驱动检索；Anthropic 自己的多 agent 研究系统，在内部评测上比单个 Claude Opus 4 高出 90.2%；亚马逊一篇 AAAI 2026 论文测得，只用关键词工具的 agent 达到了 RAG 94.5% 的忠实度，全程零向量库。
 
-标题说==向量数据库已死==，更准确的说法是：它没死，但它<u style="text-decoration-color: #e63946">从==默认选项==降级成了==备选==</u>。
+> 标题说==向量数据库已死==，更准确的说法是：它没死，但它<u style="text-decoration-color: rgb(230, 57, 70)">从==默认选项==降级成了==备选==</u>。
 
 ## <span style="color: rgb(26, 26, 26); font-size: 22px">向量检索在代码上是怎么翻车的</span>
 
@@ -26,22 +26,25 @@ Claude Code 的作者 Boris Cherny 在 Latent Space 播客上说，结果是==ou
 
 为什么向量检索在代码上这么失败？源文归纳了五条：
 
-1. **语义相似度不等于相关性。**==最相似的 embedding==是个很差的代理，代替不了==我改这行代码会弄坏哪个函数==。代码有显式的结构关系——import、类型定义、调用图——平铺的 embedding 把这些全压平了。
+1. **语义相似度不等于相关性。**==最相似的 embedding==是个<u style="text-decoration-color: #e63946">很差的代理</u>，代替不了`我改这行代码会弄坏哪个函数`。
+   > 代码有<u style="text-decoration-color: #e63946">显式的结构关系</u>——import、类型定义、调用图——平铺的 embedding 把这些全压平了。
 2. **标识符本身就是搜索。** 当你问`processPayment` ==在哪定义==，你要的是精确匹配。向量搜索会带来误报（`handlePayment`）和漏报（真正的定义被一条长得像的注释顶了下去）。
-3. **索引永远是错的。** 代码在漂移，每次提交都让一部分索引失效。持续重建索引又贵又永远追不上——这和 GraphRAG 被 LazyGraphRAG 之前遇到的问题一模一样。
+3. **索引永远是错的。** <u style="text-decoration-color: #e63946">代码在漂移，每次提交都让一部分索引失效</u>。持续重建索引又贵又永远追不上——这和 GraphRAG 被 LazyGraphRAG 之前遇到的问题一模一样。
 4. **索引是一笔负债。** 一份私有代码的向量索引，就是这份代码的一个副本，躺在别的设施上，访问控制往往比源仓库更弱。
 5. **单次检索是脆弱的。** top-k 只有一次机会，一旦第一次没命中对的文件，模型就会自信地生成错代码。
 
 <img src="images/1790058883993-q1n71k.png" alt="图片" width="667">
 
-亚马逊这篇论文把这个结论从代码泛化到了更广的范围，测试了 FinanceBench、BlockchainSolana、Llama2Paper、HistoryOfAlexnet 等六个数据集。在 FinanceBench 上，agentic 关键词检索反而比传统 RAG 高出 6 个百分点（30.40% 对 24.24%）。==分块加嵌入==的失败模式是通用的，不是代码专属。
+亚马逊这篇论文<u style="text-decoration-color: #e63946">把这个结论从代码泛化到了更广的范围</u>，测试了 FinanceBench、BlockchainSolana、Llama2Paper、HistoryOfAlexnet 等六个数据集。在 FinanceBench 上，`agentic 关键词检索`反而比传统 RAG 高出 6 个百分点（30.40% 对 24.24%）。
+
+> ==分块加嵌入==的失败模式是通用的，不是代码专属。
 
 ## <span style="color: rgb(26, 26, 26); font-size: 22px">用 grep 换掉 RAG：Anthropic 的四个理由</span>
 
-Cherny 和 Cat Wu 对==为什么把向量搜索从 Claude Code 里拿掉==说得异常直白。从播客和后续访谈看，理由收敛成四点。
+Cherny 和 Cat Wu 对`“为什么把向量搜索从 Claude Code 里拿掉”`说得异常直白。从播客和后续访谈看，理由收敛成四点。
 
-1. **准确，这是最让他们意外的一点。** 团队原本预期 agentic 检索会比 RAG 更差，并且准备好为运维简单性接受一点质量损失。结果它反而更强。机制在于：一个驱动 `grep` 迭代的 LLM 能不断 refine 自己的查询、看相邻文件、跟随 import、自我纠正——单次 embedding 查找做不到这些。
-2. **新鲜。** agent 读文件系统，反映的是仓库的当前状态，没有==索引滞后==。改一个文件，100 毫秒后问 Claude Code，它读的是新字节；向量索引要等下一轮重新嵌入才会更新。
+1. **准确，这是最让他们意外的一点。** 团队原本预期 agentic 检索会比 RAG 更差，<u style="text-decoration-color: #e63946">并且准备好为运维简单性接受一点质量损失</u>。结果它反而更强。机制在于：一个驱动 `grep` 迭代的 LLM 能不断 refine 自己的查询、看相邻文件、跟随 import、自我纠正——单次 embedding 查找做不到这些。
+2. **新鲜。** agent 读文件系统，反映的是仓库的当前状态，没有`索引滞后`。改一个文件，100 毫秒后问 Claude Code，它读的是新字节；向量索引要等下一轮重新嵌入才会更新。
 3. **安全与隐私。** Cherny 的原话是：==RAG 有一整套索引步骤……索引得放在某个地方……这对公司来说是一大笔负债。==企业客户尤其不想要一份私有代码的独立嵌入副本躺在别人的设施里。
 4. **可靠。** 组件更少，故障更少。基于 grep 的检索没有会漂移的嵌入模型、没有会挂的向量库、没有会滞后的重建管线、没有要调的分块策略。`ripgrep` 能用，`find` 能用，`cat` 也能用。
 
