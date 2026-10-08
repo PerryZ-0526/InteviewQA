@@ -30,6 +30,12 @@ const FONT_SIZES = [
 
 const TRAILING_PUNCTUATION = /[：、，？。！]+$/;
 
+function headingLevelFromShortcut(event: KeyboardEvent): 1 | 2 | 3 | 4 | null {
+  const physicalDigit = event.code.match(/^Digit([1-4])$/)?.[1];
+  const digit = physicalDigit || (['1', '2', '3', '4'].includes(event.key) ? event.key : '');
+  return digit ? (Number(digit) as 1 | 2 | 3 | 4) : null;
+}
+
 // 将光标所在行转为指定级别标题，并去掉行末标点（：、，？。！），保留行内样式标记
 function applyHeadingLevel(ed: Editor, level: 1 | 2 | 3 | 4) {
   const { $from } = ed.state.selection;
@@ -347,30 +353,30 @@ export default function EditorToolbar() {
       const ed = getActiveEditor();
       if (!ed || ed.isDestroyed) return;
       const key = (ke.key || '').toLowerCase();
-      const ctrl = ke.ctrlKey || ke.metaKey;
+      const mod = ke.ctrlKey || ke.metaKey;
 
       // Ctrl+E → inline code
-      if (ctrl && !ke.altKey && !ke.shiftKey && key === 'e') {
+      if (mod && !ke.altKey && !ke.shiftKey && key === 'e') {
         ke.preventDefault();
         ed.chain().focus().toggleCode().run();
         return;
       }
-      // Ctrl+1~4 / Ctrl+Alt+1~4 → 当前行转对应级别标题，去掉行末标点（：、，？。！）。
-      // Chrome/Edge 将 Ctrl+数字 保留为切换标签页，事件不会送达页面，
-      // 故提供 Ctrl+Alt+数字 这一全浏览器可用的组合，Ctrl+数字 作为兼容分支保留
-      if (ctrl && !ke.shiftKey && ['1', '2', '3', '4'].includes(key)) {
+      // Mod+Alt+1~4 是浏览器内的可靠组合；裸 Mod+1~4 在浏览器未拦截时同样生效。
+      // 使用 code 识别物理数字键，兼容 macOS Option+数字产生特殊字符的键盘布局。
+      const headingLevel = headingLevelFromShortcut(ke);
+      if (mod && !ke.shiftKey && headingLevel) {
         ke.preventDefault();
-        applyHeadingLevel(ed, parseInt(key, 10) as 1 | 2 | 3 | 4);
+        applyHeadingLevel(ed, headingLevel);
         return;
       }
       // Ctrl+S → strikethrough
-      if (ctrl && !ke.altKey && !ke.shiftKey && key === 's') {
+      if (mod && !ke.altKey && !ke.shiftKey && key === 's') {
         ke.preventDefault();
         ed.chain().focus().toggleStrike().run();
         return;
       }
       // Alt+L → code block
-      if (ke.altKey && !ctrl && !ke.shiftKey && key === 'l') {
+      if (ke.altKey && !mod && !ke.shiftKey && key === 'l') {
         ke.preventDefault();
         ed.chain().focus().toggleCodeBlock().run();
         return;
@@ -379,7 +385,7 @@ export default function EditorToolbar() {
       const letter = key.toUpperCase();
 
       // Alt+letter → background color
-      if (ke.altKey && !ctrl) {
+      if (ke.altKey && !mod) {
         const bg = BG_COLORS.find(c => c.k === letter);
         if (bg) {
           ke.preventDefault();
@@ -393,7 +399,7 @@ export default function EditorToolbar() {
       }
 
       // Ctrl+Alt+letter → font color（统一色板，快捷键随色板定义）
-      if (ctrl && ke.altKey) {
+      if (mod && ke.altKey) {
         const fc = EDITOR_COLORS.find(c => c.k === letter);
         if (fc) {
           ke.preventDefault();
@@ -502,10 +508,10 @@ export default function EditorToolbar() {
 
         <ToolSep />
 
-        <ToolBtn onClick={() => editor && headingButtonAction(editor, 1)} active={editor?.isActive('heading', { level: 1 })} label="H1" title="标题1 (Ctrl+Alt+1)" />
-        <ToolBtn onClick={() => editor && headingButtonAction(editor, 2)} active={editor?.isActive('heading', { level: 2 })} label="H2" title="标题2 (Ctrl+Alt+2)" />
-        <ToolBtn onClick={() => editor && headingButtonAction(editor, 3)} active={editor?.isActive('heading', { level: 3 })} label="H3" title="标题3 (Ctrl+Alt+3)" />
-        <ToolBtn onClick={() => editor && headingButtonAction(editor, 4)} active={editor?.isActive('heading', { level: 4 })} label="H4" title="标题4 (Ctrl+Alt+4)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 1)} active={editor?.isActive('heading', { level: 1 })} label="H1" title="标题1 (⌘⌥1 / Ctrl+Alt+1)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 2)} active={editor?.isActive('heading', { level: 2 })} label="H2" title="标题2 (⌘⌥2 / Ctrl+Alt+2)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 3)} active={editor?.isActive('heading', { level: 3 })} label="H3" title="标题3 (⌘⌥3 / Ctrl+Alt+3)" />
+        <ToolBtn onClick={() => editor && headingButtonAction(editor, 4)} active={editor?.isActive('heading', { level: 4 })} label="H4" title="标题4 (⌘⌥4 / Ctrl+Alt+4)" />
         <ToolBtn onClick={() => editor?.chain().focus().setParagraph().run()} active={editor?.isActive('paragraph')} label="P" title="正文" />
         <ColorSplitButton
           glyph="H"
